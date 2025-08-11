@@ -1,0 +1,61 @@
+# IDE/Editor specific files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# PHP specific
+/vendor/
+composer.lock
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# System specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# Debug files
+php_errors.log
+error_log
+debug.log
+
+# Cache files
+/cache/
+*.cache
+
+# Uploads and user content
+/uploads/
+/user_content/
+
+# Configuration files with sensitive information
+config.php
+*config.ini
+
+# Composer dependencies
+/vendor/
+composer.phar
+
+# Node modules (if using any JavaScript build tools)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+/dist/
+/build/
