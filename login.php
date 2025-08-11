@@ -59,6 +59,10 @@
                         $_SESSION['role'] = $row['role'];
                         $_SESSION['full_name'] = $row['first_name'] . ' ' . $row['last_name'];
                         
+                        // Log the login activity
+                        require_once 'includes/activity_logger.php';
+                        logActivity($conn, 'User logged in', 'login');
+                        
                         // Redirect to dashboard
                         header("Location: index.php");
                         exit();

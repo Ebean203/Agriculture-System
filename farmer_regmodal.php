@@ -1,3 +1,11 @@
+<?php
+require_once 'check_session.php';
+
+if ($_SESSION['role'] !== 'admin') {
+    header("Location: index.php");
+    exit();
+}
+?>
 <!-- Farmer Registration Modal -->
 <div class="modal fade" id="farmerRegistrationModal" tabindex="-1" aria-labelledby="farmerRegistrationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
