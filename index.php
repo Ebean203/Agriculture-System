@@ -1,5 +1,6 @@
 <?php
 require_once 'conn.php';
+require_once 'check_session.php';
 
 // Handle form submissions
 if ($_POST) {
@@ -72,6 +73,15 @@ if ($_POST) {
                 }
             }
             
+            // Log the activity
+            require_once 'includes/activity_logger.php';
+            $activity_details = json_encode([
+                'farmer_id' => $farmer_id,
+                'name' => "$first_name $last_name",
+                'rsbsa' => $rsbsa_registered == 'Yes' ? 'Yes' : 'No'
+            ]);
+            logActivity($conn, "Registered new farmer: $first_name $last_name", 'farmer_registration', $activity_details);
+
             // Commit transaction
             mysqli_commit($conn);
             $success_message = "Farmer registered successfully! Farmer ID: " . $farmer_id;
@@ -101,7 +111,6 @@ if ($_POST) {
 }
 
 // Get session messages
-session_start();
 $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
 $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
 unset($_SESSION['success_message']);
@@ -181,6 +190,57 @@ if ($result) {
             }
         }
     </script>
+    <style>
+        /* Remove underlines from links and set text color to black */
+        .grid a {
+            text-decoration: none !important;
+            color: #111827 !important;
+        }
+        .grid a:hover {
+            text-decoration: none !important;
+        }
+
+        /* Dropdown menu styles */
+        #dropdownMenu {
+            z-index: 50;
+            transition: all 0.2s ease-in-out;
+            transform-origin: top right;
+        }
+
+        #dropdownMenu.show {
+            display: block;
+        }
+
+        #dropdownArrow.rotate {
+            transform: rotate(180deg);
+        }
+
+        /* Ensure dropdown is above other content */
+        .relative {
+            z-index: 40;
+        }
+    </style>
+    <script>
+        // Function to handle dropdown toggle
+        function toggleDropdown() {
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            const dropdownArrow = document.getElementById('dropdownArrow');
+            dropdownMenu.classList.toggle('show');
+            dropdownArrow.classList.toggle('rotate');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const userMenu = document.getElementById('userMenu');
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            const dropdownArrow = document.getElementById('dropdownArrow');
+            
+            if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
+                dropdownMenu.classList.remove('show');
+                dropdownArrow.classList.remove('rotate');
+            }
+        });
+    </script>
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
@@ -196,9 +256,23 @@ if ($result) {
                     <button class="text-white hover:text-agri-light transition-colors">
                         <i class="fas fa-bell text-lg"></i>
                     </button>
-                    <div class="flex items-center text-white">
-                        <i class="fas fa-user-circle text-lg mr-2"></i>
-                        <span>Admin User</span>
+                    <div class="flex items-center text-white relative" id="userMenu">
+                        <button class="flex items-center focus:outline-none" onclick="toggleDropdown()" type="button">
+                            <i class="fas fa-user-circle text-lg mr-2"></i>
+                            <span><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
+                            <i class="fas fa-chevron-down ml-2 text-xs transition-transform duration-200" id="dropdownArrow"></i>
+                        </button>
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden" id="dropdownMenu">
+                            <div class="px-4 py-2 text-sm text-gray-700 border-b">
+                                <div class="font-medium"><?php echo htmlspecialchars($_SESSION['full_name']); ?></div>
+                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($_SESSION['role']); ?></div>
+                            </div>
+                            <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-2"></i>
+                                Logout
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -309,37 +383,7 @@ if ($result) {
                 </div>
             </div>
 
-            <!-- Recent Activities -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">
-                    <i class="fas fa-clock text-agri-green mr-2"></i>Recent Activities
-                </h3>
-                <div class="space-y-4">
-                    <?php if (empty($recent_activities)): ?>
-                        <p class="text-gray-500 text-center py-4">No recent activities found</p>
-                    <?php else: ?>
-                        <?php foreach ($recent_activities as $activity): ?>
-                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                                <div class="p-2 bg-green-100 rounded-full mr-3">
-                                    <i class="fas fa-seedling text-green-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-900">
-                                        <?php echo htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']); ?>
-                                    </p>
-                                    <p class="text-xs text-gray-600">
-                                        Recorded <?php echo htmlspecialchars($activity['yield_volume']); ?> <?php echo htmlspecialchars($activity['unit_of_yield']); ?> 
-                                        of <?php echo htmlspecialchars($activity['commodity_name']); ?>
-                                    </p>
-                                    <p class="text-xs text-gray-400">
-                                        <?php echo date('M j, Y', strtotime($activity['record_date'])); ?>
-                                    </p>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <?php include 'includes/recent_activities.php'; ?>
         </div>
 
         <!-- Navigation Menu -->

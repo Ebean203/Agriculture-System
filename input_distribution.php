@@ -1,6 +1,7 @@
 <?php
 require_once 'check_session.php';
 require_once 'conn.php';
+require_once 'includes/header.php';
 
 // Check if user has admin access
 if ($_SESSION['role'] !== 'admin') {
@@ -9,15 +10,9 @@ if ($_SESSION['role'] !== 'admin') {
 }
 
 // Handle input distribution logic here
-?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Distribution - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+$pageTitle = 'Input Distribution';
+outputHeader($pageTitle);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <script>
