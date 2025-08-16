@@ -391,7 +391,7 @@ unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
 // Initialize default values
-$total_farmers = $rsbsa_registered = $total_commodities = $recent_yields = 0;
+$total_farmers = $rsbsa_registered = $ncfrs_registered = $fisherfolk_registered = $total_boats = $total_commodities = $recent_yields = 0;
 $recent_activities = [];
 
 // Get dashboard statistics using procedural MySQL
@@ -407,6 +407,27 @@ $query = "SELECT COUNT(*) as rsbsa_registered FROM rsbsa_registered_farmers";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $rsbsa_registered = $row['rsbsa_registered'];
+}
+
+// Count NCFRS registered farmers
+$query = "SELECT COUNT(*) as ncfrs_registered FROM ncfrs_registered_farmers";
+$result = mysqli_query($conn, $query);
+if ($result && $row = mysqli_fetch_assoc($result)) {
+    $ncfrs_registered = $row['ncfrs_registered'];
+}
+
+// Count Fisherfolk registered farmers
+$query = "SELECT COUNT(*) as fisherfolk_registered FROM fisherfolk_registered_farmers";
+$result = mysqli_query($conn, $query);
+if ($result && $row = mysqli_fetch_assoc($result)) {
+    $fisherfolk_registered = $row['fisherfolk_registered'];
+}
+
+// Count total boats
+$query = "SELECT COUNT(*) as total_boats FROM boats";
+$result = mysqli_query($conn, $query);
+if ($result && $row = mysqli_fetch_assoc($result)) {
+    $total_boats = $row['total_boats'];
 }
 
 // Count total commodities
@@ -577,7 +598,7 @@ if ($result) {
         </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
                 <div class="flex items-center">
                     <div class="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -598,6 +619,42 @@ if ($result) {
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">RSBSA Registered</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($rsbsa_registered); ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                        <i class="fas fa-id-card text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">NCFRS Registered</p>
+                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($ncfrs_registered); ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-teal-100 text-teal-600">
+                        <i class="fas fa-fish text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">FishR Registered</p>
+                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($fisherfolk_registered); ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-cyan-100 text-cyan-600">
+                        <i class="fas fa-ship text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Boats Registered</p>
+                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_boats); ?></p>
                     </div>
                 </div>
             </div>
