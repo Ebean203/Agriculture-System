@@ -503,7 +503,14 @@ if ($result) {
         }
 
         #dropdownMenu.show {
-            display: block;
+            display: block !important;
+            z-index: 999999 !important;
+            position: absolute !important;
+            top: 100% !important;
+            right: 0 !important;
+            margin-top: 0.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
         }
 
         #dropdownArrow.rotate {
@@ -590,131 +597,183 @@ if ($result) {
     <?php endif; ?>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <!-- Welcome Section -->
-        <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-8 text-white">
-            <h2 class="text-3xl font-bold mb-2">Welcome to Agricultural Management</h2>
-            <p class="text-agri-light">Monitor farmers, track yields, and manage agricultural inputs efficiently</p>
-        </div>
+    <div class="min-h-screen bg-gray-50">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <!-- Welcome Section -->
+            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-6 text-white relative overflow-hidden" style="z-index: 1;"">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
+                <div class="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
+                <div class="relative">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-3xl font-bold mb-2">Welcome to Agricultural Management</h2>
+                            <p class="text-lg text-green-100 mb-3">Monitor farmers, track yields, and manage agricultural inputs efficiently</p>
+                            <div class="flex items-center text-green-200">
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                <span><?php echo date('l, F j, Y'); ?></span>
+                            </div>
+                        </div>
+                        <div class="hidden lg:block">
+                            <i class="fas fa-seedling text-6xl text-white opacity-20"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                        <i class="fas fa-users text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Farmers -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">Total Farmers</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_farmers); ?></p>
                     </div>
+                    <div class="p-3 rounded-full bg-blue-100 group-hover:bg-blue-200 transition-colors duration-300">
+                        <i class="fas fa-users text-xl text-blue-600"></i>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600">
-                        <i class="fas fa-certificate text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+            <!-- RSBSA Registered -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">RSBSA Registered</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($rsbsa_registered); ?></p>
                     </div>
+                    <div class="p-3 rounded-full bg-green-100 transition-colors duration-300">
+                        <i class="fas fa-certificate text-xl text-green-600"></i>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
-                        <i class="fas fa-id-card text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+            <!-- NCFRS Registered -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">NCFRS Registered</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($ncfrs_registered); ?></p>
                     </div>
+                    <div class="p-3 rounded-full bg-indigo-100 transition-colors duration-300">
+                        <i class="fas fa-id-card text-xl text-indigo-600"></i>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-teal-100 text-teal-600">
-                        <i class="fas fa-fish text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+            <!-- FishR Registered -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">FishR Registered</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($fisherfolk_registered); ?></p>
                     </div>
+                    <div class="p-3 rounded-full bg-teal-100 transition-colors duration-300">
+                        <i class="fas fa-fish text-xl text-teal-600"></i>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-cyan-100 text-cyan-600">
-                        <i class="fas fa-ship text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+        <!-- Second Row Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Boats Registered -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">Boats Registered</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_boats); ?></p>
                     </div>
+                    <div class="p-3 rounded-full bg-cyan-100 transition-colors duration-300">
+                        <i class="fas fa-ship text-xl text-cyan-600"></i>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                        <i class="fas fa-wheat-awn text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+            <!-- Commodities -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">Commodities</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_commodities); ?></p>
                     </div>
+                    <div class="p-3 rounded-full bg-yellow-100 transition-colors duration-300">
+                        <i class="fas fa-wheat-awn text-xl text-yellow-600"></i>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                        <i class="fas fa-chart-line text-xl"></i>
-                    </div>
-                    <div class="ml-4">
+            <!-- Recent Yields -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <div>
                         <p class="text-sm font-medium text-gray-600">Recent Yields</p>
                         <p class="text-2xl font-bold text-gray-900"><?php echo number_format($recent_yields); ?></p>
+                        <p class="text-xs text-gray-500">Last 30 days</p>
+                    </div>
+                    <div class="p-3 rounded-full bg-purple-100 transition-colors duration-300">
+                        <i class="fas fa-chart-line text-xl text-purple-600"></i>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Quick Actions and Recent Activities -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Quick Actions -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">
-                    <i class="fas fa-bolt text-agri-green mr-2"></i>Quick Actions
-                </h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="openFarmerModal()" class="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-                        <i class="fas fa-user-plus text-2xl text-blue-600 mb-2"></i>
-                        <span class="text-sm font-medium text-blue-800">Add Farmer</span>
-                    </button>
-                    
-                    <button onclick="navigateTo('rsbsa_registration.php')" class="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
-                        <i class="fas fa-certificate text-2xl text-green-600 mb-2"></i>
-                        <span class="text-sm font-medium text-green-800">Commodity Inventory</span>
-                    </button>
-                    
-                    <button onclick="navigateTo('input_distribution.php')" class="flex flex-col items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer">
-                        <i class="fas fa-boxes text-2xl text-yellow-600 mb-2"></i>
-                        <span class="text-sm font-medium text-yellow-800">Distribute Inputs</span>
-                    </button>
-                    
-                    <button onclick="navigateTo('yield_monitoring.php')" class="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
-                        <i class="fas fa-chart-bar text-2xl text-purple-600 mb-2"></i>
-                        <span class="text-sm font-medium text-purple-800">Record Yield</span>
-                    </button>
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-md p-6 h-full">
+                    <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center">
+                        <i class="fas fa-bolt text-agri-green mr-3"></i>Quick Actions
+                    </h3>
+                    <div class="space-y-4">
+                        <button onclick="openFarmerModal()" class="w-full flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group">
+                            <div class="p-3 bg-blue-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-user-plus text-white"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-blue-900">Add New Farmer</div>
+                                <div class="text-sm text-blue-600">Register a new farmer</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="navigateTo('input_distribution.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
+                            <div class="p-3 bg-green-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-boxes text-white"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-green-900">Distribute Inputs</div>
+                                <div class="text-sm text-green-600">Manage agricultural inputs</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="navigateTo('yield_monitoring.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
+                            <div class="p-3 bg-purple-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-chart-bar text-white"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-purple-900">Record Yield</div>
+                                <div class="text-sm text-purple-600">Track harvest data</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="navigateTo('all_activities.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group">
+                            <div class="p-3 bg-yellow-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-activity text-white"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-yellow-900">View Activities</div>
+                                <div class="text-sm text-yellow-600">All system activities</div>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <?php include 'includes/recent_activities.php'; ?>
+            <!-- Recent Activities -->
+            <div class="lg:col-span-2">
+                <?php include 'includes/recent_activities.php'; ?>
+            </div>
         </div>
 
         <!-- Navigation Menu -->
@@ -765,6 +824,17 @@ if ($result) {
             </div>
         </div>
     </div>
+
+    <!-- Footer Section -->
+    <footer class="mt-12 bg-white rounded-lg shadow-md p-6 mx-6">
+        <div class="text-center text-gray-600">
+            <div class="flex items-center justify-center mb-2">
+                <i class="fas fa-seedling text-agri-green mr-2"></i>
+                <span class="font-semibold">Agriculture Management System</span>
+            </div>
+            <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
+        </div>
+    </footer>
 
     <!-- Include the farmer registration modal -->
     <?php include 'farmer_regmodal.php'; ?>

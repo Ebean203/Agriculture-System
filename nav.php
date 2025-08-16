@@ -3,7 +3,7 @@ if (!isset($pageTitle)) {
     $pageTitle = 'Agricultural Management System';
 }
 ?>
-<nav class="bg-agri-green shadow-lg">
+<nav class="bg-agri-green shadow-lg relative z-[1000]">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex items-center">
@@ -16,14 +16,14 @@ if (!isset($pageTitle)) {
                 <button class="text-white hover:text-agri-light transition-colors">
                     <i class="fas fa-bell text-lg"></i>
                 </button>
-                <div class="flex items-center text-white relative" id="userMenu">
+                <div class="flex items-center text-white relative z-[1001]" id="userMenu">
                     <button class="flex items-center focus:outline-none" onclick="toggleDropdown()" type="button">
                         <i class="fas fa-user-circle text-lg mr-2"></i>
                         <span><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
                         <i class="fas fa-chevron-down ml-2 text-xs transition-transform duration-200" id="dropdownArrow"></i>
                     </button>
                     <!-- Dropdown Menu -->
-                    <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden" id="dropdownMenu">
+                    <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-xl py-1 hidden" id="dropdownMenu">
                         <div class="px-4 py-2 text-sm text-gray-700 border-b">
                             <div class="font-medium"><?php echo htmlspecialchars($_SESSION['full_name']); ?></div>
                             <div class="text-xs text-gray-500"><?php echo htmlspecialchars($_SESSION['role']); ?></div>
