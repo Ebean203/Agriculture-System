@@ -15,6 +15,8 @@ $pageTitle = 'All Activities - Agricultural Management System';
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -28,19 +30,93 @@ $pageTitle = 'All Activities - Agricultural Management System';
             }
         }
     </script>
+    <style>
+        /* Remove underlines from links and set text color to black */
+        .grid a {
+            text-decoration: none !important;
+            color: #111827 !important;
+        }
+        .grid a:hover {
+            text-decoration: none !important;
+        }
+
+        /* Dropdown menu styles */
+        #dropdownMenu {
+            z-index: 50;
+            transition: all 0.2s ease-in-out;
+            transform-origin: top right;
+        }
+
+        #dropdownMenu.show {
+            display: block;
+        }
+
+        #dropdownArrow.rotate {
+            transform: rotate(180deg);
+        }
+
+        /* Ensure dropdown is above other content */
+        .relative {
+            z-index: 40;
+        }
+    </style>
+    <script>
+        // Function to handle dropdown toggle
+        function toggleDropdown() {
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            const dropdownArrow = document.getElementById('dropdownArrow');
+            dropdownMenu.classList.toggle('show');
+            dropdownArrow.classList.toggle('rotate');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const userMenu = document.getElementById('userMenu');
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            const dropdownArrow = document.getElementById('dropdownArrow');
+            
+            if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
+                dropdownMenu.classList.remove('show');
+                dropdownArrow.classList.remove('rotate');
+            }
+        });
+    </script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
-        <!-- Navigation Bar -->
+        <!-- Navigation -->
         <?php include 'nav.php'; ?>
 
-        <div class="container mx-auto px-4 py-8">
-            <!-- Header Section -->
-            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-6">
-                <h2 class="text-2xl font-bold text-white">All Activities</h2>
+        <!-- Success/Error Messages (match index.php) -->
+        <?php
+        $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
+        $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
+        unset($_SESSION['success_message']);
+        unset($_SESSION['error_message']);
+        ?>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
+                <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success_message); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($error_message)): ?>
+            <div class="alert alert-danger alert-dismissible fade show m-4" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error_message); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <!-- Header Section (uniform with index.php) -->
+            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-8 text-white">
+                <h2 class="text-3xl font-bold mb-2">All Activities</h2>
+                <p class="text-agri-light">Recent system activities and user actions across the application</p>
             </div>
 
-            <!-- Activities List -->
+            <!-- Activities List (match index.php card styles) -->
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <?php
                 // Get current page
