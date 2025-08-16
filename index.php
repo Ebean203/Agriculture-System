@@ -38,7 +38,23 @@ if ($_POST) {
             $occupation = isset($_POST['occupation']) ? mysqli_real_escape_string($conn, $_POST['occupation']) : NULL;
 
             // Farming / other fields to keep in farmers table
-            $primary_commodity = isset($_POST['primary_commodity']) ? mysqli_real_escape_string($conn, $_POST['primary_commodity']) : NULL;
+            $primary_commodity_input = isset($_POST['primary_commodity']) ? $_POST['primary_commodity'] : '';
+            $primary_commodity = NULL;
+            
+            // Validate primary_commodity
+            if (!empty($primary_commodity_input) && is_numeric($primary_commodity_input)) {
+                $commodity_id = intval($primary_commodity_input);
+                if ($commodity_id > 0) {
+                    // Check if commodity exists
+                    $commodity_check = mysqli_query($conn, "SELECT commodity_id FROM commodities WHERE commodity_id = $commodity_id");
+                    if (mysqli_num_rows($commodity_check) > 0) {
+                        $primary_commodity = $commodity_id;
+                    } else {
+                        throw new Exception("Invalid commodity selected. Please choose a valid commodity.");
+                    }
+                }
+            }
+            
             $land_area_hectares = isset($_POST['land_area_hectares']) && $_POST['land_area_hectares'] !== '' ? floatval($_POST['land_area_hectares']) : NULL;
             $years_farming = isset($_POST['years_farming']) && $_POST['years_farming'] !== '' ? intval($_POST['years_farming']) : NULL;
 
@@ -113,6 +129,8 @@ if ($_POST) {
                     $insert_cols[] = $col;
                     if (is_null($val)) {
                         $insert_vals[] = "NULL";
+                    } elseif (is_int($val)) {
+                        $insert_vals[] = $val;
                     } else {
                         $insert_vals[] = sql_val($val);
                     }

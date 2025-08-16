@@ -260,7 +260,7 @@ if ($_SESSION['role'] !== 'admin') {
                                     <select class="form-select" id="primary_commodity" name="primary_commodity">
                                         <option value="">Select Commodity</option>
                                         <?php foreach ($commodities as $c): ?>
-                                            <option value="<?php echo htmlspecialchars($c['commodity_name']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
+                                            <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
