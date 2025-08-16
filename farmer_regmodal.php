@@ -118,8 +118,8 @@ if ($_SESSION['role'] !== 'admin') {
 
                                     <!-- NCFRS -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="ncfrs_registered" class="form-label">NCFRS Registered?</label>
-                                        <select class="form-select" id="ncfrs_registered" name="ncfrs_registered" onchange="toggleNCFRSFields()">
+                                        <label for="ncfrs_registered" class="form-label">NCFRS Registered? <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="ncfrs_registered" name="ncfrs_registered" required onchange="toggleNCFRSFields()">
                                             <option value="">Select</option>
                                             <option value="Yes">Yes</option>
                                             <option value="No">No</option>
@@ -131,8 +131,8 @@ if ($_SESSION['role'] !== 'admin') {
 
                                     <!-- FISHERfold -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="fisherfold_registered" class="form-label">FishR Registered?</label>
-                                        <select class="form-select" id="fisherfold_registered" name="fisherfold_registered" onchange="toggleFisherfoldFields()">
+                                        <label for="fisherfold_registered" class="form-label">FishR Registered? <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="fisherfold_registered" name="fisherfold_registered" required onchange="toggleFisherfoldFields()">
                                             <option value="">Select</option>
                                             <option value="Yes">Yes</option>
                                             <option value="No">No</option>
@@ -145,8 +145,8 @@ if ($_SESSION['role'] !== 'admin') {
 
                                     <!-- Boat -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="has_boat" class="form-label">Has Boat?</label>
-                                        <select class="form-select" id="has_boat" name="has_boat" onchange="toggleBoatFields()">
+                                        <label for="has_boat" class="form-label">Has Boat? <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="has_boat" name="has_boat" required onchange="toggleBoatFields()">
                                             <option value="">Select</option>
                                             <option value="Yes">Yes</option>
                                             <option value="No">No</option>
@@ -218,7 +218,7 @@ if ($_SESSION['role'] !== 'admin') {
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label for="civil_status" class="form-label">Civil Status</label>
-                                    <select class="form-select" id="civil_status" name="civil_status">
+                                    <select class="form-select" id="civil_status" name="civil_status" onchange="toggleSpouseField()">
                                         <option value="">Select</option>
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
@@ -226,7 +226,7 @@ if ($_SESSION['role'] !== 'admin') {
                                         <option value="Separated">Separated</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-4 mb-3" id="spouse_field">
                                     <label for="spouse_name" class="form-label">Spouse Name</label>
                                     <input type="text" class="form-control" id="spouse_name" name="spouse_name">
                                 </div>
@@ -354,6 +354,25 @@ function toggleBoatFields() {
         document.getElementById('boat_name').value = '';
         regField.value = '';
         document.getElementById('engine_hp').value = '';
+    }
+}
+
+function toggleSpouseField() {
+    const civilStatus = document.getElementById('civil_status').value;
+    const spouseField = document.getElementById('spouse_field');
+    const spouseInput = document.getElementById('spouse_name');
+    
+    if (civilStatus === 'Single') {
+        spouseField.style.display = 'none';
+        spouseInput.value = '';
+        spouseInput.removeAttribute('required');
+    } else {
+        spouseField.style.display = 'block';
+        if (civilStatus === 'Married') {
+            spouseInput.setAttribute('required', 'required');
+        } else {
+            spouseInput.removeAttribute('required');
+        }
     }
 }
 

@@ -9,6 +9,8 @@ if ($_POST) {
         mysqli_autocommit($conn, FALSE);
         
         try {
+            // Initialize success flag
+            $success = true;
             // Helper to convert PHP value to SQL literal
             function sql_val($v) {
                 global $conn;
@@ -29,6 +31,17 @@ if ($_POST) {
             $is_member_of_4ps = isset($_POST['is_member_of_4ps']) ? 1 : 0;
             $is_ip = isset($_POST['is_ip']) ? 1 : 0;
             $other_income_source = isset($_POST['other_income_source']) ? mysqli_real_escape_string($conn, $_POST['other_income_source']) : NULL;
+
+            // Basic validation
+            if (empty($first_name)) {
+                throw new Exception("First name is required.");
+            }
+            if (empty($last_name)) {
+                throw new Exception("Last name is required.");
+            }
+            if (empty($gender)) {
+                throw new Exception("Gender is required.");
+            }
 
             // Household fields (to be stored in separate table)
             $civil_status = isset($_POST['civil_status']) ? mysqli_real_escape_string($conn, $_POST['civil_status']) : NULL;
@@ -74,6 +87,34 @@ if ($_POST) {
             $rsbsa_registration_number = isset($_POST['rsbsa_registration_number']) ? mysqli_real_escape_string($conn, $_POST['rsbsa_registration_number']) : NULL;
             $geo_reference_status = isset($_POST['geo_reference_status']) ? mysqli_real_escape_string($conn, $_POST['geo_reference_status']) : NULL;
             $date_of_registration = isset($_POST['date_of_registration']) && $_POST['date_of_registration'] !== '' ? mysqli_real_escape_string($conn, $_POST['date_of_registration']) : NULL;
+
+            // Validation for required registration fields
+            if (empty($rsbsa_registered)) {
+                throw new Exception("RSBSA Registration status is required.");
+            }
+            if (empty($ncfrs_registered)) {
+                throw new Exception("NCFRS Registration status is required.");
+            }
+            if (empty($fisherfold_registered)) {
+                throw new Exception("FishR Registration status is required.");
+            }
+            if (empty($has_boat)) {
+                throw new Exception("Boat ownership status is required.");
+            }
+            
+            // Specific validation for "Yes" selections
+            if ($rsbsa_registered == 'Yes' && empty($_POST['rsbsa_id'])) {
+                throw new Exception("RSBSA ID is required when farmer is RSBSA registered.");
+            }
+            if ($ncfrs_registered == 'Yes' && empty($ncfrs_id)) {
+                throw new Exception("NCFRS ID is required when farmer is NCFRS registered.");
+            }
+            if ($fisherfold_registered == 'Yes' && empty($fisherfold_id)) {
+                throw new Exception("Fisherfolk ID is required when farmer is FishR registered.");
+            }
+            if ($has_boat == 'Yes' && empty($boat_registration_no)) {
+                throw new Exception("Boat registration number is required when farmer has a boat.");
+            }
 
             // Generate unique farmer ID
             $farmer_id = 'FRM' . date('Ymd') . sprintf('%04d', rand(1, 9999));
@@ -294,13 +335,27 @@ if ($_POST) {
             $activity_details = json_encode([
                 'farmer_id' => $farmer_id,
                 'name' => "$first_name $last_name",
-                'rsbsa' => $rsbsa_registered == 'Yes' ? 'Yes' : 'No'
+                'rsbsa' => $rsbsa_registered == 'Yes' ? 'Yes' : 'No',
+                'ncfrs' => $ncfrs_registered == 'Yes' ? 'Yes' : 'No',
+                'fisherfolk' => $fisherfold_registered == 'Yes' ? 'Yes' : 'No',
+                'boat' => $has_boat == 'Yes' ? 'Yes' : 'No'
             ]);
             logActivity($conn, "Registered new farmer: $first_name $last_name", 'farmer_registration', $activity_details);
 
+            // Create detailed success message
+            $registrations = [];
+            if ($rsbsa_registered == 'Yes') $registrations[] = 'RSBSA';
+            if ($ncfrs_registered == 'Yes') $registrations[] = 'NCFRS';
+            if ($fisherfold_registered == 'Yes') $registrations[] = 'FishR';
+            if ($has_boat == 'Yes') $registrations[] = 'Boat';
+            
+            $registration_text = empty($registrations) ? 
+                "No additional registrations." : 
+                "Additional registrations: " . implode(', ', $registrations) . ".";
+
             // Commit transaction
             mysqli_commit($conn);
-            $success_message = "Farmer registered successfully! Farmer ID: " . $farmer_id;
+            $success_message = "Farmer registered successfully! Farmer ID: $farmer_id. $registration_text";
             
         } catch (Exception $e) {
             // Rollback transaction
