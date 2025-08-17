@@ -35,7 +35,7 @@ if ($_SESSION['role'] !== 'admin') {
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="farmerRegistrationForm" method="POST" action="index.php" enctype="multipart/form-data">
+            <form id="farmerRegistrationForm" method="POST" action="farmers.php" enctype="multipart/form-data">
                 <div class="modal-body">
             <input type="hidden" name="action" value="register_farmer">
             <!-- Hidden field for farmer_id (backend may populate/generate) -->
@@ -48,17 +48,21 @@ if ($_SESSION['role'] !== 'admin') {
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-3 mb-3">
                                     <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="first_name" name="first_name" required>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="middle_name" class="form-label">Middle Name</label>
-                                    <input type="text" class="form-control" id="middle_name" name="middle_name">
+                                <div class="col-md-3 mb-3">
+                                    <label for="middle_name" class="form-label">Middle Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="middle_name" name="middle_name" required>
                                 </div>
-                                <div class="col-md-4 mb-3">
+                                <div class="col-md-3 mb-3">
                                     <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="suffix" class="form-label">Suffix <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="suffix" name="suffix" placeholder="Jr., Sr., III, etc." required>
                                 </div>
                             </div>
                             <div class="row">
@@ -202,8 +206,8 @@ if ($_SESSION['role'] !== 'admin') {
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="other_income_source" class="form-label">Other Income Source (optional)</label>
-                                <textarea class="form-control" id="other_income_source" name="other_income_source" rows="2" placeholder="e.g., fishing, vending, etc."></textarea>
+                                <label for="other_income_source" class="form-label">Other Income Source <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="other_income_source" name="other_income_source" rows="2" placeholder="e.g., fishing, vending, etc." required></textarea>
                             </div>
                         </div>
                     </div>
@@ -217,8 +221,8 @@ if ($_SESSION['role'] !== 'admin') {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label for="civil_status" class="form-label">Civil Status</label>
-                                    <select class="form-select" id="civil_status" name="civil_status" onchange="toggleSpouseField()">
+                                    <label for="civil_status" class="form-label">Civil Status <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="civil_status" name="civil_status" required onchange="toggleSpouseField()">
                                         <option value="">Select</option>
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
@@ -227,8 +231,8 @@ if ($_SESSION['role'] !== 'admin') {
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3" id="spouse_field">
-                                    <label for="spouse_name" class="form-label">Spouse Name</label>
-                                    <input type="text" class="form-control" id="spouse_name" name="spouse_name">
+                                    <label for="spouse_name" class="form-label">Spouse Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="spouse_name" name="spouse_name" required>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="household_size" class="form-label">Household Size</label>
@@ -237,12 +241,19 @@ if ($_SESSION['role'] !== 'admin') {
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="education_level" class="form-label">Highest Education Attained</label>
-                                    <input type="text" class="form-control" id="education_level" name="education_level" placeholder="e.g., High School, College">
+                                    <label for="education_level" class="form-label">Highest Education Attained <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="education_level" name="education_level" required>
+                                        <option value="">Select</option>
+                                        <option value="Elementary">Elementary</option>
+                                        <option value="High School">High School</option>
+                                        <option value="College">College</option>
+                                        <option value="Vocational">Vocational</option>
+                                        <option value="Graduate">Graduate</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="occupation" class="form-label">Primary Occupation</label>
-                                    <input type="text" class="form-control" id="occupation" name="occupation" placeholder="e.g., Farmer, Fisherman">
+                                    <label for="occupation" class="form-label">Primary Occupation <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="occupation" name="occupation" placeholder="e.g., Farmer, Fisherman" required>
                                 </div>
                             </div>
                         </div>
@@ -256,8 +267,8 @@ if ($_SESSION['role'] !== 'admin') {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="primary_commodity" class="form-label">Primary Commodity</label>
-                                    <select class="form-select" id="primary_commodity" name="primary_commodity">
+                                    <label for="primary_commodity" class="form-label">Primary Commodity <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="primary_commodity" name="commodity_id" required>
                                         <option value="">Select Commodity</option>
                                         <?php foreach ($commodities as $c): ?>
                                             <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
@@ -265,12 +276,12 @@ if ($_SESSION['role'] !== 'admin') {
                                     </select>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label for="land_area_hectares" class="form-label">Land Area (hectares)</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" id="land_area_hectares" name="land_area_hectares">
+                                    <label for="land_area_hectares" class="form-label">Land Area (hectares) <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="land_area_hectares" name="land_area_hectares" required>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label for="years_farming" class="form-label">Years Farming</label>
-                                    <input type="number" min="0" class="form-control" id="years_farming" name="years_farming">
+                                    <label for="years_farming" class="form-label">Years Farming <span class="text-danger">*</span></label>
+                                    <input type="number" min="0" class="form-control" id="years_farming" name="years_farming" required>
                                 </div>
                             </div>
                         </div>
@@ -363,18 +374,29 @@ function toggleSpouseField() {
     const spouseInput = document.getElementById('spouse_name');
     
     if (civilStatus === 'Single') {
+        // Hide spouse field and remove required attribute
         spouseField.style.display = 'none';
-        spouseInput.value = '';
         spouseInput.removeAttribute('required');
-    } else {
+        spouseInput.value = ''; // Clear the value
+    } else if (civilStatus === 'Married') {
+        // Show spouse field and make it required
         spouseField.style.display = 'block';
-        if (civilStatus === 'Married') {
-            spouseInput.setAttribute('required', 'required');
-        } else {
-            spouseInput.removeAttribute('required');
-        }
+        spouseInput.setAttribute('required', 'required');
+    } else {
+        // For Widowed, Separated, show field but not required
+        spouseField.style.display = 'block';
+        spouseInput.removeAttribute('required');
     }
 }
+
+// Initialize spouse field visibility on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Hide spouse field by default
+    const spouseField = document.getElementById('spouse_field');
+    if (spouseField) {
+        spouseField.style.display = 'none';
+    }
+});
 
 // Form validation and submission
 document.getElementById('farmerRegistrationForm').addEventListener('submit', function(e) {
