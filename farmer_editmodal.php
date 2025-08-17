@@ -94,8 +94,8 @@ if ($_SESSION['role'] !== 'admin') {
                                     <input type="tel" class="form-control" id="edit_contact_number" name="contact_number" required placeholder="09xxxxxxxxx">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_barangay" class="form-label">Barangay <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_barangay" name="barangay_id" required>
+                                    <label for="edit_barangay_id" class="form-label">Barangay <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="edit_barangay_id" name="barangay_id" required>
                                         <option value="">Select Barangay</option>
                                         <?php foreach ($barangays as $barangay): ?>
                                             <option value="<?php echo htmlspecialchars($barangay['barangay_id']); ?>">
@@ -256,7 +256,7 @@ function validateEditForm() {
     const gender = document.getElementById('edit_gender').value;
     const contactNumber = document.getElementById('edit_contact_number').value.trim();
     const address = document.getElementById('edit_address_details').value.trim();
-    const barangay = document.getElementById('edit_barangay').value;
+    const barangay = document.getElementById('edit_barangay_id').value;
     
     // Check required fields
     if (!firstName) errors.push('First Name is required');
@@ -323,40 +323,46 @@ function validateEditForm() {
 }
 
 function editFarmer(farmerId) {
-    // Fetch farmer data
-    fetch(`farmer_details.php?id=${farmerId}&json=1`)
+    // Fetch farmer data using the same endpoint as in farmers.php
+    fetch(`farmers.php?action=get_farmer&id=${farmerId}`)
         .then(response => response.json())
-        .then(farmer => {
-            // Populate the form fields
-            document.getElementById('edit_farmer_id').value = farmer.farmer_id;
-            document.getElementById('edit_first_name').value = farmer.first_name || '';
-            document.getElementById('edit_middle_name').value = farmer.middle_name || '';
-            document.getElementById('edit_last_name').value = farmer.last_name || '';
-            document.getElementById('edit_suffix').value = farmer.suffix || '';
-            document.getElementById('edit_birth_date').value = farmer.birth_date || '';
-            document.getElementById('edit_gender').value = farmer.gender || '';
-            document.getElementById('edit_civil_status').value = farmer.civil_status || '';
-            document.getElementById('edit_spouse_name').value = farmer.spouse_name || '';
-            document.getElementById('edit_contact_number').value = farmer.contact_number || '';
-            document.getElementById('edit_barangay').value = farmer.barangay_id || '';
-            document.getElementById('edit_address_details').value = farmer.address_details || '';
-            document.getElementById('edit_primary_commodity').value = farmer.commodity_id || '';
-            document.getElementById('edit_household_size').value = farmer.household_size || '1';
-            document.getElementById('edit_education_level').value = farmer.education_level || '';
-            document.getElementById('edit_occupation').value = farmer.occupation || 'Farmer';
-            document.getElementById('edit_other_income_source').value = farmer.other_income_source || '';
-            document.getElementById('edit_land_area_hectares').value = farmer.land_area_hectares || '';
-            document.getElementById('edit_years_farming').value = farmer.years_farming || '';
-            
-            // Handle checkboxes
-            document.getElementById('edit_is_member_of_4ps').checked = farmer.is_member_of_4ps == '1';
-            document.getElementById('edit_is_ip').checked = farmer.is_ip == '1';
-            
-            // Trigger spouse field visibility
-            toggleEditSpouseField();
-            
-            // Show the modal
-            new bootstrap.Modal(document.getElementById('editFarmerModal')).show();
+        .then(data => {
+            if (data.success) {
+                const farmer = data.farmer;
+                
+                // Populate the form fields
+                document.getElementById('edit_farmer_id').value = farmer.farmer_id || '';
+                document.getElementById('edit_first_name').value = farmer.first_name || '';
+                document.getElementById('edit_middle_name').value = farmer.middle_name || '';
+                document.getElementById('edit_last_name').value = farmer.last_name || '';
+                document.getElementById('edit_suffix').value = farmer.suffix || '';
+                document.getElementById('edit_birth_date').value = farmer.birth_date || '';
+                document.getElementById('edit_gender').value = farmer.gender || '';
+                document.getElementById('edit_civil_status').value = farmer.civil_status || '';
+                document.getElementById('edit_spouse_name').value = farmer.spouse_name || '';
+                document.getElementById('edit_contact_number').value = farmer.contact_number || '';
+                document.getElementById('edit_barangay_id').value = farmer.barangay_id || '';
+                document.getElementById('edit_address_details').value = farmer.address_details || '';
+                document.getElementById('edit_primary_commodity').value = farmer.commodity_id || '';
+                document.getElementById('edit_household_size').value = farmer.household_size || '1';
+                document.getElementById('edit_education_level').value = farmer.education_level || '';
+                document.getElementById('edit_occupation').value = farmer.occupation || 'Farmer';
+                document.getElementById('edit_other_income_source').value = farmer.other_income_source || '';
+                document.getElementById('edit_land_area_hectares').value = farmer.land_area_hectares || '';
+                document.getElementById('edit_years_farming').value = farmer.years_farming || '';
+                
+                // Handle checkboxes
+                document.getElementById('edit_is_member_of_4ps').checked = farmer.is_member_of_4ps == '1';
+                document.getElementById('edit_is_ip').checked = farmer.is_ip == '1';
+                
+                // Trigger spouse field visibility
+                toggleEditSpouseField();
+                
+                // Show the modal
+                new bootstrap.Modal(document.getElementById('editFarmerModal')).show();
+            } else {
+                alert('Error loading farmer data: ' + data.message);
+            }
         })
         .catch(error => {
             console.error('Error:', error);

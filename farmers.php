@@ -258,6 +258,337 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+// Handle AJAX requests
+if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
+    header('Content-Type: application/json');
+    
+    switch ($_GET['action']) {
+        case 'view':
+            if (!isset($_GET['id'])) {
+                echo json_encode(['success' => false, 'message' => 'Farmer ID is required']);
+                exit;
+            }
+            
+            try {
+                $stmt = $conn->prepare("SELECT f.*, h.*, c.commodity_name, b.barangay_name,
+                                      DATE_FORMAT(f.registration_date, '%M %d, %Y at %h:%i %p') as formatted_registration_date,
+                                      rsbsa.farmer_id as rsbsa_registered,
+                                      ncfrs.farmer_id as ncfrs_registered,
+                                      ncfrs.ncfrs_registration_number,
+                                      fisherfolk.farmer_id as fisherfolk_registered,
+                                      fisherfolk.fisherfolk_registration_number,
+                                      fisherfolk.vessel_id
+                                      FROM farmers f 
+                                      LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
+                                      LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
+                                      LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
+                                      LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
+                                      LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
+                                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON f.farmer_id = fisherfolk.farmer_id
+                                      WHERE f.farmer_id = ?");
+                $stmt->bind_param("s", $_GET['id']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                if ($farmer = $result->fetch_assoc()) {
+                    $html = generateFarmerViewHTML($farmer);
+                    echo json_encode(['success' => true, 'html' => $html]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Farmer not found']);
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Error loading farmer: ' . $e->getMessage()]);
+            }
+            exit;
+            
+        case 'get_farmer':
+            if (!isset($_GET['id'])) {
+                echo json_encode(['success' => false, 'message' => 'Farmer ID is required']);
+                exit;
+            }
+            
+            try {
+                $stmt = $conn->prepare("SELECT f.*, h.* FROM farmers f 
+                                      LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
+                                      WHERE f.farmer_id = ?");
+                $stmt->bind_param("s", $_GET['id']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                if ($farmer = $result->fetch_assoc()) {
+                    echo json_encode(['success' => true, 'farmer' => $farmer]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Farmer not found']);
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Error loading farmer: ' . $e->getMessage()]);
+            }
+            exit;
+    }
+}
+
+// Function to generate farmer view HTML
+function generateFarmerViewHTML($farmer) {
+    $fullName = trim($farmer['first_name'] . ' ' . $farmer['middle_name'] . ' ' . $farmer['last_name'] . ' ' . $farmer['suffix']);
+    
+    $html = '<div class="container-fluid p-0">';
+    
+    // Header with farmer name and ID
+    $html .= '<div class="bg-gradient-primary text-white p-3 rounded-top mb-3" style="background: linear-gradient(135deg, #28a745, #20c997);">';
+    $html .= '<div class="row align-items-center">';
+    $html .= '<div class="col">';
+    $html .= '<h4 class="mb-1"><i class="fas fa-user-circle me-2"></i>' . htmlspecialchars($fullName) . '</h4>';
+    $html .= '<small class="opacity-75"><i class="fas fa-id-card me-1"></i>Farmer ID: ' . htmlspecialchars($farmer['farmer_id']) . '</small>';
+    $html .= '</div>';
+    if (isset($farmer['formatted_registration_date'])) {
+        $html .= '<div class="col-auto text-end">';
+        $html .= '<small class="opacity-75"><i class="fas fa-calendar-check me-1"></i>Registered<br>' . htmlspecialchars($farmer['formatted_registration_date']) . '</small>';
+        $html .= '</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    // Information cards
+    $html .= '<div class="row g-3">';
+    
+    // Personal Information Card
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="card border-0 shadow-sm h-100">';
+    $html .= '<div class="card-header bg-light border-0">';
+    $html .= '<h6 class="card-title mb-0 text-success"><i class="fas fa-user me-2"></i>Personal Information</h6>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+    $html .= '<div class="row g-3">';
+    
+    $html .= '<div class="col-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-birthday-cake text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Birth Date</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['birth_date'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-venus-mars text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Gender</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['gender'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-12">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-phone text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Contact Number</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['contact_number'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-12">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-map-marker-alt text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Address</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['address_details'] ?: 'Not specified') . ', ' . htmlspecialchars($farmer['barangay_name'] ?: 'N/A') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    // Household Information Card
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="card border-0 shadow-sm h-100">';
+    $html .= '<div class="card-header bg-light border-0">';
+    $html .= '<h6 class="card-title mb-0 text-info"><i class="fas fa-home me-2"></i>Household Information</h6>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+    $html .= '<div class="row g-3">';
+    
+    $html .= '<div class="col-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-heart text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Civil Status</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['civil_status'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-users text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Household Size</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['household_size'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    if (!empty($farmer['spouse_name'])) {
+        $html .= '<div class="col-12">';
+        $html .= '<div class="d-flex align-items-center mb-2">';
+        $html .= '<i class="fas fa-ring text-muted me-2" style="width: 16px;"></i>';
+        $html .= '<small class="text-muted">Spouse</small>';
+        $html .= '</div>';
+        $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['spouse_name']) . '</div>';
+        $html .= '</div>';
+    }
+    
+    $html .= '<div class="col-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-graduation-cap text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Education</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['education_level'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-briefcase text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Occupation</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['occupation'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    
+    // Farm Information Card (Full Width)
+    $html .= '<div class="row g-3 mt-2">';
+    $html .= '<div class="col-12">';
+    $html .= '<div class="card border-0 shadow-sm">';
+    $html .= '<div class="card-header bg-light border-0">';
+    $html .= '<h6 class="card-title mb-0 text-warning"><i class="fas fa-seedling me-2"></i>Farm Information</h6>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+    $html .= '<div class="row g-3">';
+    
+    $html .= '<div class="col-md-4">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-leaf text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Primary Commodity</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['commodity_name'] ?: 'Not specified') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-md-4">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-ruler-combined text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Land Area</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['land_area_hectares'] ?: 'Not specified') . ' hectares</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-md-4">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-calendar-alt text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Years Farming</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['years_farming'] ?: 'Not specified') . ' years</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="d-flex align-items-center mb-2">';
+    $html .= '<i class="fas fa-dollar-sign text-muted me-2" style="width: 16px;"></i>';
+    $html .= '<small class="text-muted">Other Income Source</small>';
+    $html .= '</div>';
+    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['other_income_source'] ?: 'None') . '</div>';
+    $html .= '</div>';
+    
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="row g-2">';
+    $html .= '<div class="col-6">';
+    $html .= '<div class="text-center p-2 rounded ' . ($farmer['is_member_of_4ps'] ? 'bg-success-subtle text-success' : 'bg-light text-muted') . '">';
+    $html .= '<i class="fas fa-hand-holding-heart d-block mb-1"></i>';
+    $html .= '<small class="fw-semibold">4Ps Member</small><br>';
+    $html .= '<span class="badge ' . ($farmer['is_member_of_4ps'] ? 'bg-success' : 'bg-secondary') . '">' . ($farmer['is_member_of_4ps'] ? 'Yes' : 'No') . '</span>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '<div class="col-6">';
+    $html .= '<div class="text-center p-2 rounded ' . ($farmer['is_ip'] ? 'bg-warning-subtle text-warning' : 'bg-light text-muted') . '">';
+    $html .= '<i class="fas fa-mountain d-block mb-1"></i>';
+    $html .= '<small class="fw-semibold">Indigenous People</small><br>';
+    $html .= '<span class="badge ' . ($farmer['is_ip'] ? 'bg-warning' : 'bg-secondary') . '">' . ($farmer['is_ip'] ? 'Yes' : 'No') . '</span>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    // Registration Programs Section
+    $html .= '<div class="row g-3 mt-2">';
+    $html .= '<div class="col-12">';
+    $html .= '<div class="card border-0 shadow-sm">';
+    $html .= '<div class="card-header bg-light border-0">';
+    $html .= '<h6 class="card-title mb-0 text-info"><i class="fas fa-clipboard-list me-2"></i>Program Registrations</h6>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+    $html .= '<div class="row g-3">';
+    
+    // RSBSA Registration
+    $html .= '<div class="col-md-6 col-lg-3">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['rsbsa_registered']) ? 'bg-primary-subtle text-primary' : 'bg-light text-muted') . '">';
+    $html .= '<i class="fas fa-file-contract d-block mb-2 fs-4"></i>';
+    $html .= '<div class="fw-semibold mb-1">RSBSA</div>';
+    $html .= '<span class="badge ' . (!empty($farmer['rsbsa_registered']) ? 'bg-primary' : 'bg-secondary') . '">' . (!empty($farmer['rsbsa_registered']) ? 'Registered' : 'Not Registered') . '</span>';
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    // NCFRS Registration
+    $html .= '<div class="col-md-6 col-lg-3">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['ncfrs_registered']) ? 'bg-success-subtle text-success' : 'bg-light text-muted') . '">';
+    $html .= '<i class="fas fa-database d-block mb-2 fs-4"></i>';
+    $html .= '<div class="fw-semibold mb-1">NCFRS</div>';
+    $html .= '<span class="badge ' . (!empty($farmer['ncfrs_registered']) ? 'bg-success' : 'bg-secondary') . '">' . (!empty($farmer['ncfrs_registered']) ? 'Registered' : 'Not Registered') . '</span>';
+    if (!empty($farmer['ncfrs_registration_number'])) {
+        $html .= '<div class="small mt-1">ID: ' . htmlspecialchars($farmer['ncfrs_registration_number']) . '</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    // Fisherfolk Registration
+    $html .= '<div class="col-md-6 col-lg-3">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['fisherfolk_registered']) ? 'bg-info-subtle text-info' : 'bg-light text-muted') . '">';
+    $html .= '<i class="fas fa-fish d-block mb-2 fs-4"></i>';
+    $html .= '<div class="fw-semibold mb-1">Fisherfolk</div>';
+    $html .= '<span class="badge ' . (!empty($farmer['fisherfolk_registered']) ? 'bg-info' : 'bg-secondary') . '">' . (!empty($farmer['fisherfolk_registered']) ? 'Registered' : 'Not Registered') . '</span>';
+    if (!empty($farmer['fisherfolk_registration_number'])) {
+        $html .= '<div class="small mt-1">ID: ' . htmlspecialchars($farmer['fisherfolk_registration_number']) . '</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    // Vessel Information
+    $html .= '<div class="col-md-6 col-lg-3">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['vessel_id']) ? 'bg-warning-subtle text-warning' : 'bg-light text-muted') . '">';
+    $html .= '<i class="fas fa-ship d-block mb-2 fs-4"></i>';
+    $html .= '<div class="fw-semibold mb-1">Vessel</div>';
+    if (!empty($farmer['vessel_id'])) {
+        $html .= '<span class="badge bg-warning">Has Vessel</span>';
+        $html .= '<div class="small mt-1">Vessel ID: ' . htmlspecialchars($farmer['vessel_id']) . '</div>';
+    } else {
+        $html .= '<span class="badge bg-secondary">No Vessel</span>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    $html .= '</div>';
+    $html .= '</div>';
+    
+    return $html;
+}
+
 // Get messages from session and clear them
 $success_message = $_SESSION['success_message'] ?? null;
 $error_message = $_SESSION['error_message'] ?? null;
@@ -453,9 +784,9 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                 class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
                             <i class="fas fa-plus mr-2"></i>Add New Farmer
                         </button>
-                        <button onclick="exportFarmers()" 
-                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
-                            <i class="fas fa-download mr-2"></i>Export Data
+                        <button onclick="exportToPDF()" 
+                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center">
+                            <i class="fas fa-file-pdf mr-2"></i>Export to PDF
                         </button>
                     </div>
                 </div>
@@ -485,7 +816,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
             </div>
 
             <!-- Farmers Table -->
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class=Error loading farmer data"bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="p-6 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">
                         Farmers List 
@@ -641,13 +972,13 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
     <!-- View Farmer Modal -->
     <div class="modal fade" id="viewFarmerModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Farmer Details</h5>
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title text-success"><i class="fas fa-user-circle me-2"></i>Farmer Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="viewFarmerContent">
+                <div class="modal-body p-0" id="viewFarmerContent">
                     <!-- Content will be loaded via AJAX -->
                 </div>
             </div>
@@ -686,12 +1017,17 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Function to view farmer details
         function viewFarmer(farmerId) {
-            fetch(`farmer_details.php?id=${farmerId}`)
-                .then(response => response.text())
+            fetch(`farmers.php?action=view&id=${farmerId}`)
+                .then(response => response.json())
                 .then(data => {
-                    document.getElementById('viewFarmerContent').innerHTML = data;
-                    new bootstrap.Modal(document.getElementById('viewFarmerModal')).show();
+                    if (data.success) {
+                        document.getElementById('viewFarmerContent').innerHTML = data.html;
+                        new bootstrap.Modal(document.getElementById('viewFarmerModal')).show();
+                    } else {
+                        alert('Error loading farmer details: ' + data.message);
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -699,15 +1035,32 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                 });
         }
 
+        // Function to show archive confirmation
         function archiveFarmer(farmerId, farmerName) {
             document.getElementById('farmerIdToArchive').value = farmerId;
             document.getElementById('farmerNameToArchive').textContent = farmerName;
             new bootstrap.Modal(document.getElementById('archiveConfirmModal')).show();
         }
 
-        function exportFarmers() {
+        // Function to export farmers data to PDF
+        function exportToPDF() {
             const search = new URLSearchParams(window.location.search).get('search') || '';
-            window.location.href = `export_farmers.php?search=${encodeURIComponent(search)}`;
+            const exportUrl = `pdf_export.php?action=export_pdf&search=${encodeURIComponent(search)}`;
+            
+            // Show loading indicator
+            const exportBtn = document.querySelector('button[onclick="exportToPDF()"]');
+            const originalText = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating PDF...';
+            exportBtn.disabled = true;
+            
+            // Open in new window for PDF download
+            window.open(exportUrl, '_blank');
+            
+            // Reset button after delay
+            setTimeout(() => {
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            }, 3000);
         }
 
         // Auto-dismiss alerts after 5 seconds
