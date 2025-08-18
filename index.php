@@ -830,7 +830,7 @@ if ($result) {
     </div>
 
     <!-- Footer Section -->
-    <footer class="mt-12 bg-white rounded-lg shadow-md p-6 mx-6">
+    <footer class="mt-12 bg-white shadow-md p-6 w-full">
         <div class="text-center text-gray-600">
             <div class="flex items-center justify-center mb-2">
                 <i class="fas fa-seedling text-agri-green mr-2"></i>
