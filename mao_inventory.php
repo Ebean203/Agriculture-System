@@ -544,7 +544,7 @@ if (isset($_GET['debug'])) {
 
     <!-- Distribute Modal -->
     <div id="distributeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-share-square text-agri-green mr-2"></i>Distribute Input
