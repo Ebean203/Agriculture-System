@@ -31,7 +31,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details, f.land_area_hectares,
                    b.barangay_name, c.commodity_name, rsbsa.rsbsa_registration_number, 
-                   rsbsa.geo_reference_status, rsbsa.date_of_registration, rsbsa.rsbsa_input_id
+                   rsbsa.geo_reference_status, rsbsa.date_of_registration
                    FROM farmers f
                    INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
@@ -65,7 +65,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Contact</th>
                     <th>Barangay</th>
                     <th>RSBSA Reg. No.</th>
-                    <th>RSBSA Input ID</th>
                     <th>Geo Status</th>
                     <th>Land Area (Ha)</th>
                     <th>Commodity</th>
@@ -82,7 +81,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
                 <td>' . htmlspecialchars($row['rsbsa_registration_number']) . '</td>
-                <td>' . htmlspecialchars($row['rsbsa_input_id']) . '</td>
                 <td>' . htmlspecialchars($row['geo_reference_status']) . '</td>
                 <td>' . htmlspecialchars($row['land_area_hectares']) . '</td>
                 <td>' . htmlspecialchars($row['commodity_name']) . '</td>
@@ -220,8 +218,7 @@ $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
         f.land_area_hectares, b.barangay_name, c.commodity_name, h.household_size,
         rsbsa.rsbsa_registration_number, rsbsa.geo_reference_status, 
-        rsbsa.date_of_registration as rsbsa_registration_date, rsbsa.rsbsa_input_id,
-        rsbsa.proof_of_registration
+        rsbsa.date_of_registration as rsbsa_registration_date
         FROM farmers f
         INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
@@ -272,7 +269,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             theme: {
                 extend: {
                     colors: {
-                        'agri-green': '#22c55e',
+                        'agri-green': '#16a34a',
                         'agri-dark': '#16a34a',
                         'agri-light': '#dcfce7'
                     }
@@ -280,38 +277,37 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             }
         }
     </script>
-    <style>
-        .agri-gradient {
-            background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
-        }
-    </style>
 </head>
 <body class="bg-gray-50">
     <?php include 'nav.php'; ?>
 
-    <div class="container-fluid mt-4">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Main Content -->
+    <div class="min-h-screen bg-gray-50">
+        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             
             <!-- Header Section -->
-            <div class="agri-gradient rounded-lg shadow-lg p-6 mb-6 text-white">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold flex items-center">
-                            <i class="fas fa-certificate text-yellow-300 mr-3"></i>
+                        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                            <i class="fas fa-certificate text-agri-green mr-3"></i>
                             RSBSA Records
                         </h1>
-                        <p class="mt-2 text-green-100">Registry System for Basic Sectors in Agriculture</p>
-                        <div class="mt-3 text-sm text-green-100">
+                        <p class="text-gray-600 mt-2">Registry System for Basic Sectors in Agriculture</p>
+                        <div class="mt-2 text-sm text-gray-600">
                             <i class="fas fa-info-circle mr-2"></i>
-                            Total RSBSA Registered Farmers: <span class="font-bold text-yellow-300"><?php echo $total_records; ?></span>
+                            Total RSBSA Registered Farmers: <span class="font-bold text-agri-green"><?php echo $total_records; ?></span>
                         </div>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+                    <div class="flex flex-col sm:flex-row gap-3">
                         <button onclick="exportToPDF()" 
-                                class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center font-medium">
+                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center">
                             <i class="fas fa-file-pdf mr-2"></i>Export to PDF
                         </button>
-                        <a href="farmers.php" class="bg-white text-green-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center">
+                        <a href="rsbsa_registration.php" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="fas fa-user-plus mr-2"></i>Register RSBSA
+                        </a>
+                        <a href="farmers.php" class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
                             <i class="fas fa-users mr-2"></i>All Farmers
                         </a>
                     </div>
@@ -526,6 +522,17 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             </div>
         </div>
     </div>
+
+    <!-- Footer Section -->
+    <footer class="mt-12 bg-white rounded-lg shadow-md p-6 mx-6">
+        <div class="text-center text-gray-600">
+            <div class="flex items-center justify-center mb-2">
+                <i class="fas fa-seedling text-agri-green mr-2"></i>
+                <span class="font-semibold">Agriculture Management System</span>
+            </div>
+            <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
+        </div>
+    </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>

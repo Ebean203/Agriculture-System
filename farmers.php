@@ -677,7 +677,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
             theme: {
                 extend: {
                     colors: {
-                        'agri-green': '#22c55e',
+                        'agri-green': '#16a34a',
                         'agri-dark': '#16a34a',
                         'agri-light': '#dcfce7'
                     }
@@ -1072,6 +1072,17 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
             </div>
         </div>
     </div>
+
+    <!-- Footer Section -->
+    <footer class="mt-12 bg-white rounded-lg shadow-md p-6 mx-6">
+        <div class="text-center text-gray-600">
+            <div class="flex items-center justify-center mb-2">
+                <i class="fas fa-seedling text-agri-green mr-2"></i>
+                <span class="font-semibold">Agriculture Management System</span>
+            </div>
+            <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
+        </div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>

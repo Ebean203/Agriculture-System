@@ -513,6 +513,18 @@ if ($result) {
         .relative {
             z-index: 40;
         }
+
+        /* Ensure navigation has higher z-index than content */
+        nav {
+            position: relative;
+            z-index: 1000;
+        }
+
+        /* User menu container needs highest z-index */
+        #userMenu {
+            position: relative;
+            z-index: 1001;
+        }
     </style>
     <script>
         // Function to handle dropdown toggle
@@ -592,7 +604,7 @@ if ($result) {
     <div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Welcome Section -->
-            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-6 text-white relative overflow-hidden" style="z-index: 1;"">
+            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-6 text-white relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
                 <div class="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
                 <div class="relative">
@@ -729,7 +741,7 @@ if ($result) {
                             </div>
                         </button>
                         
-                        <button onclick="navigateTo('input_distribution.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
+                        <button onclick="navigateTo('mao_inventory.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
                             <div class="p-3 bg-green-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
                                 <i class="fas fa-boxes text-white"></i>
                             </div>
@@ -784,9 +796,9 @@ if ($result) {
                     <span class="font-medium">RSBSA Records</span>
                 </a>
                 
-                <a href="commodities.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-wheat-awn text-yellow-600 text-xl mr-3"></i>
-                    <span class="font-medium">Manage Inputs</span>
+                <a href="mao_inventory.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
+                    <i class="fas fa-warehouse text-yellow-600 text-xl mr-3"></i>
+                    <span class="font-medium">Manage Inventory</span>
                 </a>
                 
                 <a href="inputs.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">

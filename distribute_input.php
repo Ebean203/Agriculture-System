@@ -1,0 +1,189 @@
+<?php
+session_start();
+require_once 'check_session.php';
+require_once 'conn.php';
+require_once 'includes/activity_logger.php';
+
+// Validate required POST data
+if (!isset($_POST['input_id']) || !isset($_POST['farmer_id']) || !isset($_POST['quantity_distributed']) || !isset($_POST['date_given'])) {
+    $_SESSION['error'] = "Missing required data for distribution!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+// Additional validation for data quality
+$input_id = trim($_POST['input_id']);
+$farmer_id = trim($_POST['farmer_id']);
+$quantity_distributed = trim($_POST['quantity_distributed']);
+$date_given = trim($_POST['date_given']);
+
+// Validate data is not empty
+if (empty($input_id) || empty($farmer_id) || empty($quantity_distributed) || empty($date_given)) {
+    $_SESSION['error'] = "All fields are required and cannot be empty!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+// Validate quantity is numeric and positive
+if (!is_numeric($quantity_distributed) || floatval($quantity_distributed) <= 0) {
+    $_SESSION['error'] = "Quantity must be a positive number!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+// Validate date format
+if (!DateTime::createFromFormat('Y-m-d', $date_given)) {
+    $_SESSION['error'] = "Invalid date format!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+$input_id = mysqli_real_escape_string($conn, $input_id);
+$farmer_id = mysqli_real_escape_string($conn, $farmer_id);
+$quantity_distributed = mysqli_real_escape_string($conn, $quantity_distributed);
+$date_given = mysqli_real_escape_string($conn, $date_given);
+
+// Handle visitation date based on whether input requires visitation
+$input_info_query = "SELECT requires_visitation FROM input_categories WHERE input_id = '$input_id'";
+$input_info_result = mysqli_query($conn, $input_info_query);
+$input_info = mysqli_fetch_assoc($input_info_result);
+$requires_visitation = $input_info['requires_visitation'] ?? 1;
+
+if ($requires_visitation) {
+    // Input requires visitation - use the inputted date or default to 7 days after distribution
+    $visitation_date = isset($_POST['visitation_date']) && !empty($_POST['visitation_date']) ? 
+                       trim($_POST['visitation_date']) : 
+                       date('Y-m-d', strtotime($date_given . ' +7 days'));
+    
+    // Validate visitation date format only when it's required
+    if (!DateTime::createFromFormat('Y-m-d', $visitation_date)) {
+        $_SESSION['error'] = "Invalid visitation date format!";
+        header("Location: mao_inventory.php");
+        exit();
+    }
+    
+    $visitation_date = mysqli_real_escape_string($conn, $visitation_date);
+} else {
+    // Input doesn't require visitation - store NULL
+    $visitation_date = NULL;
+}
+
+// Verify input exists and get current stock (using YOUR database structure)
+$input_check = "SELECT ic.input_id, ic.input_name, COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand 
+                FROM input_categories ic 
+                LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id 
+                WHERE ic.input_id = '$input_id'";
+$input_result = mysqli_query($conn, $input_check);
+
+if (!$input_result || mysqli_num_rows($input_result) == 0) {
+    $_SESSION['error'] = "Selected input does not exist!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+$input_data = mysqli_fetch_assoc($input_result);
+$current_stock = floatval($input_data['quantity_on_hand']); // Handle case where no inventory record exists yet
+
+// Verify farmer exists
+$farmer_check = "SELECT farmer_id, first_name, last_name FROM farmers WHERE farmer_id = '$farmer_id'";
+$farmer_result = mysqli_query($conn, $farmer_check);
+
+if (!$farmer_result || mysqli_num_rows($farmer_result) == 0) {
+    $_SESSION['error'] = "Selected farmer does not exist!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+$farmer_data = mysqli_fetch_assoc($farmer_result);
+
+// Check if there's enough stock
+if ($current_stock < floatval($quantity_distributed)) {
+    $_SESSION['error'] = "Insufficient stock! Available: " . $current_stock . ", Requested: " . $quantity_distributed;
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+// Validate farmer exists using the farmer_id from dropdown
+$farmer_check = "SELECT first_name, last_name FROM farmers WHERE farmer_id = '$farmer_id'";
+$farmer_result = mysqli_query($conn, $farmer_check);
+
+if (mysqli_num_rows($farmer_result) == 0) {
+    $_SESSION['error'] = "Selected farmer not found!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+$farmer_data = mysqli_fetch_assoc($farmer_result);
+
+// Check available stock
+// Begin transaction
+mysqli_begin_transaction($conn);
+
+try {
+    // Record distribution - handle NULL visitation_date properly
+    if ($visitation_date === NULL) {
+        $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) 
+                              VALUES ('$farmer_id', '$input_id', '$quantity_distributed', '$date_given', NULL)";
+    } else {
+        $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) 
+                              VALUES ('$farmer_id', '$input_id', '$quantity_distributed', '$date_given', '$visitation_date')";
+    }
+    
+    if (!mysqli_query($conn, $distribution_query)) {
+        throw new Exception("Error recording distribution: " . mysqli_error($conn));
+    }
+    
+    // Update inventory
+    $update_inventory = "UPDATE mao_inventory 
+                        SET quantity_on_hand = quantity_on_hand - $quantity_distributed,
+                            last_updated = NOW()
+                        WHERE input_id = '$input_id'";
+    
+    if (!mysqli_query($conn, $update_inventory)) {
+        throw new Exception("Error updating inventory: " . mysqli_error($conn));
+    }
+    
+    // Get input name for logging
+    $input_query = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
+    $input_result = mysqli_query($conn, $input_query);
+    $input_data = mysqli_fetch_assoc($input_result);
+    
+    // Log activity with proper visitation info
+    $visitation_info = $visitation_date ? $visitation_date : 'N/A';
+    $activity_details = "Input ID: $input_id, Farmer ID: $farmer_id, Quantity: $quantity_distributed, Date: $date_given, Visitation Date: $visitation_info";
+    
+    logActivity($conn, "Distributed $quantity_distributed units of {$input_data['input_name']} to {$farmer_data['first_name']} {$farmer_data['last_name']} ($farmer_id)", 'input', $activity_details);
+    
+    // Commit transaction
+    mysqli_commit($conn);
+    
+    // Create success message based on whether visitation is required
+    if ($requires_visitation && $visitation_date) {
+        $success_message = "Input distributed successfully to {$farmer_data['first_name']} {$farmer_data['last_name']}! Visitation scheduled for " . date('M d, Y', strtotime($visitation_date)) . ".";
+    } else {
+        $success_message = "Input distributed successfully to {$farmer_data['first_name']} {$farmer_data['last_name']}!";
+    }
+    $_SESSION['success'] = $success_message;
+    
+} catch (Exception $e) {
+    // Rollback transaction
+    mysqli_rollback($conn);
+    
+    // Create user-friendly error message
+    $error_message = "Failed to distribute input to {$farmer_data['first_name']} {$farmer_data['last_name']}. ";
+    
+    // Add specific error details
+    if (strpos($e->getMessage(), 'distribution') !== false) {
+        $error_message .= "Error recording distribution.";
+    } elseif (strpos($e->getMessage(), 'inventory') !== false) {
+        $error_message .= "Error updating inventory.";
+    } else {
+        $error_message .= "Please try again.";
+    }
+    
+    $_SESSION['error'] = $error_message;
+}
+
+header("Location: mao_inventory.php");
+exit();
+?>
