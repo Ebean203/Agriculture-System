@@ -836,9 +836,11 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                         <button type="submit" class="bg-agri-green text-white px-6 py-2 rounded-lg hover:bg-agri-dark transition-colors">
                             <i class="fas fa-search mr-2"></i>Search
                         </button>
-                        <a href="farmers.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                            <i class="fas fa-times mr-2"></i>Clear All
-                        </a>
+                        <?php if (!empty($search) || !empty($barangay_filter)): ?>
+                            <a href="farmers.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                                <i class="fas fa-times mr-2"></i>Clear All
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
