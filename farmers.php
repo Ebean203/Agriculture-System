@@ -599,8 +599,17 @@ $records_per_page = 10;
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($page - 1) * $records_per_page;
 
-// Search functionality
+// Get barangays for filter dropdown
+$barangays_sql = "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name";
+$barangays_result = $conn->query($barangays_sql);
+$barangays = [];
+while ($row = $barangays_result->fetch_assoc()) {
+    $barangays[] = $row;
+}
+
+// Search and filter functionality
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
 $search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
 $search_params = [];
 
@@ -608,6 +617,11 @@ if (!empty($search)) {
     $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
     $search_term = "%$search%";
     $search_params = [$search_term, $search_term, $search_term];
+}
+
+if (!empty($barangay_filter)) {
+    $search_condition .= " AND f.barangay_id = ?";
+    $search_params[] = $barangay_filter;
 }
 
 // Get total records for pagination
@@ -794,22 +808,36 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
             <!-- Search and Filters -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <form method="GET" class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Farmers</label>
-                        <div class="relative">
-                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                                   placeholder="Search by name, mobile, or email..." 
-                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
-                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                <form method="GET" class="flex flex-col gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Farmers</label>
+                            <div class="relative">
+                                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
+                                       placeholder="Search by name, mobile, or email..." 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Barangay</label>
+                            <select name="barangay" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
+                                <option value="">All Barangays</option>
+                                <?php foreach ($barangays as $barangay): ?>
+                                    <option value="<?php echo $barangay['barangay_id']; ?>" 
+                                            <?php echo ($barangay_filter == $barangay['barangay_id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($barangay['barangay_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
-                    <div class="flex gap-3 items-end">
+                    <div class="flex gap-3">
                         <button type="submit" class="bg-agri-green text-white px-6 py-2 rounded-lg hover:bg-agri-dark transition-colors">
                             <i class="fas fa-search mr-2"></i>Search
                         </button>
                         <a href="farmers.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                            <i class="fas fa-times mr-2"></i>Clear
+                            <i class="fas fa-times mr-2"></i>Clear All
                         </a>
                     </div>
                 </form>
@@ -820,8 +848,26 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                 <div class="p-6 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">
                         Farmers List 
-                        <?php if (!empty($search)): ?>
-                            <span class="text-sm font-normal text-gray-600">- Search results for "<?php echo htmlspecialchars($search); ?>"</span>
+                        <?php if (!empty($search) || !empty($barangay_filter)): ?>
+                            <span class="text-sm font-normal text-gray-600">
+                                - Filtered by: 
+                                <?php if (!empty($search)): ?>
+                                    Search "<?php echo htmlspecialchars($search); ?>"
+                                <?php endif; ?>
+                                <?php if (!empty($search) && !empty($barangay_filter)): ?> & <?php endif; ?>
+                                <?php if (!empty($barangay_filter)): ?>
+                                    <?php 
+                                    $selected_barangay = '';
+                                    foreach ($barangays as $barangay) {
+                                        if ($barangay['barangay_id'] == $barangay_filter) {
+                                            $selected_barangay = $barangay['barangay_name'];
+                                            break;
+                                        }
+                                    }
+                                    ?>
+                                    Barangay "<?php echo htmlspecialchars($selected_barangay); ?>"
+                                <?php endif; ?>
+                            </span>
                         <?php endif; ?>
                     </h3>
                 </div>
@@ -935,6 +981,19 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
                 <!-- Pagination -->
                 <?php if ($total_pages > 1): ?>
+                    <?php
+                    // Function to build URL parameters
+                    function buildUrlParams($page, $search = '', $barangay = '') {
+                        $params = "?page=$page";
+                        if (!empty($search)) {
+                            $params .= "&search=" . urlencode($search);
+                        }
+                        if (!empty($barangay)) {
+                            $params .= "&barangay=" . urlencode($barangay);
+                        }
+                        return $params;
+                    }
+                    ?>
                     <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
                         <div class="flex justify-between items-center">
                             <div class="text-sm text-gray-700">
@@ -943,21 +1002,21 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                             </div>
                             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                                 <?php if ($page > 1): ?>
-                                    <a href="?page=<?php echo $page - 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" 
+                                    <a href="<?php echo buildUrlParams($page - 1, $search, $barangay_filter); ?>" 
                                        class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
                                 <?php endif; ?>
 
                                 <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-                                    <a href="?page=<?php echo $i; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" 
+                                    <a href="<?php echo buildUrlParams($i, $search, $barangay_filter); ?>" 
                                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium <?php echo $i == $page ? 'bg-agri-green text-white' : 'bg-white text-gray-700 hover:bg-gray-50'; ?>">
                                         <?php echo $i; ?>
                                     </a>
                                 <?php endfor; ?>
 
                                 <?php if ($page < $total_pages): ?>
-                                    <a href="?page=<?php echo $page + 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>" 
+                                    <a href="<?php echo buildUrlParams($page + 1, $search, $barangay_filter); ?>" 
                                        class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                         <i class="fas fa-chevron-right"></i>
                                     </a>
@@ -1045,7 +1104,11 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         // Function to export farmers data to PDF
         function exportToPDF() {
             const search = new URLSearchParams(window.location.search).get('search') || '';
-            const exportUrl = `pdf_export.php?action=export_pdf&search=${encodeURIComponent(search)}`;
+            const barangay = new URLSearchParams(window.location.search).get('barangay') || '';
+            
+            let exportUrl = 'pdf_export.php?action=export_pdf';
+            if (search) exportUrl += `&search=${encodeURIComponent(search)}`;
+            if (barangay) exportUrl += `&barangay=${encodeURIComponent(barangay)}`;
             
             // Show loading indicator
             const exportBtn = document.querySelector('button[onclick="exportToPDF()"]');

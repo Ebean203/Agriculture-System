@@ -117,6 +117,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     try {
         // Build search condition
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
         $search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
         $search_params = [];
         
@@ -124,6 +125,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
             $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
             $search_term = "%$search%";
             $search_params = [$search_term, $search_term, $search_term];
+        }
+        
+        if (!empty($barangay_filter)) {
+            $search_condition .= " AND f.barangay_id = ?";
+            $search_params[] = $barangay_filter;
         }
         
         // Query for export data
@@ -256,3 +262,4 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     }
 }
 ?>
+    
