@@ -787,7 +787,7 @@ if ($result) {
                     <span class="font-medium">Farmers Management</span>
                 </a>
                 
-                <a href="rsbsa.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
+                <a href="rsbsa_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
                     <i class="fas fa-certificate text-green-600 text-xl mr-3"></i>
                     <span class="font-medium">RSBSA Records</span>
                 </a>
