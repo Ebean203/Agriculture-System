@@ -97,14 +97,7 @@ if ($_SESSION['role'] !== 'admin') {
                                         </select>
                                         <div id="rsbsa_details" style="display:none; margin-top:10px;">
                                             <div class="mb-2">
-                                                <input type="text" class="form-control" id="rsbsa_id" name="rsbsa_id" placeholder="RSBSA ID">
-                                            </div>
-                                            <div class="mb-2">
                                                 <input type="text" class="form-control" id="rsbsa_registration_number" name="rsbsa_registration_number" placeholder="RSBSA Registration Number">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label small">Proof of Registration (optional)</label>
-                                                <input type="file" class="form-control" id="proof_of_registration" name="proof_of_registration" accept="image/*,application/pdf">
                                             </div>
                                             <div class="mb-2">
                                                 <select class="form-select" id="geo_reference_status" name="geo_reference_status">
@@ -310,16 +303,16 @@ if ($_SESSION['role'] !== 'admin') {
 function toggleRSBSAFields() {
     const rsbsaRegistered = document.getElementById('rsbsa_registered').value;
     const rsbsaDetails = document.getElementById('rsbsa_details');
-    const rsbsaIdField = document.getElementById('rsbsa_id');
+    const rsbsaRegistrationField = document.getElementById('rsbsa_registration_number');
     
     if (rsbsaRegistered === 'Yes') {
         rsbsaDetails.style.display = 'block';
-        rsbsaIdField.setAttribute('required', 'required');
+        rsbsaRegistrationField.setAttribute('required', 'required');
     } else {
         rsbsaDetails.style.display = 'none';
-        rsbsaIdField.removeAttribute('required');
+        rsbsaRegistrationField.removeAttribute('required');
         // Clear RSBSA fields when hiding
-        document.getElementById('rsbsa_id').value = '';
+        document.getElementById('rsbsa_registration_number').value = '';
     }
 }
 
@@ -401,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Form validation and submission
 document.getElementById('farmerRegistrationForm').addEventListener('submit', function(e) {
     const rsbsaRegistered = document.getElementById('rsbsa_registered').value;
-    const rsbsaId = document.getElementById('rsbsa_id').value;
+    const rsbsaRegistrationNumber = document.getElementById('rsbsa_registration_number').value;
     const ncfrsRegistered = document.getElementById('ncfrs_registered') ? document.getElementById('ncfrs_registered').value : '';
     const ncfrsId = document.getElementById('ncfrs_id') ? document.getElementById('ncfrs_id').value : '';
     const fisherRegistered = document.getElementById('fisherfold_registered') ? document.getElementById('fisherfold_registered').value : '';
@@ -409,10 +402,10 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
     const hasBoat = document.getElementById('has_boat') ? document.getElementById('has_boat').value : '';
     const boatReg = document.getElementById('boat_registration_no') ? document.getElementById('boat_registration_no').value : '';
     
-    if (rsbsaRegistered === 'Yes' && !rsbsaId.trim()) {
+    if (rsbsaRegistered === 'Yes' && !rsbsaRegistrationNumber.trim()) {
         e.preventDefault();
-        alert('RSBSA ID is required when farmer is RSBSA registered.');
-        document.getElementById('rsbsa_id').focus();
+        alert('RSBSA Registration Number is required when farmer is RSBSA registered.');
+        document.getElementById('rsbsa_registration_number').focus();
         return false;
     }
     if (ncfrsRegistered === 'Yes' && !ncfrsId.trim()) {

@@ -138,21 +138,18 @@ function handleFarmerEdit($conn, $post_data) {
 
 // Function to handle farmer registration
 function handleFarmerRegistration($conn, $post_data) {
-    // Generate farmer ID using timestamp for better ordering
-    // Format: F + Year + Month + Day + Hour + Minute + Second
-    $farmer_id = 'F' . date('YmdHis');
-    
-    // Check if farmer ID already exists and generate new one if needed
-    while (true) {
+    // Generate unique farmer ID - format: FMR + date + random number
+    do {
+        $date_part = date('Ymd'); // YYYYMMDD format
+        $random_part = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        $farmer_id = 'FMR' . $date_part . $random_part;
+        
+        // Check if this ID already exists
         $check_stmt = $conn->prepare("SELECT farmer_id FROM farmers WHERE farmer_id = ?");
         $check_stmt->bind_param("s", $farmer_id);
         $check_stmt->execute();
-        if ($check_stmt->get_result()->num_rows == 0) {
-            break;
-        }
-        // If exists, add microseconds or increment
-        $farmer_id = 'F' . date('YmdHis') . substr(microtime(), 2, 3);
-    }
+        $check_result = $check_stmt->get_result();
+    } while ($check_result->num_rows > 0);
     
     try {
         // Validate all input data using validation functions

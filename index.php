@@ -47,7 +47,19 @@ if ($_POST) {
             $civil_status = isset($_POST['civil_status']) ? mysqli_real_escape_string($conn, $_POST['civil_status']) : NULL;
             $spouse_name = isset($_POST['spouse_name']) ? mysqli_real_escape_string($conn, $_POST['spouse_name']) : NULL;
             $household_size = isset($_POST['household_size']) && $_POST['household_size'] !== '' ? intval($_POST['household_size']) : NULL;
+            
+            // Validate education level
             $education_level = isset($_POST['education_level']) ? mysqli_real_escape_string($conn, $_POST['education_level']) : NULL;
+            if (!empty($education_level)) {
+                $valid_education_levels = ['Elementary', 'Highschool', 'College', 'Vocational', 'Graduate', 'Not Specified'];
+                if (!in_array($education_level, $valid_education_levels)) {
+                    throw new Exception("Education level must be one of: " . implode(', ', $valid_education_levels));
+                }
+            } else {
+                // Set default value if empty
+                $education_level = 'Not Specified';
+            }
+            
             $occupation = isset($_POST['occupation']) ? mysqli_real_escape_string($conn, $_POST['occupation']) : NULL;
 
             // Farming / other fields to keep in farmers table
@@ -84,7 +96,6 @@ if ($_POST) {
 
             // RSBSA fields
             $rsbsa_registered = isset($_POST['rsbsa_registered']) ? mysqli_real_escape_string($conn, $_POST['rsbsa_registered']) : NULL;
-            $rsbsa_registration_number = isset($_POST['rsbsa_registration_number']) ? mysqli_real_escape_string($conn, $_POST['rsbsa_registration_number']) : NULL;
             $geo_reference_status = isset($_POST['geo_reference_status']) ? mysqli_real_escape_string($conn, $_POST['geo_reference_status']) : NULL;
             $date_of_registration = isset($_POST['date_of_registration']) && $_POST['date_of_registration'] !== '' ? mysqli_real_escape_string($conn, $_POST['date_of_registration']) : NULL;
 
@@ -103,8 +114,8 @@ if ($_POST) {
             }
             
             // Specific validation for "Yes" selections
-            if ($rsbsa_registered == 'Yes' && empty($_POST['rsbsa_id'])) {
-                throw new Exception("RSBSA ID is required when farmer is RSBSA registered.");
+            if ($rsbsa_registered == 'Yes' && empty($_POST['rsbsa_registration_number'])) {
+                throw new Exception("RSBSA Registration Number is required when farmer is RSBSA registered.");
             }
             if ($ncfrs_registered == 'Yes' && empty($ncfrs_id)) {
                 throw new Exception("NCFRS ID is required when farmer is NCFRS registered.");
@@ -116,15 +127,16 @@ if ($_POST) {
                 throw new Exception("Boat registration number is required when farmer has a boat.");
             }
 
-            // Generate unique farmer ID
-            $farmer_id = 'FRM' . date('Ymd') . sprintf('%04d', rand(1, 9999));
-            // Ensure unique
-            $check_query = "SELECT farmer_id FROM farmers WHERE farmer_id = '$farmer_id'";
-            $check_result = mysqli_query($conn, $check_query);
-            while (mysqli_num_rows($check_result) > 0) {
-                $farmer_id = 'FRM' . date('Ymd') . sprintf('%04d', rand(1, 9999));
+            // Generate unique farmer ID - format: FMR + date + random number
+            do {
+                $date_part = date('Ymd'); // YYYYMMDD format
+                $random_part = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+                $farmer_id = 'FMR' . $date_part . $random_part;
+                
+                // Check if this ID already exists
+                $check_query = "SELECT farmer_id FROM farmers WHERE farmer_id = '$farmer_id'";
                 $check_result = mysqli_query($conn, $check_query);
-            }
+            } while (mysqli_num_rows($check_result) > 0);
 
             // Prepare associative data for farmers; we'll only insert columns that exist in the farmers table
             $farmer_data = [
@@ -199,41 +211,21 @@ if ($_POST) {
             }
 
             // If RSBSA registered, insert into rsbsa_registered_farmers table including extra fields and file upload
-            if ($rsbsa_registered == 'Yes' && !empty($_POST['rsbsa_id'])) {
-                $rsbsa_input_id = mysqli_real_escape_string($conn, $_POST['rsbsa_id']);
+            if ($rsbsa_registered == 'Yes' && !empty($_POST['rsbsa_registration_number'])) {
+                $rsbsa_registration_number = mysqli_real_escape_string($conn, $_POST['rsbsa_registration_number']);
 
-                // Check if RSBSA ID already exists
-                $rsbsa_check_query = "SELECT rsbsa_id FROM rsbsa_registered_farmers WHERE rsbsa_input_id = '$rsbsa_input_id'";
+                // Check if RSBSA Registration Number already exists
+                $rsbsa_check_query = "SELECT rsbsa_id FROM rsbsa_registered_farmers WHERE rsbsa_registration_number = '$rsbsa_registration_number'";
                 $rsbsa_check_result = mysqli_query($conn, $rsbsa_check_query);
 
                 if (mysqli_num_rows($rsbsa_check_result) > 0) {
-                    throw new Exception("RSBSA ID already exists in the system.");
-                }
-
-                // Handle proof_of_registration upload
-                $proof_path = NULL;
-                if (isset($_FILES['proof_of_registration']) && $_FILES['proof_of_registration']['error'] === UPLOAD_ERR_OK) {
-                    $uploadDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'rsbsa' . DIRECTORY_SEPARATOR;
-                    if (!is_dir($uploadDir)) {
-                        mkdir($uploadDir, 0755, true);
-                    }
-                    $originalName = basename($_FILES['proof_of_registration']['name']);
-                    $ext = pathinfo($originalName, PATHINFO_EXTENSION);
-                    $newName = $farmer_id . '_rsbsa_' . time() . '.' . $ext;
-                    $target = $uploadDir . $newName;
-                    if (move_uploaded_file($_FILES['proof_of_registration']['tmp_name'], $target)) {
-                        $proof_path = 'uploads/rsbsa/' . $newName;
-                    } else {
-                        throw new Exception('Failed to move uploaded proof of registration.');
-                    }
+                    throw new Exception("RSBSA Registration Number already exists in the system.");
                 }
 
                 // Build RSBSA data and only insert columns that exist in rsbsa_registered_farmers
                 $rsbsa_data = [
                     'farmer_id' => $farmer_id,
-                    'rsbsa_input_id' => $rsbsa_input_id,
                     'rsbsa_registration_number' => $rsbsa_registration_number,
-                    'proof_of_registration' => $proof_path,
                     'geo_reference_status' => $geo_reference_status,
                     'date_of_registration' => $date_of_registration
                 ];
@@ -794,7 +786,7 @@ if ($result) {
                 
                 <a href="commodities.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
                     <i class="fas fa-wheat-awn text-yellow-600 text-xl mr-3"></i>
-                    <span class="font-medium">Manage Commodities</span>
+                    <span class="font-medium">Manage Inputs</span>
                 </a>
                 
                 <a href="inputs.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
