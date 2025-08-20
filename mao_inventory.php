@@ -177,6 +177,26 @@ if (isset($_GET['debug'])) {
         .suggestion-item:hover {
             background-color: #f3f4f6 !important;
         }
+        
+        /* Modal enhancements for better layout */
+        .distribute-modal-xl {
+            max-width: 80rem; /* Even larger for visitation content */
+        }
+        
+        .modal-content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-content-grid {
+                grid-template-columns: 1fr;
+            }
+            .distribute-modal-xl {
+                max-width: 95%;
+            }
+        }
     </style>
     <script>
         // Function to handle dropdown toggle
@@ -543,92 +563,119 @@ if (isset($_GET['debug'])) {
     </div>
 
     <!-- Distribute Modal -->
-    <div id="distributeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 my-8">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-share-square text-agri-green mr-2"></i>Distribute Input
+    <div id="distributeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+                <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-share-square text-agri-green mr-3"></i>Distribute Agricultural Input
                 </h3>
+                <p class="text-sm text-gray-600 mt-1">Manage input distribution and tracking</p>
             </div>
             <form method="POST" action="distribute_input.php">
-                <div class="px-6 py-4">
+                <div class="px-6 py-6">
                     <!-- Hidden input for selected input ID -->
                     <input type="hidden" name="input_id" id="selected_input_id">
                     
-                    <!-- Selected Input Display -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Selected Input</label>
-                        <div class="w-full py-3 px-4 bg-gray-50 border border-gray-300 rounded-lg">
-                            <div class="flex items-center">
-                                <div id="input_icon" class="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-box text-white"></i>
+                    <!-- Main form content with responsive grid -->
+                    <div id="form_content_wrapper">
+                        <!-- Selected Input Display (Full Width) -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Selected Input</label>
+                            <div class="w-full py-3 px-4 bg-gray-50 border border-gray-300 rounded-lg">
+                                <div class="flex items-center">
+                                    <div id="input_icon" class="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center mr-3">
+                                        <i class="fas fa-box text-white"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900" id="selected_input_name">No input selected</div>
+                                        <div class="text-sm text-gray-600">Available: <span id="available_quantity">0</span></div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="font-medium text-gray-900" id="selected_input_name">No input selected</div>
-                                    <div class="text-sm text-gray-600">Available: <span id="available_quantity">0</span></div>
+                            </div>
+                            <div id="visitation_indicator" class="mt-2 hidden">
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center">
+                                    <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                                    <span class="text-blue-800 text-sm font-medium">
+                                        This input requires follow-up visitation for yield monitoring.
+                                    </span>
                                 </div>
-                            </div>
-                        </div>
-                        <div id="visitation_indicator" class="mt-2 hidden">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center">
-                                <i class="fas fa-info-circle text-blue-600 mr-2"></i>
-                                <span class="text-blue-800 text-sm font-medium">
-                                    This input requires follow-up visitation for yield monitoring.
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="farmer_name" class="block text-sm font-medium text-gray-700 mb-2">Farmer Name</label>
-                        <div class="relative">
-                            <input type="text" 
-                                   class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" 
-                                   id="farmer_name" 
-                                   placeholder="Type farmer name..."
-                                   autocomplete="off"
-                                   required
-                                   onkeyup="searchFarmers(this.value)"
-                                   onfocus="showSuggestions()"
-                                   onblur="hideSuggestions()">
-                            <input type="hidden" name="farmer_id" id="selected_farmer_id" required>
-                            
-                            <!-- Suggestions dropdown -->
-                            <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
-                                <!-- Suggestions will be populated here -->
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-600 mt-1">Start typing to search for farmers</p>
-                    </div>
-                    <div class="mb-4">
-                        <label for="quantity_distributed" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Distribute</label>
-                        <input type="number" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="quantity_distributed" id="quantity_distributed" min="1" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="date_given" class="block text-sm font-medium text-gray-700 mb-2">Date Given</label>
-                        <input type="date" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="date_given" value="<?php echo date('Y-m-d'); ?>" required>
-                    </div>
-                    
-                    <!-- Visitation Tracking Section (Initially Hidden) -->
-                    <div id="visitation_section" class="border-t border-gray-200 pt-4 mt-4 hidden">
-                        <div class="mb-3">
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                                <h4 class="text-md font-semibold text-green-800 flex items-center">
-                                    <i class="fas fa-calendar-check text-green-600 mr-2"></i>
-                                    Visitation Tracking Required
-                                </h4>
-                                <p class="text-sm text-green-700 mt-1">This input requires follow-up visitation for yield monitoring and agricultural compliance.</p>
                             </div>
                         </div>
                         
-                        <div class="mb-4">
-                            <label for="visitation_date" class="block text-sm font-medium text-gray-700 mb-2">Planned Visitation Date</label>
-                            <input type="date" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="visitation_date" id="visitation_date" value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>" required>
+                        <!-- Distribution Details Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="farmer_name" class="block text-sm font-medium text-gray-700 mb-2">Farmer Name</label>
+                                <div class="relative">
+                                    <input type="text" 
+                                           class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" 
+                                           id="farmer_name" 
+                                           placeholder="Type farmer name..."
+                                           autocomplete="off"
+                                           required
+                                           onkeyup="searchFarmers(this.value)"
+                                           onfocus="showSuggestions()"
+                                           onblur="hideSuggestions()">
+                                    <input type="hidden" name="farmer_id" id="selected_farmer_id" required>
+                                    
+                                    <!-- Suggestions dropdown -->
+                                    <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                        <!-- Suggestions will be populated here -->
+                                    </div>
+                                </div>
+                                <p class="text-sm text-gray-600 mt-1">Start typing to search for farmers</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="quantity_distributed" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Distribute</label>
+                                    <input type="number" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="quantity_distributed" id="quantity_distributed" min="1" required>
+                                </div>
+                                <div>
+                                    <label for="date_given" class="block text-sm font-medium text-gray-700 mb-2">Date Given</label>
+                                    <input type="date" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="date_given" value="<?php echo date('Y-m-d'); ?>" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visitation Tracking Section (Initially Hidden) -->
+                    <div id="visitation_section" class="border-t border-gray-200 pt-6 mt-6 hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Visitation Info Panel -->
+                            <div class="lg:col-span-2">
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <h4 class="text-lg font-semibold text-green-800 flex items-center mb-3">
+                                        <i class="fas fa-calendar-check text-green-600 mr-2"></i>
+                                        Visitation Tracking Required
+                                    </h4>
+                                    <div class="space-y-2 text-sm text-green-700">
+                                        <p><i class="fas fa-check-circle mr-2"></i>Follow-up visitation for yield monitoring</p>
+                                        <p><i class="fas fa-check-circle mr-2"></i>Agricultural compliance verification</p>
+                                        <p><i class="fas fa-check-circle mr-2"></i>Progress tracking and support</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Visitation Date Input -->
+                            <div class="lg:col-span-1">
+                                <label for="visitation_date" class="block text-sm font-medium text-gray-700 mb-2">Planned Visitation Date</label>
+                                <input type="date" class="w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green text-lg" name="visitation_date" id="visitation_date" value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>" required>
+                                <p class="text-sm text-gray-600 mt-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Recommended: 7-14 days after distribution
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
-                    <button type="button" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors" onclick="closeModal('distributeModal')">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" onclick="return validateDistributeForm()">Distribute</button>
+                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-4 rounded-b-lg sticky bottom-0 border-t border-gray-200 z-10">
+                    <button type="button" class="px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium" onclick="closeModal('distributeModal')">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium" onclick="return validateDistributeForm()">
+                        <i class="fas fa-share mr-2"></i>Distribute Input
+                    </button>
                 </div>
             </form>
         </div>
