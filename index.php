@@ -806,7 +806,7 @@ if ($result) {
                     <span class="font-medium">Input Distribution</span>
                 </a>
                 
-                <a href="yields.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
+                <a href="yield_monitoring.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
                     <i class="fas fa-chart-bar text-purple-600 text-xl mr-3"></i>
                     <span class="font-medium">Yield Monitoring</span>
                 </a>
