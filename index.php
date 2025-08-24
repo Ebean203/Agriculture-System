@@ -751,7 +751,7 @@ if ($result) {
                             </div>
                         </button>
                         
-                        <button onclick="navigateTo('yield_monitoring.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
+                        <button onclick="openYieldModal()" class="w-full flex items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
                             <div class="p-3 bg-purple-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
                                 <i class="fas fa-chart-bar text-white"></i>
                             </div>
@@ -774,57 +774,69 @@ if ($result) {
                 </div>
             </div>
 
-            <!-- Recent Activities -->
+            <!-- System Modules -->
             <div class="lg:col-span-2">
-                <?php include 'includes/recent_activities.php'; ?>
-            </div>
-        </div>
-
-        <!-- Navigation Menu -->
-        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">
-                <i class="fas fa-th-large text-agri-green mr-2"></i>System Modules
-            </h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <a href="farmers.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-users text-blue-600 text-xl mr-3"></i>
-                    <span class="font-medium">Farmers Management</span>
-                </a>
-                
-                <a href="rsbsa_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-certificate text-green-600 text-xl mr-3"></i>
-                    <span class="font-medium">RSBSA Records</span>
-                </a>
-                
-                <a href="mao_inventory.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-warehouse text-yellow-600 text-xl mr-3"></i>
-                    <span class="font-medium">Manage Inventory</span>
-                </a>
-                
-                <a href="inputs.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-boxes text-orange-600 text-xl mr-3"></i>
-                    <span class="font-medium">Input Distribution</span>
-                </a>
-                
-                <a href="yield_monitoring.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-chart-bar text-purple-600 text-xl mr-3"></i>
-                    <span class="font-medium">Yield Monitoring</span>
-                </a>
-                
-                <a href="staff.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-user-tie text-indigo-600 text-xl mr-3"></i>
-                    <span class="font-medium">MAO Staff</span>
-                </a>
-                
-                <a href="reports.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-file-alt text-red-600 text-xl mr-3"></i>
-                    <span class="font-medium">Reports</span>
-                </a>
-                
-                <a href="settings.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all">
-                    <i class="fas fa-cog text-gray-600 text-xl mr-3"></i>
-                    <span class="font-medium">Settings</span>
-                </a>
+                <div class="bg-white rounded-lg shadow-md p-6 h-full">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">
+                        <i class="fas fa-th-large text-agri-green mr-2"></i>System Modules
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 h-full pb-4">
+                        <a href="farmers.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-users text-blue-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Farmers Management</span>
+                        </a>
+                        
+                        <a href="rsbsa_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-certificate text-green-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">RSBSA Records</span>
+                        </a>
+                        
+                        <a href="mao_inventory.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-warehouse text-yellow-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Manage Inventory</span>
+                        </a>
+                        
+                        <a href="inputs.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-boxes text-orange-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Input Distribution</span>
+                        </a>
+                        
+                        <a href="yield_monitoring.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-chart-bar text-purple-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Yield Monitoring</span>
+                        </a>
+                        
+                        <a href="staff.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-user-tie text-indigo-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">MAO Staff</span>
+                        </a>
+                        
+                        <a href="reports.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-file-alt text-red-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Reports</span>
+                        </a>
+                        
+                        <a href="settings.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-cog text-gray-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Settings</span>
+                        </a>
+                        
+                        <a href="ncfrs_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-fish text-teal-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">NCFRS Records</span>
+                        </a>
+                        
+                        <a href="boat_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-ship text-blue-500 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Boat Records</span>
+                        </a>
+                        
+                        <a href="fishr_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-water text-cyan-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">FISHR Records</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -842,6 +854,9 @@ if ($result) {
 
     <!-- Include the farmer registration modal -->
     <?php include 'farmer_regmodal.php'; ?>
+    
+    <!-- Include the yield record modal -->
+    <?php include 'yield_record_modal.php'; ?>
 
     <script>
         function navigateTo(url) {
@@ -852,6 +867,123 @@ if ($result) {
             const modal = new bootstrap.Modal(document.getElementById('farmerRegistrationModal'));
             modal.show();
         }
+
+        // Yield Modal Functions
+        function openYieldModal() {
+            document.getElementById('addVisitModal').classList.remove('hidden');
+            document.getElementById('addVisitModal').classList.add('flex');
+            // Load farmers when modal opens
+            loadFarmersYield();
+        }
+
+        function closeYieldModal() {
+            document.getElementById('addVisitModal').classList.add('hidden');
+            document.getElementById('addVisitModal').classList.remove('flex');
+            // Reset form
+            document.querySelector('#addVisitModal form').reset();
+            document.getElementById('selected_farmer_id_yield').value = '';
+            document.getElementById('farmer_suggestions_yield').classList.add('hidden');
+        }
+
+        // Farmer auto-suggestion functionality for yield modal
+        let farmersYield = [];
+
+        function loadFarmersYield() {
+            fetch('get_farmers.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Ensure data is an array, even if empty
+                    farmersYield = Array.isArray(data) ? data : [];
+                })
+                .catch(error => {
+                    console.error('Error loading farmers:', error);
+                    farmersYield = []; // Set to empty array on error
+                });
+        }
+
+        function searchFarmersYield(query) {
+            const suggestions = document.getElementById('farmer_suggestions_yield');
+            const selectedFarmerField = document.getElementById('selected_farmer_id_yield');
+            
+            if (!suggestions) return; // Exit if element doesn't exist
+            
+            if (!query || query.length < 1) {
+                suggestions.innerHTML = '';
+                suggestions.classList.add('hidden');
+                if (selectedFarmerField) selectedFarmerField.value = '';
+                return;
+            }
+
+            // Ensure farmers array exists and is not empty
+            if (!Array.isArray(farmersYield) || farmersYield.length === 0) {
+                suggestions.innerHTML = '<div class="px-3 py-2 text-orange-500">No farmers registered yet. Please register farmers first.</div>';
+                suggestions.classList.remove('hidden');
+                return;
+            }
+
+            const filteredFarmers = farmersYield.filter(farmer => {
+                if (!farmer || !farmer.first_name || !farmer.last_name) return false;
+                const fullName = `${farmer.first_name} ${farmer.last_name}`.toLowerCase();
+                return fullName.includes(query.toLowerCase());
+            });
+
+            if (filteredFarmers.length > 0) {
+                let html = '';
+                filteredFarmers.forEach((farmer, index) => {
+                    const fullName = `${farmer.first_name || ''} ${farmer.last_name || ''}`.trim();
+                    const farmerId = farmer.farmer_id || '';
+                    html += `<div class="suggestion-item px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100" 
+                                  onclick="selectFarmerYield('${farmerId}', '${fullName}')" 
+                                  data-index="${index}">
+                                <div class="font-medium">${fullName}</div>
+                                <div class="text-sm text-gray-600">ID: ${farmerId}</div>
+                             </div>`;
+                });
+                suggestions.innerHTML = html;
+                suggestions.classList.remove('hidden');
+            } else {
+                suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
+                suggestions.classList.remove('hidden');
+            }
+        }
+
+        function selectFarmerYield(farmerId, farmerName) {
+            const farmerNameField = document.getElementById('farmer_name_yield');
+            const selectedFarmerField = document.getElementById('selected_farmer_id_yield');
+            const suggestions = document.getElementById('farmer_suggestions_yield');
+            
+            if (farmerNameField) farmerNameField.value = farmerName || '';
+            if (selectedFarmerField) selectedFarmerField.value = farmerId || '';
+            if (suggestions) suggestions.classList.add('hidden');
+        }
+
+        function showSuggestionsYield() {
+            const query = document.getElementById('farmer_name_yield').value;
+            if (query.length > 0) {
+                searchFarmersYield(query);
+            }
+        }
+
+        function hideSuggestionsYield() {
+            // Delay hiding to allow click events on suggestions
+            setTimeout(() => {
+                const suggestions = document.getElementById('farmer_suggestions_yield');
+                if (suggestions) suggestions.classList.add('hidden');
+            }, 200);
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('addVisitModal');
+            if (event.target === modal) {
+                closeYieldModal();
+            }
+        });
 
         // Add some interactive effects
         document.addEventListener('DOMContentLoaded', function() {

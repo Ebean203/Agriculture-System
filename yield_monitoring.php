@@ -336,11 +336,25 @@ if (!$conn) {
                     <!-- Visit Information Grid -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label for="farmer_select" class="block text-sm font-medium text-gray-700 mb-2">Select Farmer</label>
-                            <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="farmer_id" required>
-                                <option value="">Choose a farmer...</option>
-                                <!-- Options will be populated from database -->
-                            </select>
+                            <label for="farmer_name_yield" class="block text-sm font-medium text-gray-700 mb-2">Select Farmer</label>
+                            <div class="relative">
+                                <input type="text" 
+                                       class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" 
+                                       id="farmer_name_yield" 
+                                       placeholder="Type farmer name..."
+                                       autocomplete="off"
+                                       required
+                                       onkeyup="searchFarmersYield(this.value)"
+                                       onfocus="showSuggestionsYield()"
+                                       onblur="hideSuggestionsYield()">
+                                <input type="hidden" name="farmer_id" id="selected_farmer_id_yield" required>
+                                
+                                <!-- Suggestions dropdown -->
+                                <div id="farmer_suggestions_yield" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">Start typing to search for farmers</p>
                         </div>
                         <div>
                             <label for="input_select" class="block text-sm font-medium text-gray-700 mb-2">Distributed Input</label>
@@ -546,6 +560,103 @@ if (!$conn) {
             if (!successVisible && !errorVisible) {
                 messageContainer.style.display = 'none';
             }
+        }
+
+        // Farmer auto-suggestion functionality for yield modal
+        let farmersYield = [];
+
+        // Load farmers data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFarmersYield();
+        });
+
+        function loadFarmersYield() {
+            fetch('get_farmers.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Ensure data is an array, even if empty
+                    farmersYield = Array.isArray(data) ? data : [];
+                })
+                .catch(error => {
+                    console.error('Error loading farmers:', error);
+                    farmersYield = []; // Set to empty array on error
+                });
+        }
+
+        function searchFarmersYield(query) {
+            const suggestions = document.getElementById('farmer_suggestions_yield');
+            const selectedFarmerField = document.getElementById('selected_farmer_id_yield');
+            
+            if (!suggestions) return; // Exit if element doesn't exist
+            
+            if (!query || query.length < 1) {
+                suggestions.innerHTML = '';
+                suggestions.classList.add('hidden');
+                if (selectedFarmerField) selectedFarmerField.value = '';
+                return;
+            }
+
+            // Ensure farmers array exists and is not empty
+            if (!Array.isArray(farmersYield) || farmersYield.length === 0) {
+                suggestions.innerHTML = '<div class="px-3 py-2 text-orange-500">No farmers registered yet. Please register farmers first.</div>';
+                suggestions.classList.remove('hidden');
+                return;
+            }
+
+            const filteredFarmers = farmersYield.filter(farmer => {
+                if (!farmer || !farmer.first_name || !farmer.last_name) return false;
+                const fullName = `${farmer.first_name} ${farmer.last_name}`.toLowerCase();
+                return fullName.includes(query.toLowerCase());
+            });
+
+            if (filteredFarmers.length > 0) {
+                let html = '';
+                filteredFarmers.forEach((farmer, index) => {
+                    const fullName = `${farmer.first_name || ''} ${farmer.last_name || ''}`.trim();
+                    const farmerId = farmer.farmer_id || '';
+                    html += `<div class="suggestion-item px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100" 
+                                  onclick="selectFarmerYield('${farmerId}', '${fullName}')" 
+                                  data-index="${index}">
+                                <div class="font-medium">${fullName}</div>
+                                <div class="text-sm text-gray-600">ID: ${farmerId}</div>
+                             </div>`;
+                });
+                suggestions.innerHTML = html;
+                suggestions.classList.remove('hidden');
+            } else {
+                suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
+                suggestions.classList.remove('hidden');
+            }
+        }
+
+        function selectFarmerYield(farmerId, farmerName) {
+            const farmerNameField = document.getElementById('farmer_name_yield');
+            const selectedFarmerField = document.getElementById('selected_farmer_id_yield');
+            const suggestions = document.getElementById('farmer_suggestions_yield');
+            
+            if (farmerNameField) farmerNameField.value = farmerName || '';
+            if (selectedFarmerField) selectedFarmerField.value = farmerId || '';
+            if (suggestions) suggestions.classList.add('hidden');
+        }
+
+        function showSuggestionsYield() {
+            const query = document.getElementById('farmer_name_yield').value;
+            if (query.length > 0) {
+                searchFarmersYield(query);
+            }
+        }
+
+        function hideSuggestionsYield() {
+            // Delay hiding to allow click events on suggestions
+            setTimeout(() => {
+                const suggestions = document.getElementById('farmer_suggestions_yield');
+                if (suggestions) suggestions.classList.add('hidden');
+            }, 200);
         }
 
         // Show success/error messages using HTML notifications
