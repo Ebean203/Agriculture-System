@@ -440,7 +440,8 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
 $query = "
     SELECT ym.*, f.first_name, f.last_name, c.commodity_name, s.first_name as staff_first_name, s.last_name as staff_last_name
     FROM yield_monitoring ym
-    JOIN farmers f ON ym.farmer_id = f.farmer_id
+    JOIN land_parcels lp ON ym.parcel_id = lp.parcel_id
+    JOIN farmers f ON lp.farmer_id = f.farmer_id
     JOIN commodities c ON ym.commodity_id = c.commodity_id
     JOIN mao_staff s ON ym.recorded_by_staff_id = s.staff_id
     ORDER BY ym.record_date DESC
