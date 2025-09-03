@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmt->execute();
         
         // Log activity
-        $stmt_log = $conn->prepare("INSERT INTO activity_logs (user_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
+        $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
         $action = "Saved {$report_type} report";
         $details = "Report Period: {$start_date} to {$end_date}, File: {$filename}";
         $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $stmt->execute();
             
             // Log activity
-            $stmt_log = $conn->prepare("INSERT INTO activity_logs (user_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
+            $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
             $action = "Generated and saved {$report_type} report";
             $details = "Report Period: {$start_date} to {$end_date}, File: {$filename}";
             $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
