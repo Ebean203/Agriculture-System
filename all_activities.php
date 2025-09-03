@@ -199,5 +199,7 @@ $pageTitle = 'All Activities - Agricultural Management System';
             </div>
         </div>
     </div>
+    
+    <?php include 'includes/notification_complete.php'; ?>
 </body>
 </html>

@@ -70,26 +70,7 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
     }
 }
 
-// Debug: Check if distributions array is empty after truncation
-// error_log("Distributions after truncation: " . print_r($distributions, true));
-// Debug: Temporary debugging after truncation
-if (isset($_GET['debug'])) {
-    echo "<div style='background: #f0f0f0; padding: 10px; margin: 10px; border: 1px solid #ccc;'>";
-    echo "<h3>Debug Info After Truncation:</h3>";
-    echo "<p>Row count: " . $row_count . "</p>";
-    echo "<p>Distributions array: " . print_r($distributions, true) . "</p>";
-    
-    if ($row_count > 0) {
-        mysqli_data_seek($result, 0);
-        echo "<h4>Sample data:</h4>";
-        $i = 0;
-        while ($row = mysqli_fetch_assoc($result) && $i < 3) {
-            echo "<p>Input ID: " . $row['input_id'] . ", Name: " . $row['input_name'] . ", Quantity: " . $row['quantity_on_hand'] . "</p>";
-            $i++;
-        }
-    }
-    echo "</div>";
-}
+
 
 ?>
 
@@ -455,18 +436,7 @@ if (isset($_GET['debug'])) {
                             
                             <!-- Action Buttons -->
                             <div class="flex space-x-2">
-                                <?php 
-                                // Safely escape values for JavaScript with extra validation
-                                $input_id = intval($row['input_id']);
-                                $input_name = trim($row['input_name'] ?? '');
-                                $quantity_safe = intval($quantity);
                                 
-                                // Ensure all values are valid
-                                if (empty($input_name)) $input_name = 'Unknown Input';
-                                if ($input_id <= 0) $input_id = 0;
-                                if ($quantity_safe < 0) $quantity_safe = 0;
-                                ?>
-                                <!-- Debug: ID=<?php echo $input_id; ?> Name=<?php echo htmlspecialchars($input_name); ?> Qty=<?php echo $quantity_safe; ?> -->
                                 <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
                                         data-input-name="<?php echo htmlspecialchars($input_name); ?>"
@@ -1011,35 +981,13 @@ if (isset($_GET['debug'])) {
             return true;
         }
 
-        // Test functions for debugging modals
-        function testDistributeModal() {
-            console.log('Testing distribute modal...');
-            distributeInput(1, 'Test Input', 100);
-        }
-        
-        function testUpdateModal() {
-            console.log('Testing update modal...');
-            updateStock(1, 'Test Input', 50);
-        }
-
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Test if functions are defined
-            console.log('distributeInput function:', typeof distributeInput);
-            console.log('updateStock function:', typeof updateStock);
-            console.log('openModal function:', typeof openModal);
-            
-            // Test if modal elements exist
-            console.log('distributeModal exists:', !!document.getElementById('distributeModal'));
-            console.log('updateStockModal exists:', !!document.getElementById('updateStockModal'));
-            
-            // Count how many distribute buttons exist
+            // Add event listeners to distribute buttons
             const distributeButtons = document.querySelectorAll('.distribute-btn');
-            console.log('Number of distribute buttons found:', distributeButtons.length);
             
-            // Count how many update buttons exist  
+            // Add event listeners to update buttons
             const updateButtons = document.querySelectorAll('.update-btn');
-            console.log('Number of update buttons found:', updateButtons.length);
             
             // Add event listeners to distribute buttons
             distributeButtons.forEach(button => {
@@ -1047,7 +995,6 @@ if (isset($_GET['debug'])) {
                     const inputId = this.getAttribute('data-input-id');
                     const inputName = this.getAttribute('data-input-name');
                     const quantity = this.getAttribute('data-quantity');
-                    console.log('Distribute clicked:', inputId, inputName, quantity);
                     distributeInput(inputId, inputName, quantity);
                 });
             });
@@ -1058,25 +1005,8 @@ if (isset($_GET['debug'])) {
                     const inputId = this.getAttribute('data-input-id');
                     const inputName = this.getAttribute('data-input-name');
                     const quantity = this.getAttribute('data-quantity');
-                    console.log('Update clicked:', inputId, inputName, quantity);
                     updateStock(inputId, inputName, quantity);
                 });
-            });
-            
-            // Ensure all required elements exist
-            const requiredElements = [
-                'selected_input_id', 'selected_farmer_id', 'quantity_distributed',
-                'farmer_suggestions', 'selected_input_name', 'available_quantity',
-                'update_input_id', 'new_quantity', 'visitation_date'
-            ];
-            
-            requiredElements.forEach(elementId => {
-                const element = document.getElementById(elementId);
-                if (!element) {
-                    console.warn(`Required element with ID '${elementId}' not found.`);
-                } else {
-                    console.log(`Element '${elementId}' found.`);
-                }
             });
         });
 
@@ -1141,5 +1071,8 @@ if (isset($_GET['debug'])) {
         <?php endif; ?>
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Include Notification System -->
+    <?php include 'includes/notification_complete.php'; ?>
 </body>
 </html>

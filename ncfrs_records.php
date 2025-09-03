@@ -27,17 +27,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         $search_params[] = $barangay_filter;
     }
     
-    // Get RSBSA records for PDF export
+    // Get NCFRS records for PDF export
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details, f.land_area_hectares,
-                   b.barangay_name, c.commodity_name, rsbsa.rsbsa_registration_number, 
-                   rsbsa.geo_reference_status, rsbsa.date_of_registration
+                   b.barangay_name, c.commodity_name, ncfrs.ncfrs_registration_number, 
+                   ncfrs.ncfrs_id
                    FROM farmers f
-                   INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
+                   INNER JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
                    LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
                    $search_condition
-                   ORDER BY rsbsa.date_of_registration DESC";
+                   ORDER BY f.registration_date DESC";
     
     if (!empty($search_params)) {
         $stmt = $conn->prepare($export_sql);
@@ -50,8 +50,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     
     // Create PDF content
     $html = '<div class="header">
-        <div class="title">RSBSA Records Report</div>
-        <div class="subtitle">Registry System for Basic Sectors in Agriculture</div>
+        <div class="title">NCFRS Records Report</div>
+        <div class="subtitle">National Concessionaire and Financing Registration System</div>
         <div class="subtitle">Generated on: ' . date('F d, Y h:i A') . '</div>
         <div class="subtitle">Total Records: ' . $export_result->num_rows . '</div>
     </div>';
@@ -64,11 +64,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Full Name</th>
                     <th>Contact</th>
                     <th>Barangay</th>
-                    <th>RSBSA Reg. No.</th>
-                    <th>Geo Status</th>
+                    <th>NCFRS Reg. No.</th>
+                    <th>NCFRS ID</th>
                     <th>Land Area (Ha)</th>
                     <th>Commodity</th>
-                    <th>RSBSA Date</th>
                 </tr>
             </thead>
             <tbody>';
@@ -80,19 +79,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars($row['rsbsa_registration_number']) . '</td>
-                <td>' . htmlspecialchars($row['geo_reference_status']) . '</td>
+                <td>' . htmlspecialchars($row['ncfrs_registration_number']) . '</td>
+                <td>' . htmlspecialchars($row['ncfrs_id']) . '</td>
                 <td>' . htmlspecialchars($row['land_area_hectares']) . '</td>
                 <td>' . htmlspecialchars($row['commodity_name']) . '</td>
-                <td>' . htmlspecialchars($row['date_of_registration']) . '</td>
             </tr>';
         }
         
         $html .= '</tbody></table>';
     } else {
         $html .= '<div style="text-align: center; padding: 50px;">
-            <h3>No RSBSA Records Found</h3>
-            <p>No farmers are currently registered in RSBSA.</p>
+            <h3>No NCFRS Records Found</h3>
+            <p>No farmers are currently registered in NCFRS.</p>
         </div>';
     }
     
@@ -101,7 +99,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>RSBSA Records Report</title>
+    <title>NCFRS Records Report</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -111,18 +109,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         .header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #16a34a;
+            border-bottom: 2px solid #3b82f6;
             padding-bottom: 10px;
         }
         .title {
             font-size: 24px;
             font-weight: bold;
-            color: #16a34a;
+            color: #3b82f6;
             margin-bottom: 10px;
         }
         .subtitle {
             font-size: 14px;
-            color: #22c55e;
+            color: #1d4ed8;
             margin-bottom: 5px;
         }
         table {
@@ -132,7 +130,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
             font-size: 10px;
         }
         th {
-            background-color: #16a34a;
+            background-color: #3b82f6;
             color: white;
             padding: 8px 4px;
             text-align: left;
@@ -148,36 +146,38 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
             max-width: 80px;
         }
         tr:nth-child(even) {
-            background-color: #dcfce7;
+            background-color: #f8fafc;
         }
-        @page {
-            size: A4 landscape;
-            margin: 0.5in;
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #6b7280;
+            border-top: 1px solid #d1d5db;
+            padding-top: 10px;
         }
     </style>
 </head>
-<body>' . $html . '</body>
+<body>
+    ' . $html . '
+    <div class="footer">
+        <p>Agriculture Management System - NCFRS Records</p>
+        <p>This report contains ' . $export_result->num_rows . ' NCFRS farmer records</p>
+    </div>
+</body>
 </html>';
     exit;
 }
 
 // Pagination settings
-$records_per_page = 15;
+$records_per_page = 20;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $page = max(1, $page);
 $offset = ($page - 1) * $records_per_page;
 
-// Search functionality
+// Search and filter variables
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-
-// Get barangays for filter dropdown
-$barangays_sql = "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name";
-$barangays_result = $conn->query($barangays_sql);
-$barangays = [];
-while ($row = $barangays_result->fetch_assoc()) {
-    $barangays[] = $row;
-}
 
 // Build search condition
 $search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
@@ -194,52 +194,57 @@ if (!empty($barangay_filter)) {
     $search_params[] = $barangay_filter;
 }
 
-// Get total records for pagination
+// Count total records
 $count_sql = "SELECT COUNT(*) as total 
               FROM farmers f 
-              INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id 
+              INNER JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
+              LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
+              LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
               $search_condition";
 
 if (!empty($search_params)) {
     $count_stmt = $conn->prepare($count_sql);
     $count_stmt->bind_param(str_repeat('s', count($search_params)), ...$search_params);
     $count_stmt->execute();
-    $total_records = $count_stmt->get_result()->fetch_assoc()['total'];
+    $count_result = $count_stmt->get_result();
 } else {
-    $count_stmt = $conn->prepare($count_sql);
-    $count_stmt->execute();
-    $total_records = $count_stmt->get_result()->fetch_assoc()['total'];
+    $count_result = $conn->query($count_sql);
 }
 
-$total_pages = max(1, ceil($total_records / $records_per_page));
+$total_records = $count_result->fetch_assoc()['total'];
+$total_pages = ceil($total_records / $records_per_page);
 
-// Get RSBSA registered farmers with pagination
+// Fetch NCFRS records with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
         f.land_area_hectares, b.barangay_name, c.commodity_name, h.household_size,
-        rsbsa.rsbsa_registration_number, rsbsa.geo_reference_status, 
-        rsbsa.date_of_registration as rsbsa_registration_date
+        ncfrs.ncfrs_registration_number, ncfrs.ncfrs_id
         FROM farmers f
-        INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
+        INNER JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition
-        ORDER BY rsbsa.date_of_registration DESC, f.registration_date DESC
+        ORDER BY f.registration_date DESC, f.farmer_id DESC
         LIMIT ? OFFSET ?";
 
 if (!empty($search_params)) {
     $stmt = $conn->prepare($sql);
     $all_params = array_merge($search_params, [$records_per_page, $offset]);
-    $types = str_repeat('s', count($search_params)) . 'ii';
-    $stmt->bind_param($types, ...$all_params);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->bind_param(str_repeat('s', count($search_params)) . 'ii', ...$all_params);
 } else {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('ii', $records_per_page, $offset);
-    $stmt->execute();
-    $result = $stmt->get_result();
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
+
+// Get barangays for filter dropdown
+$barangays_result = $conn->query("SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name");
+$barangays = [];
+while ($row = $barangays_result->fetch_assoc()) {
+    $barangays[] = $row;
 }
 
 // Function to build URL parameters
@@ -260,7 +265,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSBSA Records - Agricultural Management System</title>
+    <title>NCFRS Records - Agricultural Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
@@ -290,13 +295,13 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                            <i class="fas fa-certificate text-agri-green mr-3"></i>
-                            RSBSA Records
+                            <i class="fas fa-id-card text-agri-green mr-3"></i>
+                            NCFRS Records
                         </h1>
-                        <p class="text-gray-600 mt-2">Registry System for Basic Sectors in Agriculture</p>
+                        <p class="text-gray-600 mt-2">National Concessionaire and Financing Registration System</p>
                         <div class="mt-2 text-sm text-gray-600">
                             <i class="fas fa-info-circle mr-2"></i>
-                            Total RSBSA Registered Farmers: <span class="font-bold text-agri-green"><?php echo $total_records; ?></span>
+                            Total NCFRS Registered Farmers: <span class="font-bold text-agri-green"><?php echo $total_records; ?></span>
                         </div>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-3">
@@ -317,7 +322,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-search mr-1"></i>Search RSBSA Farmers
+                                <i class="fas fa-search mr-1"></i>Search NCFRS Farmers
                             </label>
                             <div class="relative">
                                 <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
@@ -346,7 +351,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                             <i class="fas fa-search mr-2"></i>Search
                         </button>
                         <?php if (!empty($search) || !empty($barangay_filter)): ?>
-                            <a href="rsbsa_records.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                            <a href="ncfrs_records.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-times mr-2"></i>Clear All
                             </a>
                         <?php endif; ?>
@@ -354,12 +359,12 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                 </form>
             </div>
 
-            <!-- RSBSA Records Table -->
+            <!-- NCFRS Records Table -->
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="p-6 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                         <i class="fas fa-list-alt mr-2 text-agri-green"></i>
-                        RSBSA Registered Farmers
+                        NCFRS Registered Farmers
                         <?php if (!empty($search) || !empty($barangay_filter)): ?>
                             <span class="text-sm font-normal text-gray-600 ml-2">
                                 - Filtered by: 
@@ -401,16 +406,16 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                     <i class="fas fa-map-marker-alt mr-1"></i>Barangay
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-certificate mr-1"></i>RSBSA Reg. No.
+                                    <i class="fas fa-certificate mr-1"></i>NCFRS Reg. No.
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-map mr-1"></i>Geo Status
+                                    <i class="fas fa-id-badge mr-1"></i>NCFRS ID
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-calendar mr-1"></i>RSBSA Date
+                                    <i class="fas fa-calendar mr-1"></i>Registration Date
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-seedling mr-1"></i>Details
+                                    <i class="fas fa-clipboard-list mr-1"></i>Details
                                 </th>
                             </tr>
                         </thead>
@@ -441,23 +446,25 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                             <?php echo htmlspecialchars($farmer['barangay_name']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                                                <i class="fas fa-leaf mr-1"></i>
-                                                <?php echo htmlspecialchars($farmer['commodity_name']); ?>
+                                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-id-card mr-1"></i>
+                                                <?php echo htmlspecialchars($farmer['ncfrs_registration_number']); ?>
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="font-medium">
-                                                <?php echo $farmer['land_area_hectares'] ? number_format($farmer['land_area_hectares'], 2) . ' ha' : 'N/A'; ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-id-badge mr-1"></i>
+                                                <?php echo htmlspecialchars($farmer['ncfrs_id']); ?>
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo date('M d, Y', strtotime($farmer['registration_date'])); ?>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">
-                                                <i class="fas fa-certificate mr-1"></i>RSBSA Registered
-                                            </span>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div class="flex items-center">
+                                                <span class="h-2 w-2 bg-green-400 rounded-full mr-2"></span>
+                                                Active NCFRS
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
@@ -465,14 +472,14 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                 <tr>
                                     <td colspan="8" class="px-6 py-12 text-center text-gray-500">
                                         <div class="flex flex-col items-center">
-                                            <i class="fas fa-certificate text-6xl text-gray-300 mb-4"></i>
-                                            <h3 class="text-lg font-medium text-gray-900 mb-2">No RSBSA Records Found</h3>
+                                            <i class="fas fa-id-card text-6xl text-gray-300 mb-4"></i>
+                                            <h3 class="text-lg font-medium text-gray-900 mb-2">No NCFRS Records Found</h3>
                                             <?php if (!empty($search) || !empty($barangay_filter)): ?>
                                                 <p class="text-sm text-gray-600 mb-2">No farmers match your search criteria</p>
                                                 <p class="text-xs text-gray-500">Try adjusting your search terms or filters</p>
                                             <?php else: ?>
-                                                <p class="text-sm text-gray-600 mb-2">No farmers are currently registered in RSBSA</p>
-                                                <p class="text-xs text-gray-500">The system is ready to display RSBSA records when farmers are registered</p>
+                                                <p class="text-sm text-gray-600 mb-2">No farmers are currently registered in NCFRS</p>
+                                                <p class="text-xs text-gray-500">The system is ready to display NCFRS records when farmers are registered</p>
                                             <?php endif; ?>
                                         </div>
                                     </td>
@@ -492,14 +499,14 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                             </div>
                             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                                 <?php if ($page > 1): ?>
-                                    <a href="<?php echo buildUrlParams($page - 1, $search, $barangay_filter); ?>" 
+                                    <a href="ncfrs_records.php<?php echo buildUrlParams($page - 1, $search, $barangay_filter); ?>" 
                                        class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
                                 <?php endif; ?>
 
                                 <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-                                    <a href="<?php echo buildUrlParams($i, $search, $barangay_filter); ?>" 
+                                    <a href="ncfrs_records.php<?php echo buildUrlParams($i, $search, $barangay_filter); ?>" 
                                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium 
                                               <?php echo $i == $page ? 'bg-agri-green text-white' : 'bg-white text-gray-700 hover:bg-gray-50'; ?>">
                                         <?php echo $i; ?>
@@ -507,7 +514,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                 <?php endfor; ?>
 
                                 <?php if ($page < $total_pages): ?>
-                                    <a href="<?php echo buildUrlParams($page + 1, $search, $barangay_filter); ?>" 
+                                    <a href="ncfrs_records.php<?php echo buildUrlParams($page + 1, $search, $barangay_filter); ?>" 
                                        class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                         <i class="fas fa-chevron-right"></i>
                                     </a>
@@ -520,25 +527,13 @@ function buildUrlParams($page, $search = '', $barangay = '') {
         </div>
     </div>
 
-    <!-- Footer Section -->
-    <footer class="mt-12 bg-white shadow-md p-6 w-full">
-        <div class="text-center text-gray-600">
-            <div class="flex items-center justify-center mb-2">
-                <i class="fas fa-seedling text-agri-green mr-2"></i>
-                <span class="font-semibold">Agriculture Management System</span>
-            </div>
-            <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
-        </div>
-    </footer>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Function to export RSBSA records to PDF
+        // Function to export NCFRS records to PDF
         function exportToPDF() {
             const search = new URLSearchParams(window.location.search).get('search') || '';
             const barangay = new URLSearchParams(window.location.search).get('barangay') || '';
             
-            let exportUrl = 'rsbsa_records.php?action=export_pdf';
+            let exportUrl = 'ncfrs_records.php?action=export_pdf';
             if (search) exportUrl += `&search=${encodeURIComponent(search)}`;
             if (barangay) exportUrl += `&barangay=${encodeURIComponent(barangay)}`;
             
@@ -557,19 +552,6 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                 exportBtn.disabled = false;
             }, 2000);
         }
-
-        // Auto-dismiss alerts
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.opacity = '0';
-                    setTimeout(() => {
-                        alert.remove();
-                    }, 300);
-                }, 5000);
-            });
-        });
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>

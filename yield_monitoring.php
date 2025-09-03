@@ -508,7 +508,8 @@ if (!$conn) {
                     // Here you would implement the actual filtering logic
                     // For now, we'll just show console log
                     const filter = this.getAttribute('data-filter');
-                    console.log('Filtering by:', filter);
+                                
+            console.log('Filtering by:', filter);
                 });
             });
         });
@@ -671,5 +672,7 @@ if (!$conn) {
         <?php endif; ?>
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <?php include 'includes/notification_complete.php'; ?>
 </body>
 </html>

@@ -38,5 +38,7 @@ if ($_SESSION['role'] !== 'admin') {
     <!-- Add your settings form and logic here -->
     <h1>Settings Page</h1>
     <p>Coming soon...</p>
+    
+    <?php include 'includes/notification_complete.php'; ?>
 </body>
 </html>

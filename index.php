@@ -559,10 +559,34 @@ if ($result) {
                     <h1 class="text-white text-xl font-bold">Agricultural Management System</h1>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <!-- Notification Bell -->
+                    <div class="relative">
+                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-agri-light transition-colors relative">
+                            <i class="fas fa-bell text-lg"></i>
+                            <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
+                        </button>
+                        
+                        <!-- Notification Dropdown positioned to occupy bottom part -->
+                        <div id="notificationDropdown" class="hidden fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-hidden" style="top: 70px; right: 20px; bottom: 20px; width: 400px;">
+                            <div class="p-4 border-b border-gray-200">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg font-semibold text-gray-900">
+                                        Notifications
+                                    </h3>
+                                    <span id="notificationCount" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">0</span>
+                                </div>
+                            </div>
+                            
+                            <div id="notificationList" style="height: calc(100% - 80px); overflow-y: auto;">
+                                <!-- Notifications will be loaded here -->
+                                <div class="p-4 text-center text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mb-2"></i>
+                                    <p class="text-sm">Loading notifications...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <button class="text-white hover:text-agri-light transition-colors">
-                        <i class="fas fa-bell text-lg"></i>
-                    </button>
                     <div class="flex items-center text-white relative" id="userMenu">
                         <button class="flex items-center focus:outline-none" onclick="toggleDropdown()" type="button">
                             <i class="fas fa-user-circle text-lg mr-2"></i>
@@ -797,9 +821,9 @@ if ($result) {
                             <span class="font-medium text-base leading-tight">Manage Inventory</span>
                         </a>
                         
-                        <a href="inputs.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-boxes text-orange-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Input Distribution</span>
+                        <a href="input_distribution_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-share-square text-orange-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Distribution Records</span>
                         </a>
                         
                         <a href="yield_monitoring.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
@@ -817,9 +841,14 @@ if ($result) {
                             <span class="font-medium text-base leading-tight">Reports</span>
                         </a>
                         
-                        <a href="settings.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-cog text-gray-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Settings</span>
+                        <a href="analytics_dashboard.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-chart-line text-pink-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">Visual Analytics</span>
+                        </a>
+                        
+                        <a href="mao_activities.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
+                            <i class="fas fa-calendar-check text-emerald-600 text-2xl mr-3 flex-shrink-0"></i>
+                            <span class="font-medium text-base leading-tight">MAO Activities</span>
                         </a>
                         
                         <a href="ncfrs_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
@@ -1015,5 +1044,8 @@ if ($result) {
             });
         });
     </script>
+    
+    <!-- Include Notification System -->
+    <?php include 'includes/notification_complete.php'; ?>
 </body>
 </html>

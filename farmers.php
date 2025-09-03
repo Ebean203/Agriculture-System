@@ -1153,5 +1153,8 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
     
     <!-- Include Farmer Edit Modal -->
     <?php include 'farmer_editmodal.php'; ?>
+    
+    <!-- Include Notification System -->
+    <?php include 'includes/notification_complete.php'; ?>
 </body>
 </html>

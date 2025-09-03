@@ -137,16 +137,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                       CASE WHEN rsbsa.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as rsbsa_registered,
                       CASE WHEN ncfrs.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as ncfrs_registered,
                       COALESCE(ncfrs.ncfrs_registration_number, '') as ncfrs_number,
-                      CASE WHEN fisherfolk.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as fisherfolk_registered,
+                      CASE WHEN fisherfolk.fisherfolk_id IS NOT NULL THEN 'Yes' ELSE 'No' END as fisherfolk_registered,
                       COALESCE(fisherfolk.fisherfolk_registration_number, '') as fisherfolk_number,
-                      COALESCE(fisherfolk.vessel_id, '') as vessel_id
+                      COALESCE(boats.boat_name, '') as boat_name
                       FROM farmers f 
                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
                       LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
                       LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                       LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
-                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON f.farmer_id = fisherfolk.farmer_id
+                      LEFT JOIN boats ON f.farmer_id = boats.farmer_id
+                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON boats.boat_id = fisherfolk.boat_id
                       $search_condition
                       ORDER BY f.registration_date DESC";
         

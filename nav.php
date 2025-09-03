@@ -13,9 +13,35 @@ if (!isset($pageTitle)) {
                 </a>
             </div>
             <div class="flex items-center space-x-4">
-                <button class="text-white hover:text-agri-light transition-colors">
-                    <i class="fas fa-bell text-lg"></i>
-                </button>
+                <!-- Notification Bell -->
+                <div class="relative">
+                    <button onclick="toggleNotificationDropdown()" class="text-white hover:text-agri-light transition-colors relative">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
+                    </button>
+                    
+                    <!-- Notification Dropdown positioned to occupy bottom part -->
+                    <div id="notificationDropdown" class="hidden fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-hidden" style="top: 70px; right: 20px; bottom: 20px; width: 400px;">
+                        <div class="p-4 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-gray-900">
+                                    Notifications
+                                </h3>
+                                <span id="notificationCount" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">0</span>
+                            </div>
+                        </div>
+                        
+                        <div id="notificationList" style="height: calc(100% - 80px); overflow-y: auto;">
+                            <!-- Notifications will be loaded here -->
+                            <div class="p-4 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin mb-2"></i>
+                                <p class="text-sm">Loading notifications...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Menu -->
                 <div class="flex items-center text-white relative z-[1001]" id="userMenu">
                     <button class="flex items-center focus:outline-none" onclick="toggleDropdown()" type="button">
                         <i class="fas fa-user-circle text-lg mr-2"></i>
@@ -43,8 +69,16 @@ if (!isset($pageTitle)) {
 function toggleDropdown() {
     const dropdownMenu = document.getElementById('dropdownMenu');
     const dropdownArrow = document.getElementById('dropdownArrow');
-    dropdownMenu.classList.toggle('show');
-    dropdownArrow.classList.toggle('rotate');
+    
+    if (dropdownMenu.classList.contains('hidden')) {
+        dropdownMenu.classList.remove('hidden');
+        dropdownMenu.classList.add('show');
+        dropdownArrow.classList.add('rotate');
+    } else {
+        dropdownMenu.classList.add('hidden');
+        dropdownMenu.classList.remove('show');
+        dropdownArrow.classList.remove('rotate');
+    }
 }
 
 // Close dropdown when clicking outside
@@ -53,7 +87,8 @@ document.addEventListener('click', function(event) {
     const dropdownMenu = document.getElementById('dropdownMenu');
     const dropdownArrow = document.getElementById('dropdownArrow');
     
-    if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
+    if (!userMenu.contains(event.target) && !dropdownMenu.classList.contains('hidden')) {
+        dropdownMenu.classList.add('hidden');
         dropdownMenu.classList.remove('show');
         dropdownArrow.classList.remove('rotate');
     }
@@ -63,7 +98,6 @@ document.addEventListener('click', function(event) {
 <style>
 /* Custom dropdown styles */
 #dropdownMenu {
-    display: none;
     z-index: 999999;
     transition: all 0.2s ease-in-out;
     transform-origin: top right;
@@ -80,6 +114,10 @@ document.addEventListener('click', function(event) {
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
+#dropdownMenu.hidden {
+    display: none !important;
+}
+
 #dropdownArrow.rotate {
     transform: rotate(180deg);
 }
@@ -87,5 +125,14 @@ document.addEventListener('click', function(event) {
 /* Ensure dropdown is above other content */
 .relative {
     z-index: 40;
+}
+
+/* Additional z-index fix for navigation */
+nav {
+    z-index: 50 !important;
+}
+
+#userMenu {
+    z-index: 51 !important;
 }
 </style>
