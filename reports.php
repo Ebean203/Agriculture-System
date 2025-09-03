@@ -3,7 +3,7 @@ require_once 'check_session.php';
 require_once 'conn.php';
 
 // Check if user has admin access
-if ($_SESSION['role'] !== 'admin') {
+if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'staff') {
     header("Location: index.php");
     exit();
 }
