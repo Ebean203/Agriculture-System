@@ -810,10 +810,18 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Search Farmers</label>
                             <div class="relative">
-                                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
+                                <input type="text" name="search" id="farmer_search" value="<?php echo htmlspecialchars($search); ?>" 
                                        placeholder="Search by name, mobile, or email..." 
-                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green"
+                                       onkeyup="searchFarmersAutoSuggest(this.value)"
+                                       onfocus="showFarmerSuggestions()"
+                                       onblur="hideFarmerSuggestions()">
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                
+                                <!-- Auto-suggest dropdown -->
+                                <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -1146,6 +1154,80 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                 }, 5000);
             });
         });
+
+        // Auto-suggest functionality for farmer search
+        function searchFarmersAutoSuggest(query) {
+            const suggestions = document.getElementById('farmer_suggestions');
+            
+            if (!suggestions) return; // Exit if element doesn't exist
+
+            if (query.length < 1) {
+                suggestions.innerHTML = '';
+                suggestions.classList.add('hidden');
+                return;
+            }
+
+            // Show loading indicator
+            suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>';
+            suggestions.classList.remove('hidden');
+
+            // Make AJAX request to get farmer suggestions
+            fetch('get_farmers.php?action=search&query=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.farmers && data.farmers.length > 0) {
+                        let html = '';
+                        data.farmers.forEach(farmer => {
+                            html += `
+                                <div class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0 farmer-suggestion-item" 
+                                     onclick="selectFarmerSuggestion('${farmer.farmer_id}', '${farmer.full_name.replace(/'/g, "\\'")}', '${farmer.contact_number}')">
+                                    <div class="font-medium text-gray-900">${farmer.full_name}</div>
+                                    <div class="text-sm text-gray-600">ID: ${farmer.farmer_id} | Contact: ${farmer.contact_number}</div>
+                                    <div class="text-xs text-gray-500">${farmer.barangay_name}</div>
+                                </div>
+                            `;
+                        });
+                        suggestions.innerHTML = html;
+                        suggestions.classList.remove('hidden');
+                    } else {
+                        suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
+                        suggestions.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    suggestions.innerHTML = '<div class="px-3 py-2 text-red-500">Error loading suggestions</div>';
+                    suggestions.classList.remove('hidden');
+                });
+        }
+
+        function selectFarmerSuggestion(farmerId, farmerName, contactNumber) {
+            const searchInput = document.getElementById('farmer_search');
+            searchInput.value = farmerName;
+            hideFarmerSuggestions();
+            
+            // Trigger form submission or update the URL to filter results
+            const form = searchInput.closest('form');
+            if (form) {
+                form.submit();
+            }
+        }
+
+        function showFarmerSuggestions() {
+            const searchInput = document.getElementById('farmer_search');
+            if (searchInput.value.length >= 1) {
+                searchFarmersAutoSuggest(searchInput.value);
+            }
+        }
+
+        function hideFarmerSuggestions() {
+            const suggestions = document.getElementById('farmer_suggestions');
+            if (suggestions) {
+                setTimeout(() => {
+                    suggestions.classList.add('hidden');
+                }, 200); // Delay to allow click events on suggestions
+            }
+        }
     </script>
 
     <!-- Include Farmer Registration Modal -->

@@ -368,24 +368,29 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
                             $stock_color = 'yellow';
                         }
                         
+                        // Define required variables for data attributes
+                        $input_id = $row['input_id'];
+                        $input_name_original = $row['input_name'];
+                        $quantity_safe = $quantity; // Safe version for HTML attributes
+                        
                         // Determine category icon
-                        $input_name = strtolower($row['input_name']);
+                        $input_name_lower = strtolower($row['input_name']);
                         $icon_bg = 'bg-gray-500';
                         $icon = 'fas fa-box';
                         
-                        if (strpos($input_name, 'seed') !== false) {
+                        if (strpos($input_name_lower, 'seed') !== false) {
                             $icon_bg = 'bg-green-500';
                             $icon = 'fas fa-seedling';
-                        } elseif (strpos($input_name, 'fertilizer') !== false) {
+                        } elseif (strpos($input_name_lower, 'fertilizer') !== false) {
                             $icon_bg = 'bg-blue-500';
                             $icon = 'fas fa-leaf';
-                        } elseif (strpos($input_name, 'pesticide') !== false || strpos($input_name, 'herbicide') !== false) {
+                        } elseif (strpos($input_name_lower, 'pesticide') !== false || strpos($input_name_lower, 'herbicide') !== false) {
                             $icon_bg = 'bg-yellow-500';
                             $icon = 'fas fa-flask';
-                        } elseif (strpos($input_name, 'goat') !== false || strpos($input_name, 'chicken') !== false) {
+                        } elseif (strpos($input_name_lower, 'goat') !== false || strpos($input_name_lower, 'chicken') !== false) {
                             $icon_bg = 'bg-orange-500';
                             $icon = 'fas fa-paw';
-                        } elseif (strpos($input_name, 'tractor') !== false || strpos($input_name, 'shovel') !== false || strpos($input_name, 'sprayer') !== false || strpos($input_name, 'pump') !== false) {
+                        } elseif (strpos($input_name_lower, 'tractor') !== false || strpos($input_name_lower, 'shovel') !== false || strpos($input_name_lower, 'sprayer') !== false || strpos($input_name_lower, 'pump') !== false) {
                             $icon_bg = 'bg-purple-500';
                             $icon = 'fas fa-tools';
                         }
@@ -439,13 +444,13 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
                                 
                                 <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
-                                        data-input-name="<?php echo htmlspecialchars($input_name); ?>"
+                                        data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
                                         data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
                                     <i class="fas fa-edit mr-1"></i> Update
                                 </button>
                                 <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
-                                        data-input-name="<?php echo htmlspecialchars($input_name); ?>"
+                                        data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
                                         data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
                                     <i class="fas fa-share mr-1"></i> Distribute
                                 </button>

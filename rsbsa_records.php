@@ -320,10 +320,18 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                 <i class="fas fa-search mr-1"></i>Search RSBSA Farmers
                             </label>
                             <div class="relative">
-                                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
+                                <input type="text" name="search" id="rsbsa_search" value="<?php echo htmlspecialchars($search); ?>" 
                                        placeholder="Search by name or contact number..." 
-                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green"
+                                       onkeyup="searchRSBSAAutoSuggest(this.value)"
+                                       onfocus="showRSBSASuggestions()"
+                                       onblur="hideRSBSASuggestions()">
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                
+                                <!-- Auto-suggest dropdown -->
+                                <div id="rsbsa_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -570,6 +578,80 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                 }, 5000);
             });
         });
+
+        // Auto-suggest functionality for RSBSA farmer search
+        function searchRSBSAAutoSuggest(query) {
+            const suggestions = document.getElementById('rsbsa_suggestions');
+            
+            if (!suggestions) return; // Exit if element doesn't exist
+
+            if (query.length < 1) {
+                suggestions.innerHTML = '';
+                suggestions.classList.add('hidden');
+                return;
+            }
+
+            // Show loading indicator
+            suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>';
+            suggestions.classList.remove('hidden');
+
+            // Make AJAX request to get farmer suggestions
+            fetch('get_farmers.php?action=search&query=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.farmers && data.farmers.length > 0) {
+                        let html = '';
+                        data.farmers.forEach(farmer => {
+                            html += `
+                                <div class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0" 
+                                     onclick="selectRSBSASuggestion('${farmer.farmer_id}', '${farmer.full_name.replace(/'/g, "\\'")}', '${farmer.contact_number}')">
+                                    <div class="font-medium text-gray-900">${farmer.full_name}</div>
+                                    <div class="text-sm text-gray-600">ID: ${farmer.farmer_id} | Contact: ${farmer.contact_number}</div>
+                                    <div class="text-xs text-gray-500">${farmer.barangay_name}</div>
+                                </div>
+                            `;
+                        });
+                        suggestions.innerHTML = html;
+                        suggestions.classList.remove('hidden');
+                    } else {
+                        suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
+                        suggestions.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    suggestions.innerHTML = '<div class="px-3 py-2 text-red-500">Error loading suggestions</div>';
+                    suggestions.classList.remove('hidden');
+                });
+        }
+
+        function selectRSBSASuggestion(farmerId, farmerName, contactNumber) {
+            const searchInput = document.getElementById('rsbsa_search');
+            searchInput.value = farmerName;
+            hideRSBSASuggestions();
+            
+            // Trigger form submission to filter results
+            const form = searchInput.closest('form');
+            if (form) {
+                form.submit();
+            }
+        }
+
+        function showRSBSASuggestions() {
+            const searchInput = document.getElementById('rsbsa_search');
+            if (searchInput.value.length >= 1) {
+                searchRSBSAAutoSuggest(searchInput.value);
+            }
+        }
+
+        function hideRSBSASuggestions() {
+            const suggestions = document.getElementById('rsbsa_suggestions');
+            if (suggestions) {
+                setTimeout(() => {
+                    suggestions.classList.add('hidden');
+                }, 200); // Delay to allow click events on suggestions
+            }
+        }
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>
