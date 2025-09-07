@@ -3,7 +3,7 @@ require_once 'check_session.php';
 require_once 'conn.php';
 require_once 'includes/activity_icons.php';
 
-$pageTitle = 'All Activities - Agricultural Management System';
+$pageTitle = 'All Activities - Lagonglong FARMS';
 ?>
 
 <!DOCTYPE html>
@@ -11,7 +11,7 @@ $pageTitle = 'All Activities - Agricultural Management System';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Activities - Agricultural Management System</title>
+    <title>All Activities - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>

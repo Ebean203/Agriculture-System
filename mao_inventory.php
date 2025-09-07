@@ -79,7 +79,7 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> - Agricultural Management System</title>
+    <title><?php echo $pageTitle; ?> - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
     

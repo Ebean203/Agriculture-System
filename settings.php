@@ -16,7 +16,7 @@ if ($_SESSION['role'] !== 'admin') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Agricultural Management System</title>
+    <title>Settings - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
     

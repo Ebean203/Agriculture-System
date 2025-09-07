@@ -56,7 +56,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Create PDF content
     $html = '<div class="header">
         <div class="title">Input Distribution Records Report</div>
-        <div class="subtitle">Agricultural Input Distribution Management System</div>
+        <div class="subtitle">Lagonglong FARMS - Input Distribution Management</div>
         <div class="subtitle">Generated on: ' . date('F d, Y h:i A') . '</div>
         <div class="subtitle">Total Records: ' . $export_result->num_rows . '</div>
     </div>';
@@ -171,7 +171,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <body>
     ' . $html . '
     <div class="footer">
-        <p>Agriculture Management System - Input Distribution Records</p>
+        <p>Lagonglong FARMS - Input Distribution Records</p>
         <p>This report contains ' . $export_result->num_rows . ' distribution records</p>
     </div>
 </body>
@@ -290,7 +290,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Distribution Records - Agricultural Management System</title>
+    <title>Input Distribution Records - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
     
@@ -312,7 +312,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                             <i class="fas fa-share-square text-agri-green mr-3"></i>
                             Input Distribution Records
                         </h1>
-                        <p class="text-gray-600 mt-2">Agricultural Input Distribution Management System</p>
+                        <p class="text-gray-600 mt-2">Lagonglong FARMS - Input Distribution Management</p>
                         <div class="mt-2 text-sm text-gray-600">
                             <i class="fas fa-info-circle mr-2"></i>
                             Total Distribution Records: <span class="font-bold text-agri-green"><?php echo number_format($total_records); ?></span>

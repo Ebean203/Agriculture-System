@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Agricultural Management System</title>
+    <title>Login - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
     
@@ -16,7 +16,7 @@
             <!-- Logo and Title -->
             <div class="text-center mb-8">
                 <i class="fas fa-seedling text-agri-green text-5xl mb-4"></i>
-                <h2 class="text-3xl font-bold text-gray-900">Agricultural Management System</h2>
+                <h2 class="text-3xl font-bold text-gray-900">Lagonglong FARMS</h2>
                 <p class="text-gray-600">Please sign in to continue</p>
             </div>
 
@@ -113,7 +113,7 @@
 
             <!-- Footer -->
             <div class="text-center mt-8 text-gray-600 text-sm">
-                &copy; <?php echo date('Y'); ?> Agricultural Management System
+                &copy; <?php echo date('Y'); ?> Lagonglong FARMS
             </div>
         </div>
     </div>

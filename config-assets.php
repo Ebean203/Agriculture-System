@@ -19,7 +19,7 @@
             <div class="col-md-8">
                 <div class="card">
                     <div class="card-header bg-success text-white text-center">
-                        <h3><i class="bi bi-gear"></i> Agriculture System - Asset Configuration</h3>
+                        <h3><i class="bi bi-gear"></i> Lagonglong FARMS - Asset Configuration</h3>
                     </div>
                     <div class="card-body">
                         <?php

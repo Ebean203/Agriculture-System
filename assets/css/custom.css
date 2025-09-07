@@ -1,4 +1,4 @@
-/* Custom CSS for Agriculture System */
+/* Custom CSS for Lagonglong FARMS */
 /* Fix Font Awesome paths for local hosting */
 
 @font-face {
@@ -25,7 +25,7 @@
   src: url("../fonts/fa-brands-400.woff2") format("woff2");
 }
 
-/* Custom Tailwind-like utilities for Agriculture System */
+/* Custom Tailwind-like utilities for Lagonglong FARMS */
 .agri-green { color: #16a34a !important; }
 .bg-agri-green { background-color: #16a34a !important; }
 .agri-dark { color: #16a34a !important; }

@@ -1,5 +1,5 @@
 <?php
-// Notification System for Agricultural Management System
+// Notification System for Lagonglong FARMS
 // Handles visitation reminders and inventory alerts using existing database tables
 
 function getNotifications($conn) {

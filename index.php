@@ -460,7 +460,7 @@ if ($result) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agricultural Management System - Dashboard</title>
+    <title>Lagonglong FARMS - Dashboard</title>
     <?php include 'includes/assets.php'; ?>
     
     
@@ -545,7 +545,7 @@ if ($result) {
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <i class="fas fa-seedling text-white text-2xl mr-3"></i>
-                    <h1 class="text-white text-xl font-bold">Agricultural Management System</h1>
+                    <h1 class="text-white text-xl font-bold">Lagonglong FARMS</h1>
                 </div>
                 <div class="flex items-center space-x-4">
                     <!-- Notification Bell -->
@@ -624,8 +624,8 @@ if ($result) {
                 <div class="relative">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="text-3xl font-bold mb-2">Welcome to Agricultural Management</h2>
-                            <p class="text-lg text-green-100 mb-3">Monitor farmers, track yields, and manage agricultural inputs efficiently</p>
+                            <h2 class="text-3xl font-bold mb-2">Welcome to Lagonglong FARMS</h2>
+                            <p class="text-lg text-green-100 mb-3">Empowering farmers through modern technology and sustainable practices</p>
                             <div class="flex items-center text-green-200">
                                 <i class="fas fa-calendar-alt mr-2"></i>
                                 <span><?php echo date('l, F j, Y'); ?></span>
@@ -865,7 +865,7 @@ if ($result) {
         <div class="text-center text-gray-600">
             <div class="flex items-center justify-center mb-2">
                 <i class="fas fa-seedling text-agri-green mr-2"></i>
-                <span class="font-semibold">Agriculture Management System</span>
+                <span class="font-semibold">Lagonglong FARMS</span>
             </div>
             <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
         </div>

@@ -1,4 +1,4 @@
-# 🌾 Agricultural Management System
+# 🌾 Lagonglong FARMS
 
 A comprehensive web-based system designed for the Municipal Agriculture Office (MAO) to manage farmer registrations, track agricultural inputs, monitor yields, and maintain comprehensive records for various agricultural programs.
 

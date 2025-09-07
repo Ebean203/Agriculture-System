@@ -1,6 +1,6 @@
 <?php
 if (!isset($pageTitle)) {
-    $pageTitle = 'Agricultural Management System';
+    $pageTitle = 'Lagonglong FARMS';
 }
 ?>
 <nav class="bg-agri-green shadow-lg relative z-[1000]">
@@ -9,7 +9,7 @@ if (!isset($pageTitle)) {
             <div class="flex items-center">
                 <a href="index.php" class="flex items-center">
                     <i class="fas fa-seedling text-white text-2xl mr-3"></i>
-                    <h1 class="text-white text-xl font-bold">Agricultural Management System</h1>
+                    <h1 class="text-white text-xl font-bold">Lagonglong FARMS</h1>
                 </a>
             </div>
             <div class="flex items-center space-x-4">

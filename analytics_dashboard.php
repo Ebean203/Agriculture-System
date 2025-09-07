@@ -214,7 +214,7 @@ $barangays = getBarangays($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Analytics Dashboard - Agricultural Management System</title>
+    <title>Visual Analytics Dashboard - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
     
@@ -252,7 +252,7 @@ $barangays = getBarangays($conn);
                 <div class="flex items-center">
                     <a href="index.php" class="flex items-center">
                         <i class="fas fa-seedling text-white text-2xl mr-3"></i>
-                        <h1 class="text-white text-xl font-bold">Agricultural Management System</h1>
+                        <h1 class="text-white text-xl font-bold">Lagonglong FARMS</h1>
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
