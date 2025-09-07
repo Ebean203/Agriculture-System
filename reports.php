@@ -149,6 +149,7 @@ function generateReportContent($report_type, $start_date, $end_date, $conn, $sav
 <head>
     <meta charset="UTF-8">
     <title></title>
+    <?php include 'includes/assets.php'; ?>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -1174,21 +1175,10 @@ $saved_reports_result = $conn->query($saved_reports_sql);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports System - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-dark': '#15803d',
-                        'agri-light': '#dcfce7'
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'includes/assets.php'; ?>
+    
+    
+    
     <style>
         .report-card {
             transition: all 0.3s ease;

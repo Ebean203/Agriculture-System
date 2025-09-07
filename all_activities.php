@@ -12,24 +12,13 @@ $pageTitle = 'All Activities - Agricultural Management System';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Activities - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <?php include 'includes/assets.php'; ?>
+    
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-light': '#dcfce7',
-                        'agri-dark': '#15803d'
-                    }
-                }
-            }
-        }
-    </script>
+    
     <style>
         /* Remove underlines from links and set text color to black */
         .grid a {

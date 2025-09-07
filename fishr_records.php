@@ -106,6 +106,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <head>
     <meta charset="UTF-8">
     <title>FishR Records Report</title>
+    <?php include 'includes/assets.php'; ?>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
         .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
@@ -210,21 +211,10 @@ if (!empty($search_params)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FishR Records - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-dark': '#15803d',
-                        'agri-light': '#22c55e'
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'includes/assets.php'; ?>
+    
+    
+    
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->

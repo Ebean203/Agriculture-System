@@ -215,23 +215,12 @@ $barangays = getBarangays($conn);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visual Analytics Dashboard - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php include 'includes/assets.php'; ?>
+    
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-light': '#dcfce7',
-                        'agri-dark': '#15803d'
-                    }
-                }
-            }
-        }
-    </script>
+    
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);

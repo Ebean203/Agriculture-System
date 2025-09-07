@@ -22,21 +22,10 @@ $staff_result = mysqli_query($conn, $staff_query);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAO Staff Directory - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-light': '#dcfce7',
-                        'agri-dark': '#15803d'
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'includes/assets.php'; ?>
+    
+    
+    
     <style>
         .staff-card {
             transition: all 0.3s ease;

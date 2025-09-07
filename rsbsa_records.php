@@ -102,6 +102,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <head>
     <meta charset="UTF-8">
     <title>RSBSA Records Report</title>
+    <?php include 'includes/assets.php'; ?>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -261,22 +262,11 @@ function buildUrlParams($page, $search = '', $barangay = '') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RSBSA Records - Agricultural Management System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-dark': '#16a34a',
-                        'agri-light': '#dcfce7'
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'includes/assets.php'; ?>
+    
+    
+    
+    
 </head>
 <body class="bg-gray-50">
     <?php include 'nav.php'; ?>

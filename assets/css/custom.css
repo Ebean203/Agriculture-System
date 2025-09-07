@@ -1,0 +1,59 @@
+/* Custom CSS for Agriculture System */
+/* Fix Font Awesome paths for local hosting */
+
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url("../fonts/fa-solid-900.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/fa-regular-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Font Awesome 6 Brands";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/fa-brands-400.woff2") format("woff2");
+}
+
+/* Custom Tailwind-like utilities for Agriculture System */
+.agri-green { color: #16a34a !important; }
+.bg-agri-green { background-color: #16a34a !important; }
+.agri-dark { color: #16a34a !important; }
+.bg-agri-dark { background-color: #16a34a !important; }
+.agri-light { color: #dcfce7 !important; }
+.bg-agri-light { background-color: #dcfce7 !important; }
+
+/* Additional custom styles */
+.hover\:bg-agri-light:hover { background-color: #dcfce7 !important; }
+.text-agri-green { color: #16a34a !important; }
+.border-agri-green { border-color: #16a34a !important; }
+.focus\:border-agri-green:focus { border-color: #16a34a !important; }
+.focus\:ring-agri-green:focus { 
+  --tw-ring-color: rgba(22, 163, 74, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
+}
+
+/* Ensure icons work properly */
+.fas, .far, .fab {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands";
+  font-weight: 900;
+}
+
+.far {
+  font-weight: 400;
+}
+
+.fab {
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+}

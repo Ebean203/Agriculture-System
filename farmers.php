@@ -199,8 +199,8 @@ function handleFarmerRegistration($conn, $post_data) {
         if (isset($post_data['fisherfolk_registered']) && $post_data['fisherfolk_registered'] === 'Yes') {
             $fisherfolk_registration_number = !empty($post_data['fisherfolk_registration_number']) ? trim($post_data['fisherfolk_registration_number']) : '';
             $vessel_id = !empty($post_data['vessel_id']) ? intval($post_data['vessel_id']) : 1;
-            $fisherfolk_stmt = $conn->prepare("INSERT INTO fisherfolk_registered_farmers (farmer_id, fisherfolk_registration_number, vessel_id) VALUES (?, ?, ?)");
-            $fisherfolk_stmt->bind_param("ssi", $farmer_id, $fisherfolk_registration_number, $vessel_id);
+            $fisherfolk_stmt = $conn->prepare("INSERT INTO fisherfolk_registered_farmers (fisherfolk_registration_number, boat_id) VALUES (?, ?)");
+            $fisherfolk_stmt->bind_param("si", $fisherfolk_registration_number, $vessel_id);
             $fisherfolk_stmt->execute();
         }
         
@@ -272,16 +272,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
                                       rsbsa.farmer_id as rsbsa_registered,
                                       ncfrs.farmer_id as ncfrs_registered,
                                       ncfrs.ncfrs_registration_number,
-                                      fisherfolk.farmer_id as fisherfolk_registered,
+                                      fisherfolk.fisherfolk_id as fisherfolk_registered,
                                       fisherfolk.fisherfolk_registration_number,
-                                      fisherfolk.vessel_id
+                                      boats.boat_id as vessel_id
                                       FROM farmers f 
                                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
                                       LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
                                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
                                       LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                                       LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
-                                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON f.farmer_id = fisherfolk.farmer_id
+                                      LEFT JOIN boats ON f.farmer_id = boats.farmer_id
+                                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON boats.boat_id = fisherfolk.boat_id
                                       WHERE f.farmer_id = ?");
                 $stmt->bind_param("s", $_GET['id']);
                 $stmt->execute();
@@ -669,22 +670,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-dark': '#16a34a',
-                        'agri-light': '#dcfce7'
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'includes/assets.php'; ?>
     <style>
         /* Custom dropdown styles */
         #dropdownMenu {
@@ -1092,7 +1078,11 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         </div>
     </footer>
 
+    <?php if ($offline_mode): ?>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <?php else: ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <?php endif; ?>
     <script>
         // Function to view farmer details
         function viewFarmer(farmerId) {

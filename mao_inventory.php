@@ -80,22 +80,11 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> - Agricultural Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'agri-green': '#16a34a',
-                        'agri-dark': '#16a34a',
-                        'agri-light': '#dcfce7'
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'includes/assets.php'; ?>
+    
+    
+    
+    
     <style>
         /* Custom dropdown styles */
         #dropdownMenu {
@@ -1075,7 +1064,11 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
     </script>
+    <?php if ($offline_mode): ?>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <?php else: ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <?php endif; ?>
     
     <!-- Include Notification System -->
     <?php include 'includes/notification_complete.php'; ?>
