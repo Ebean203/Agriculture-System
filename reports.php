@@ -722,8 +722,8 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
     $total_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     $male_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE gender = 'Male' AND registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     $female_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE gender = 'Female' AND registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $total_land_area = $conn->query("SELECT COALESCE(SUM(land_area_hectares), 0) as total FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
-    $avg_farming_years = $conn->query("SELECT COALESCE(AVG(years_farming), 0) as avg FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['avg'];
+    $total_land_area = $conn->query("SELECT COALESCE(SUM(fc.land_area_hectares), 0) as total FROM farmers f LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
+    $avg_farming_years = $conn->query("SELECT COALESCE(AVG(fc.years_farming), 0) as avg FROM farmers f LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['avg'];
     
     // Summary box
     $html .= '<div class="summary-box">
@@ -737,11 +737,12 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
     
     // Detailed farmers list
     $farmers_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix, f.gender, 
-                    f.contact_number, f.land_area_hectares, f.years_farming, f.registration_date,
+                    f.contact_number, fc.land_area_hectares, fc.years_farming, f.registration_date,
                     b.barangay_name, c.commodity_name, h.civil_status, h.household_size
                     FROM farmers f
                     LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                    LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+                    LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
+                    LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                     LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
                     WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'
                     ORDER BY f.registration_date DESC";
@@ -777,8 +778,8 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
                 <td>' . htmlspecialchars($row['commodity_name']) . '</td>
-                <td>' . number_format($row['land_area_hectares'], 2) . '</td>
-                <td>' . htmlspecialchars($row['years_farming']) . '</td>
+                <td>' . number_format($row['land_area_hectares'] ?? 0, 2) . '</td>
+                <td>' . htmlspecialchars($row['years_farming'] ?? 'N/A') . '</td>
                 <td>' . htmlspecialchars($row['civil_status'] ?: 'N/A') . '</td>
                 <td>' . htmlspecialchars($row['household_size'] ?: 'N/A') . '</td>
                 <td>' . date('M d, Y', strtotime($row['registration_date'])) . '</td>
@@ -1005,14 +1006,15 @@ function generateBarangayAnalyticsReport($start_date, $end_date, $conn) {
     
     // Barangay-wise farmer statistics
     $barangay_sql = "SELECT b.barangay_name, 
-                     COUNT(f.farmer_id) as farmer_count,
-                     COALESCE(SUM(f.land_area_hectares), 0) as total_land_area,
-                     COALESCE(AVG(f.years_farming), 0) as avg_farming_years,
+                     COUNT(DISTINCT f.farmer_id) as farmer_count,
+                     COALESCE(SUM(fc.land_area_hectares), 0) as total_land_area,
+                     COALESCE(AVG(fc.years_farming), 0) as avg_farming_years,
                      COUNT(CASE WHEN f.gender = 'Male' THEN 1 END) as male_count,
                      COUNT(CASE WHEN f.gender = 'Female' THEN 1 END) as female_count
                      FROM barangays b
                      LEFT JOIN farmers f ON b.barangay_id = f.barangay_id 
                      AND f.registration_date BETWEEN '$start_date' AND '$end_date'
+                     LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
                      GROUP BY b.barangay_id, b.barangay_name
                      ORDER BY farmer_count DESC, b.barangay_name";
     
@@ -1061,12 +1063,13 @@ function generateCommodityProductionReport($start_date, $end_date, $conn) {
     
     // Commodity distribution among farmers
     $commodity_sql = "SELECT c.commodity_name, cc.category_name,
-                      COUNT(f.farmer_id) as farmer_count,
-                      COALESCE(SUM(f.land_area_hectares), 0) as total_land_area,
-                      COALESCE(AVG(f.land_area_hectares), 0) as avg_land_area
+                      COUNT(DISTINCT f.farmer_id) as farmer_count,
+                      COALESCE(SUM(fc.land_area_hectares), 0) as total_land_area,
+                      COALESCE(AVG(fc.land_area_hectares), 0) as avg_land_area
                       FROM commodities c
                       INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
-                      LEFT JOIN farmers f ON c.commodity_id = f.commodity_id 
+                      LEFT JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id
+                      LEFT JOIN farmers f ON fc.farmer_id = f.farmer_id 
                       AND f.registration_date BETWEEN '$start_date' AND '$end_date'
                       GROUP BY c.commodity_id, c.commodity_name, cc.category_name
                       ORDER BY farmer_count DESC, c.commodity_name";
@@ -1133,7 +1136,7 @@ function generateComprehensiveOverviewReport($start_date, $end_date, $conn) {
     // Comprehensive overview combining all metrics
     $total_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     $total_distributions = $conn->query("SELECT COUNT(*) as count FROM mao_distribution_log WHERE date_given BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $total_land_area = $conn->query("SELECT COALESCE(SUM(land_area_hectares), 0) as total FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
+    $total_land_area = $conn->query("SELECT COALESCE(SUM(fc.land_area_hectares), 0) as total FROM farmers f LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
     $active_barangays = $conn->query("SELECT COUNT(DISTINCT f.barangay_id) as count FROM farmers f WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     
     $html .= '<div class="summary-box">

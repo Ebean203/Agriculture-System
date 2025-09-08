@@ -68,9 +68,10 @@ function getYieldData($conn, $start_date, $end_date, $barangay_filter = '') {
 function getCommodityDistribution($conn, $start_date, $end_date, $barangay_filter = '') {
     $barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
     $query = "
-        SELECT c.commodity_name, COUNT(f.farmer_id) as farmer_count
+        SELECT c.commodity_name, COUNT(DISTINCT f.farmer_id) as farmer_count
         FROM farmers f
-        JOIN commodities c ON f.commodity_id = c.commodity_id
+        JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+        JOIN commodities c ON fc.commodity_id = c.commodity_id
         WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
         GROUP BY c.commodity_name
         ORDER BY farmer_count DESC
@@ -199,7 +200,10 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_boats = $row['count'];
 }
 
-$query = "SELECT COUNT(DISTINCT c.commodity_id) as count FROM commodities c JOIN farmers f ON c.commodity_id = f.commodity_id WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
+$query = "SELECT COUNT(DISTINCT c.commodity_id) as count FROM commodities c 
+          JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id 
+          JOIN farmers f ON fc.farmer_id = f.farmer_id 
+          WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_commodities = $row['count'];
@@ -217,9 +221,9 @@ $barangays = getBarangays($conn);
     <title>Visual Analytics Dashboard - Lagonglong FARMS</title>
     <?php include 'includes/assets.php'; ?>
     
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <!-- Local Chart.js files for offline use -->
+    <script src="assets/js/chart.min.js"></script>
+    <script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
     
     <style>
         .gradient-bg {
@@ -534,11 +538,14 @@ $barangays = getBarangays($conn);
             ?>
         };
         
+        console.log('Chart data from PHP:', chartData);
+        
         // Current chart type (default to line)
         let currentChartType = 'line';
         <?php else: ?>
         const chartData = null;
         let currentChartType = 'line';
+        console.log('No chart data - report type not selected');
         <?php endif; ?>
 
         // Function to switch chart type dynamically
@@ -569,11 +576,28 @@ $barangays = getBarangays($conn);
         };
 
         function initChart() {
+            console.log('initChart called');
+            
             if (!chartData) {
-                return; // No data to display
+                console.log('No chart data available');
+                return;
             }
             
-            const ctx = document.getElementById('analyticsChart').getContext('2d');
+            console.log('Chart data:', chartData);
+            
+            // Check if Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not loaded');
+                return;
+            }
+            
+            const canvas = document.getElementById('analyticsChart');
+            if (!canvas) {
+                console.error('Chart canvas element not found');
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
             
             // Destroy existing chart if it exists
             if (analyticsChart) {
@@ -594,6 +618,7 @@ $barangays = getBarangays($conn);
                         tension: 0.4
                     }]
                 },
+                plugins: [ChartDataLabels],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -623,8 +648,46 @@ $barangays = getBarangays($conn);
                                     return '';
                                 }
                             }
+                        },
+                        datalabels: {
+                            display: function(context) {
+                                // Only show for pie and doughnut charts
+                                return currentChartType === 'pie' || currentChartType === 'doughnut';
+                            },
+                            color: 'white',
+                            font: {
+                                weight: 'bold',
+                                size: 14
+                            },
+                            formatter: function(value, context) {
+                                // For pie/doughnut charts, value IS the actual data value
+                                if (currentChartType !== 'pie' && currentChartType !== 'doughnut') {
+                                    return null;
+                                }
+                                
+                                // Get the dataset and calculate total
+                                const dataset = context.dataset;
+                                const dataArray = dataset.data;
+                                const total = dataArray.reduce((sum, val) => sum + Number(val), 0);
+                                
+                                // Calculate percentage using the raw value
+                                const numValue = Number(value);
+                                const percentage = total > 0 ? ((numValue / total) * 100).toFixed(1) : 0;
+                                
+                                return percentage + '%';
+                            },
+                            anchor: 'center',
+                            align: 'center'
                         }
                     },
+                    layout: currentChartType === 'pie' || currentChartType === 'doughnut' ? {
+                        padding: {
+                            top: 20,
+                            bottom: 20,
+                            left: 20,
+                            right: 20
+                        }
+                    } : {},
                     scales: currentChartType === 'line' || currentChartType === 'bar' ? {
                         y: {
                             beginAtZero: true,
@@ -645,7 +708,9 @@ $barangays = getBarangays($conn);
                 }
             };
 
+            console.log('Creating chart with config:', config);
             analyticsChart = new Chart(ctx, config);
+            console.log('Chart created successfully');
         }
 
         function downloadChart() {
@@ -668,38 +733,43 @@ $barangays = getBarangays($conn);
 
         // Initialize chart when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            if (chartData) {
-                // Set default active button
-                switchChartType('line');
+            console.log('DOM Content Loaded');
+            console.log('Chart available?', typeof Chart !== 'undefined');
+            console.log('Chart data?', chartData);
+            
+            // Register the datalabels plugin
+            if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
+                Chart.register(ChartDataLabels);
+                console.log('ChartDataLabels plugin registered successfully');
+            } else {
+                console.error('ChartDataLabels plugin not available');
             }
             
-            // Add animation to cards
-            const cards = document.querySelectorAll('.animate-fade-in');
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 100);
-            });
+            // Wait a bit for Chart.js to fully load
+            setTimeout(function() {
+                if (typeof Chart !== 'undefined') {
+                    console.log('Chart.js loaded successfully');
+                    if (chartData) {
+                        console.log('Chart data exists, initializing chart');
+                        // Set default active button
+                        switchChartType('line');
+                    } else {
+                        console.log('No chart data available');
+                    }
+                } else {
+                    console.error('Chart.js failed to load');
+                }
+                
+                // Add animation to cards
+                const cards = document.querySelectorAll('.animate-fade-in');
+                cards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, index * 100);
+                });
+            }, 100);
         });
-
-        // Download chart function
-        function downloadChart() {
-            if (analyticsChart) {
-                const link = document.createElement('a');
-                link.download = 'analytics-chart.png';
-                link.href = analyticsChart.toBase64Image();
-                link.click();
-            }
-        }
-
-        // Toggle fullscreen function
-        function toggleFullscreen() {
-            const chartContainer = document.querySelector('.chart-container');
-            if (chartContainer.requestFullscreen) {
-                chartContainer.requestFullscreen();
-            }
-        }
 
         // Quick date range buttons
         function setDateRange(days) {
@@ -711,7 +781,8 @@ $barangays = getBarangays($conn);
             document.querySelector('input[name="end_date"]').value = endDate.toISOString().split('T')[0];
         }
 
-        // AJAX form submission to avoid URL parameters
+        // AJAX form submission disabled for debugging - use normal form submission
+        /*
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.querySelector('form');
             const loadingIndicator = document.getElementById('loadingIndicator');
@@ -764,6 +835,7 @@ $barangays = getBarangays($conn);
                 });
             }
         });
+        */
     </script>
 
     <style>

@@ -27,67 +27,113 @@ class SimplePDF {
             font-family: Arial, sans-serif; 
             margin: 20px; 
             font-size: 12px;
+            color: #2c3e50;
         }
         .header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
+            border-bottom: 3px solid #16a34a;
+            padding-bottom: 15px;
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: white;
+            margin: -20px -20px 30px -20px;
+            padding: 20px;
         }
         .title {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
         .subtitle {
-            font-size: 14px;
-            color: #7f8c8d;
+            font-size: 16px;
+            opacity: 0.9;
             margin-bottom: 5px;
+        }
+        .export-info {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 10px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            font-size: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         th {
-            background-color: #34495e;
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
             color: white;
-            padding: 8px 4px;
+            padding: 12px 8px;
             text-align: left;
-            border: 1px solid #ddd;
             font-weight: bold;
-            font-size: 9px;
+            border: 1px solid #15803d;
+            font-size: 11px;
         }
         td {
-            padding: 6px 4px;
-            border: 1px solid #ddd;
+            padding: 10px 8px;
+            border: 1px solid #e5e7eb;
+            font-size: 10px;
             vertical-align: top;
-            word-wrap: break-word;
-            max-width: 80px;
         }
         tr:nth-child(even) {
-            background-color: #f8f9fa;
+            background-color: #f8fafc;
         }
         tr:hover {
-            background-color: #e8f4fd;
+            background-color: #dcfce7;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .badge-yes {
-            background-color: #28a745;
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
             color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         .badge-no {
-            background-color: #6c757d;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 11px;
+            color: #6b7280;
+            border-top: 2px solid #16a34a;
+            padding-top: 15px;
+        }
+        .summary-stats {
+            background: #f0fdf4;
+            border: 1px solid #16a34a;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+        .stat-item {
+            flex: 1;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #16a34a;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
         }
         @media print {
             body { margin: 0; }
@@ -133,7 +179,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         }
         
         // Query for export data
-        $export_sql = "SELECT f.*, h.*, c.commodity_name, b.barangay_name,
+        $export_sql = "SELECT f.*, h.*, 
+                      GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodity_name, 
+                      b.barangay_name,
                       CASE WHEN rsbsa.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as rsbsa_registered,
                       CASE WHEN ncfrs.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as ncfrs_registered,
                       COALESCE(ncfrs.ncfrs_registration_number, '') as ncfrs_number,
@@ -142,13 +190,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                       COALESCE(boats.boat_name, '') as boat_name
                       FROM farmers f 
                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
-                      LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
+                      LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+                      LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
                       LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                       LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
                       LEFT JOIN boats ON f.farmer_id = boats.farmer_id
                       LEFT JOIN fisherfolk_registered_farmers fisherfolk ON boats.boat_id = fisherfolk.boat_id
                       $search_condition
+                      GROUP BY f.farmer_id
                       ORDER BY f.registration_date DESC";
         
         if (!empty($search_params)) {
@@ -166,9 +216,26 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         
         // Add header
         $html = '<div class="header">
-            <div class="title">FARMERS DATABASE EXPORT</div>
-            <div class="subtitle">Generated on: ' . date('F d, Y H:i:s') . '</div>
-            <div class="subtitle">Total Records: ' . $export_result->num_rows . '</div>
+            <div class="title">🌾 LAGONGLONG FARMS</div>
+            <div class="subtitle">LIST OF FARMERS</div>
+            <div class="export-info">Generated on: ' . date('F d, Y g:i A') . ' <br> Total Records: ' . $export_result->num_rows . '</div>
+        </div>';
+        
+        // Add summary statistics
+        $total_records = $export_result->num_rows;
+        $html .= '<div class="summary-stats">
+            <div class="stat-item">
+                <div class="stat-number">' . $total_records . '</div>
+                <div class="stat-label">Total Farmers</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">' . date('Y') . '</div>
+                <div class="stat-label">Export Year</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">' . date('M d') . '</div>
+                <div class="stat-label">Export Date</div>
+            </div>
         </div>';
         
         // Start table
@@ -236,10 +303,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                 <td>' . formatData($row['education_level']) . '</td>
                 <td>' . formatData($row['occupation']) . '</td>
                 <td>' . formatData($row['commodity_name']) . '</td>
-                <td class="text-right">' . formatData($row['land_area_hectares'], 'number') . '</td>
-                <td class="text-center">' . formatData($row['years_farming']) . '</td>
-                <td class="text-center">' . formatData($row['is_member_of_4ps'], 'yesno') . '</td>
-                <td class="text-center">' . formatData($row['is_ip'], 'yesno') . '</td>
+                <td class="text-right">' . formatData($row['land_area_hectares'] ?? null, 'number') . '</td>
+                <td class="text-center">' . formatData($row['years_farming'] ?? null) . '</td>
+                <td class="text-center">' . formatData($row['is_member_of_4ps'] ?? null, 'yesno') . '</td>
+                <td class="text-center">' . formatData($row['is_ip'] ?? null, 'yesno') . '</td>
                 <td class="text-center">' . formatData($row['rsbsa_registered'], 'badge') . '</td>
                 <td class="text-center">' . formatData($row['ncfrs_registered'], 'badge') . '</td>
                 <td class="text-center">' . formatData($row['fisherfolk_registered'], 'badge') . '</td>
@@ -250,9 +317,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         $html .= '</tbody></table>';
         
         // Add footer
-        $html .= '<div style="margin-top: 30px; text-align: center; font-size: 10px; color: #7f8c8d;">
-            <p>Agriculture System - Farmers Database Export</p>
-            <p>This report contains ' . $export_result->num_rows . ' farmer records</p>
+        $html .= '<div class="footer">
+            <div style="font-weight: bold; color: #16a34a;">🌾 LAGONGLONG FARMS - Agriculture System</div>
+            <div style="margin-top: 8px;">This report contains ' . $export_result->num_rows . ' farmer records exported on ' . date('F d, Y') . '</div>
+            <div style="margin-top: 5px; font-style: italic;">Confidential - For Official Use Only</div>
         </div>';
         
         $pdf->addHTML($html);
