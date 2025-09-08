@@ -29,14 +29,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     
     // Get RSBSA records for PDF export
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-                   f.contact_number, f.address_details, f.land_area_hectares,
-                   b.barangay_name, c.commodity_name, rsbsa.rsbsa_registration_number, 
+                   f.contact_number, f.address_details,
+                   GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+                   b.barangay_name, rsbsa.rsbsa_registration_number, 
                    rsbsa.geo_reference_status, rsbsa.date_of_registration
                    FROM farmers f
                    INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                   LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+                   LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+                   LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                    $search_condition
+                   GROUP BY f.farmer_id, rsbsa.rsbsa_registration_number
                    ORDER BY rsbsa.date_of_registration DESC";
     
     if (!empty($search_params)) {
@@ -66,8 +69,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Barangay</th>
                     <th>RSBSA Reg. No.</th>
                     <th>Geo Status</th>
-                    <th>Land Area (Ha)</th>
-                    <th>Commodity</th>
+                    <th>Commodities & Land Area</th>
                     <th>RSBSA Date</th>
                 </tr>
             </thead>
@@ -82,8 +84,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
                 <td>' . htmlspecialchars($row['rsbsa_registration_number']) . '</td>
                 <td>' . htmlspecialchars($row['geo_reference_status']) . '</td>
-                <td>' . htmlspecialchars($row['land_area_hectares']) . '</td>
-                <td>' . htmlspecialchars($row['commodity_name']) . '</td>
+                <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
                 <td>' . htmlspecialchars($row['date_of_registration']) . '</td>
             </tr>';
         }
@@ -217,15 +218,18 @@ $total_pages = max(1, ceil($total_records / $records_per_page));
 // Get RSBSA registered farmers with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
-        f.land_area_hectares, b.barangay_name, c.commodity_name, h.household_size,
+        GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+        b.barangay_name, h.household_size,
         rsbsa.rsbsa_registration_number, rsbsa.geo_reference_status, 
         rsbsa.date_of_registration as rsbsa_registration_date
         FROM farmers f
         INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-        LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+        LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+        LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition
+        GROUP BY f.farmer_id, rsbsa.rsbsa_registration_number
         ORDER BY rsbsa.date_of_registration DESC, f.registration_date DESC
         LIMIT ? OFFSET ?";
 
@@ -441,12 +445,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
                                                 <i class="fas fa-leaf mr-1"></i>
-                                                <?php echo htmlspecialchars($farmer['commodity_name']); ?>
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="font-medium">
-                                                <?php echo $farmer['land_area_hectares'] ? number_format($farmer['land_area_hectares'], 2) . ' ha' : 'N/A'; ?>
+                                                <?php echo htmlspecialchars($farmer['commodities_info'] ?? 'N/A'); ?>
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

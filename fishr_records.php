@@ -29,16 +29,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     
     // Get FishR records for PDF export (using actual database structure)
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-                   f.contact_number, f.address_details, f.land_area_hectares,
-                   b.barangay_name, c.commodity_name, boats.boat_name, 
+                   f.contact_number, f.address_details,
+                   GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+                   b.barangay_name, boats.boat_name, 
                    boats.boat_type, boats.registration_number, f.registration_date,
                    ff.fisherfolk_registration_number
                    FROM farmers f
                    INNER JOIN fisherfolk_registered_farmers ff ON f.farmer_id = ff.fisherfolk_id
                    INNER JOIN boats ON ff.boat_id = boats.boat_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                   LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+                   LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+                   LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                    $search_condition
+                   GROUP BY f.farmer_id, ff.fisherfolk_registration_number
                    ORDER BY f.registration_date DESC";
     
     if (!empty($search_params)) {
@@ -70,7 +73,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Boat Name</th>
                     <th>Boat Type</th>
                     <th>Boat Reg. No.</th>
-                    <th>Commodity</th>
+                    <th>Commodities & Land Area</th>
                     <th>Registration Date</th>
                 </tr>
             </thead>
@@ -87,7 +90,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                 <td>' . htmlspecialchars($row['boat_name']) . '</td>
                 <td>' . htmlspecialchars($row['boat_type']) . '</td>
                 <td>' . htmlspecialchars($row['registration_number']) . '</td>
-                <td>' . htmlspecialchars($row['commodity_name']) . '</td>
+                <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
                 <td>' . htmlspecialchars($row['registration_date']) . '</td>
             </tr>';
         }
@@ -154,12 +157,13 @@ if (!empty($barangay_filter)) {
 }
 
 // Get total count for pagination
-$count_sql = "SELECT COUNT(*) as total 
+$count_sql = "SELECT COUNT(DISTINCT f.farmer_id) as total 
               FROM farmers f
               INNER JOIN fisherfolk_registered_farmers ff ON f.farmer_id = ff.fisherfolk_id
               INNER JOIN boats ON ff.boat_id = boats.boat_id
               LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-              LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+              LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+              LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
               $search_condition";
 
 if (!empty($search_params)) {
@@ -177,16 +181,19 @@ $total_pages = ceil($total_records / $limit);
 
 // Get FishR registered farmers with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-        f.contact_number, f.address_details, f.land_area_hectares,
-        b.barangay_name, c.commodity_name, boats.boat_name, 
+        f.contact_number, f.address_details,
+        GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+        b.barangay_name, boats.boat_name, 
         boats.boat_type, boats.registration_number, f.registration_date,
         ff.fisherfolk_registration_number
         FROM farmers f
         INNER JOIN fisherfolk_registered_farmers ff ON f.farmer_id = ff.fisherfolk_id
         INNER JOIN boats ON ff.boat_id = boats.boat_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-        LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+        LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+        LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         $search_condition
+        GROUP BY f.farmer_id, ff.fisherfolk_registration_number
         ORDER BY f.registration_date DESC
         LIMIT ? OFFSET ?";
 
@@ -218,52 +225,7 @@ if (!empty($search_params)) {
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="bg-agri-green shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="index.php" class="flex items-center">
-                        <i class="fas fa-seedling text-white text-2xl mr-3"></i>
-                        <h1 class="text-white text-xl font-bold">Lagonglong FARMS</h1>
-                    </a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <!-- Notification Bell -->
-                    <div class="relative">
-                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-agri-light transition-colors relative">
-                            <i class="fas fa-bell text-lg"></i>
-                            <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
-                        </button>
-                        
-                        <!-- Notification Dropdown positioned to occupy bottom part -->
-                        <div id="notificationDropdown" class="hidden fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-hidden" style="top: 70px; right: 20px; bottom: 20px; width: 400px;">
-                            <div class="p-4 border-b border-gray-200">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="text-lg font-semibold text-gray-900">
-                                        Notifications
-                                    </h3>
-                                    <span id="notificationCount" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">0</span>
-                                </div>
-                            </div>
-                            
-                            <div id="notificationList" style="height: calc(100% - 80px); overflow-y: auto;">
-                                <!-- Notifications will be loaded here -->
-                                <div class="p-4 text-center text-gray-500">
-                                    <i class="fas fa-spinner fa-spin mb-2"></i>
-                                    <p class="text-sm">Loading notifications...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center text-white">
-                        <i class="fas fa-user-circle text-lg mr-2"></i>
-                        <span><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <?php include 'nav.php'; ?>
 
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <!-- Header -->
@@ -325,10 +287,16 @@ if (!empty($search_params)) {
                         <i class="fas fa-search mr-2"></i>
                         Search
                     </button>
-                    <a href="fishr_records.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
-                        <i class="fas fa-refresh mr-2"></i>
-                        Clear
-                    </a>
+                    <?php 
+                    // Check if any filters are applied
+                    $has_filters = !empty($search) || !empty($barangay_filter);
+                    if ($has_filters): 
+                    ?>
+                        <a href="fishr_records.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-refresh mr-2"></i>
+                            Clear
+                        </a>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
@@ -407,7 +375,7 @@ if (!empty($search_params)) {
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            <?php echo htmlspecialchars($row['commodity_name'] ?: 'Not specified'); ?>
+                                            <?php echo htmlspecialchars($row['commodities_info'] ?: 'Not specified'); ?>
                                         </span>
                                     </td>
                                 </tr>

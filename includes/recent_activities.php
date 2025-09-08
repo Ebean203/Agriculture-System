@@ -8,7 +8,7 @@ $query = "
         CONCAT(ms.first_name, ' ', ms.last_name) as staff_name,
         r.role as staff_role
     FROM activity_logs al
-    JOIN mao_staff ms ON al.user_id = ms.staff_id
+    JOIN mao_staff ms ON al.staff_id = ms.staff_id
     LEFT JOIN roles r ON ms.role_id = r.role_id
     ORDER BY al.timestamp DESC
     LIMIT 5

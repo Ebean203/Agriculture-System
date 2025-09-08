@@ -29,13 +29,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     
     // Get Boat records for PDF export
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-                   f.contact_number, f.address_details, b.barangay_name, c.commodity_name, 
+                   f.contact_number, f.address_details, b.barangay_name,
+                   GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
                    boats.boat_id, boats.registration_number, boats.boat_name, boats.boat_type
                    FROM farmers f
                    INNER JOIN boats ON f.farmer_id = boats.farmer_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                   LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+                   LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+                   LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                    $search_condition
+                   GROUP BY f.farmer_id, boats.boat_id
                    ORDER BY f.registration_date DESC";
     
     if (!empty($search_params)) {
@@ -194,11 +197,12 @@ if (!empty($barangay_filter)) {
 }
 
 // Count total records
-$count_sql = "SELECT COUNT(*) as total 
+$count_sql = "SELECT COUNT(DISTINCT f.farmer_id) as total 
               FROM farmers f 
               INNER JOIN boats ON f.farmer_id = boats.farmer_id
               LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
-              LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
+              LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+              LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
               $search_condition";
 
 if (!empty($search_params)) {
@@ -216,14 +220,17 @@ $total_pages = ceil($total_records / $records_per_page);
 // Fetch Boat records with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
-        f.land_area_hectares, b.barangay_name, c.commodity_name, h.household_size,
+        GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+        b.barangay_name, h.household_size,
         boats.boat_id, boats.registration_number, boats.boat_name, boats.boat_type
         FROM farmers f
         INNER JOIN boats ON f.farmer_id = boats.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-        LEFT JOIN commodities c ON f.commodity_id = c.commodity_id
+        LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+        LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition
+        GROUP BY f.farmer_id, boats.boat_id
         ORDER BY f.registration_date DESC, f.farmer_id DESC
         LIMIT ? OFFSET ?";
 
