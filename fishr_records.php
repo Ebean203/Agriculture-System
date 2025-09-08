@@ -13,7 +13,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Build search condition for export
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-    $search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
+    $search_condition = 'WHERE f.archived = 0';
     $search_params = [];
     
     if (!empty($search)) {
@@ -105,9 +105,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>FishR Records Report</title>
-    <?php include 'includes/assets.php'; ?>
-    <style>
+    <title>FishR Records Report</title>';
+    include 'includes/assets.php';
+    echo '<style>
         body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
         .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
         .title { font-size: 24px; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
@@ -136,7 +136,7 @@ $limit = 10;
 $offset = ($page - 1) * $limit;
 
 // Build search condition
-$search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
+$search_condition = 'WHERE f.archived = 0';
 $search_params = [];
 $param_types = '';
 

@@ -118,7 +118,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         // Build search condition
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-        $search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
+        $search_condition = 'WHERE f.archived = 0';
         $search_params = [];
         
         if (!empty($search)) {

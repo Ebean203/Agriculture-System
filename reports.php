@@ -72,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $report_type = $_POST['report_type'];
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
-    $save_report = isset($_POST['save_report']) ? 1 : 0;
     
     // Generate unique filename
     $timestamp = date('Y-m-d_H-i-s');
@@ -85,56 +84,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     
     // Generate report content based on type
-    $report_content = generateReportContent($report_type, $start_date, $end_date, $conn, $save_report);
+    $report_content = generateReportContent($report_type, $start_date, $end_date, $conn);
     
-    // If save_report is checked, save to database and file
-    if ($save_report) {
-        // Save report file
-        file_put_contents($file_path, $report_content);
+    // Always save all reports to database and file system
+    // Save report file
+    file_put_contents($file_path, $report_content);
+    
+    // Check if generated_reports table exists and has correct structure
+    $table_check = $conn->query("SHOW TABLES LIKE 'generated_reports'");
+    if ($table_check->num_rows == 0) {
+        // Create the table if it doesn't exist
+        $create_table_sql = "CREATE TABLE `generated_reports` (
+            `report_id` int(11) NOT NULL AUTO_INCREMENT,
+            `report_type` varchar(100) NOT NULL,
+            `start_date` date NOT NULL,
+            `end_date` date NOT NULL,
+            `file_path` varchar(255) NOT NULL,
+            `staff_id` int(11) NOT NULL,
+            `timestamp` datetime NOT NULL DEFAULT current_timestamp(),
+            PRIMARY KEY (`report_id`),
+            KEY `staff_id` (`staff_id`),
+            CONSTRAINT `generated_reports_ibfk_1` FOREIGN KEY (`staff_id`) REFERENCES `mao_staff` (`staff_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+        $conn->query($create_table_sql);
+    }
+    
+    // Save to database
+    try {
+        $stmt = $conn->prepare("INSERT INTO generated_reports (report_type, start_date, end_date, file_path, staff_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssi", $report_type, $start_date, $end_date, $file_path, $_SESSION['user_id']);
+        $stmt->execute();
         
-        // Check if generated_reports table exists and has correct structure
-        $table_check = $conn->query("SHOW TABLES LIKE 'generated_reports'");
-        if ($table_check->num_rows == 0) {
-            // Create the table if it doesn't exist
-            $create_table_sql = "CREATE TABLE `generated_reports` (
-                `report_id` int(11) NOT NULL AUTO_INCREMENT,
-                `report_type` varchar(100) NOT NULL,
-                `start_date` date NOT NULL,
-                `end_date` date NOT NULL,
-                `file_path` varchar(255) NOT NULL,
-                `staff_id` int(11) NOT NULL,
-                `timestamp` datetime NOT NULL DEFAULT current_timestamp(),
-                PRIMARY KEY (`report_id`),
-                KEY `staff_id` (`staff_id`),
-                CONSTRAINT `generated_reports_ibfk_1` FOREIGN KEY (`staff_id`) REFERENCES `mao_staff` (`staff_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-            $conn->query($create_table_sql);
-        }
+        // Log activity
+        $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
+        $action = "Generated and saved {$report_type} report";
+        $details = "Report Period: {$start_date} to {$end_date}, File: {$filename}";
+        $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
+        $stmt_log->execute();
         
-        // Save to database
-        try {
-            $stmt = $conn->prepare("INSERT INTO generated_reports (report_type, start_date, end_date, file_path, staff_id) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssi", $report_type, $start_date, $end_date, $file_path, $_SESSION['user_id']);
-            $stmt->execute();
-            
-            // Log activity
-            $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
-            $action = "Generated and saved {$report_type} report";
-            $details = "Report Period: {$start_date} to {$end_date}, File: {$filename}";
-            $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
-            $stmt_log->execute();
-            
-            $success_message = "Report generated and saved successfully!";
-        } catch (mysqli_sql_exception $e) {
-            // If there's still an error, try to describe the table structure
-            $columns = $conn->query("DESCRIBE generated_reports");
-            $error_details = "Database error: " . $e->getMessage() . "\nTable structure: ";
-            while ($col = $columns->fetch_assoc()) {
-                $error_details .= $col['Field'] . " (" . $col['Type'] . "), ";
-            }
-            error_log($error_details);
-            $success_message = "Report generated but could not be saved to database: " . $e->getMessage();
+        $success_message = "Report generated and automatically saved to database!";
+    } catch (mysqli_sql_exception $e) {
+        // If there's still an error, try to describe the table structure
+        $columns = $conn->query("DESCRIBE generated_reports");
+        $error_details = "Database error: " . $e->getMessage() . "\nTable structure: ";
+        while ($col = $columns->fetch_assoc()) {
+            $error_details .= $col['Field'] . " (" . $col['Type'] . "), ";
         }
+        error_log($error_details);
+        $success_message = "Report generated but could not be saved to database: " . $e->getMessage();
     }
     
     // Output report for viewing/printing
@@ -143,14 +140,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // Function to generate report content
-function generateReportContent($report_type, $start_date, $end_date, $conn, $save_report = false) {
+function generateReportContent($report_type, $start_date, $end_date, $conn) {
     $html = '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title></title>
-    <?php include 'includes/assets.php'; ?>
-    <style>
+    <title></title>';
+    
+    // Include assets separately, not inside the string
+    ob_start();
+    include 'includes/assets.php';
+    $assets = ob_get_clean();
+    
+    $html .= $assets . '<style>
         body { 
             font-family: Arial, sans-serif; 
             margin: 20px; 
@@ -653,24 +655,15 @@ function generateReportContent($report_type, $start_date, $end_date, $conn, $sav
             <i class="fas fa-times"></i> Close
         </button>';
     
-    // Add save button only if report was not already saved
-    if (!$save_report) {
-        $html .= '<button onclick="saveReport()" id="saveReportBtn" class="btn btn-success">
-            <i class="fas fa-save"></i> Save Report
-        </button>';
-    }
-    
     $html .= '</div>';
     
     // Add save status area
     $html .= '<div class="no-print" id="saveStatus"></div>';
     
-    // Show saved status if report was already saved
-    if ($save_report) {
-        $html .= '<div class="no-print save-success">
-            <i class="fas fa-check-circle"></i> This report has been saved to the database
-        </div>';
-    }
+    // Show automatic save status
+    $html .= '<div class="no-print save-success">
+        <i class="fas fa-check-circle"></i> This report has been automatically saved to the database
+    </div>';
     
     // Header
     $html .= '<div class="header">
@@ -1318,13 +1311,12 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                             
                             <div class="bg-agri-light p-6 rounded-xl border border-agri-green/20">
                                 <div class="flex items-start">
-                                    <input type="checkbox" name="save_report" id="save_report" 
-                                           class="h-5 w-5 text-agri-green focus:ring-agri-green border-gray-300 rounded mt-1 mr-4">
+                                    <i class="fas fa-info-circle text-agri-green mr-3 mt-1"></i>
                                     <div>
-                                        <label for="save_report" class="block text-sm font-medium text-gray-700">
-                                            <i class="fas fa-save text-agri-green mr-2"></i>Save report to database
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            <i class="fas fa-save text-agri-green mr-2"></i>Report Auto-Save Information
                                         </label>
-                                        <p class="text-sm text-gray-600 mt-1">Keep a permanent copy for future reference and download</p>
+                                        <p class="text-sm text-gray-600 mt-1">All generated reports are automatically saved to the database and reports folder for future reference and download</p>
                                     </div>
                                 </div>
                             </div>

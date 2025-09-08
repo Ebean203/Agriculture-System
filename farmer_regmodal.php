@@ -254,28 +254,84 @@ if ($_SESSION['role'] !== 'admin') {
 
                     <!-- Farming Details Section -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h6 class="mb-0"><i class="fas fa-tractor me-2"></i>Farming Details</h6>
+                            <button type="button" class="btn btn-sm btn-success" id="addCommodityBtn">
+                                <i class="fas fa-plus me-1"></i>Add Commodity
+                            </button>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="primary_commodity" class="form-label">Primary Commodity <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="primary_commodity" name="commodity_id" required>
-                                        <option value="">Select Commodity</option>
-                                        <?php foreach ($commodities as $c): ?>
-                                            <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
+                            <!-- Column Headers -->
+                            <div class="row mb-2 border-bottom pb-2">
+                                <div class="col-md-4">
+                                    <strong>Commodity</strong>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="land_area_hectares" class="form-label">Land Area (hectares) <span class="text-danger">*</span></label>
-                                    <input type="number" step="0.01" min="0" class="form-control" id="land_area_hectares" name="land_area_hectares" required>
+                                <div class="col-md-2 text-center">
+                                    <strong>Land Area (ha)</strong>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="years_farming" class="form-label">Years Farming <span class="text-danger">*</span></label>
-                                    <input type="number" min="0" class="form-control" id="years_farming" name="years_farming" required>
+                                <div class="col-md-2 text-center">
+                                    <strong>Years Experience</strong>
                                 </div>
+                                <div class="col-md-2 text-center">
+                                    <strong>Primary</strong>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <strong>Action</strong>
+                                </div>
+                            </div>
+                            
+                            <div id="commoditiesContainer">
+                                <!-- Primary commodity row (required) -->
+                                <div class="commodity-row mb-3 p-3 border rounded bg-light" data-commodity-index="0">
+                                    <div class="row align-items-end">
+                                        <div class="col-md-4 mb-3">
+                                            <select class="form-select commodity-select" name="commodities[0][commodity_id]" required>
+                                                <option value="">Select Commodity</option>
+                                                <?php foreach ($commodities as $c): ?>
+                                                    <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2 mb-3">
+                                            <input type="number" step="0.01" min="0" class="form-control text-center" name="commodities[0][land_area_hectares]" placeholder="0.00" required>
+                                        </div>
+                                        <div class="col-md-2 mb-3">
+                                            <input type="number" min="0" max="100" class="form-control text-center" name="commodities[0][years_farming]" placeholder="0" required>
+                                        </div>
+                                        <div class="col-md-2 mb-3">
+                                            <div class="form-check mt-2 text-center">
+                                                <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="0" checked required>
+                                                <label class="form-check-label text-success fw-bold d-block">
+                                                    <i class="fas fa-star me-1"></i>Primary
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 mb-3">
+                                            <div class="mt-2 text-center">
+                                                <span class="text-muted small">
+                                                    <i class="fas fa-lock me-1"></i>Primary
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="alert alert-info py-2 mb-0">
+                                                <small>
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    This is the primary commodity and cannot be removed. At least one commodity is required.
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-success mt-3">
+                                <small>
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <strong>Tip:</strong> You can add multiple commodities if the farmer grows different crops. Select which one is the primary commodity for reporting purposes.
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -391,8 +447,165 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Commodity Management Functions
+let commodityIndex = 1; // Start from 1 since 0 is the primary commodity
+
+function addCommodityRow() {
+    const container = document.getElementById('commoditiesContainer');
+    const commodityOptions = `<?php foreach ($commodities as $c): ?>
+        <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
+    <?php endforeach; ?>`;
+    
+    const newRow = document.createElement('div');
+    newRow.className = 'commodity-row mb-3 p-3 border rounded';
+    newRow.setAttribute('data-commodity-index', commodityIndex);
+    
+    newRow.innerHTML = `
+        <div class="row align-items-end">
+            <div class="col-md-4 mb-3">
+                <select class="form-select commodity-select" name="commodities[${commodityIndex}][commodity_id]" required>
+                    <option value="">Select Commodity</option>
+                    ${commodityOptions}
+                </select>
+            </div>
+            <div class="col-md-2 mb-3">
+                <input type="number" step="0.01" min="0" class="form-control text-center" name="commodities[${commodityIndex}][land_area_hectares]" placeholder="0.00" required>
+            </div>
+            <div class="col-md-2 mb-3">
+                <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${commodityIndex}][years_farming]" placeholder="0" required>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="form-check mt-2 text-center">
+                    <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="${commodityIndex}">
+                    <label class="form-check-label d-block">
+                        <i class="fas fa-star me-1"></i>Primary
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="mt-2 text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-commodity-btn">
+                        <i class="fas fa-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(newRow);
+    commodityIndex++;
+    
+    // Add event listener for remove button
+    newRow.querySelector('.remove-commodity-btn').addEventListener('click', function() {
+        removeCommodityRow(newRow);
+    });
+    
+    // Add validation for duplicate commodities
+    newRow.querySelector('.commodity-select').addEventListener('change', function() {
+        validateDuplicateCommodities();
+    });
+}
+
+function removeCommodityRow(row) {
+    const container = document.getElementById('commoditiesContainer');
+    const commodityRows = container.querySelectorAll('.commodity-row');
+    
+    // Prevent removal if it's the only row
+    if (commodityRows.length <= 1) {
+        alert('At least one commodity is required.');
+        return;
+    }
+    
+    // Check if removing the primary commodity
+    const primaryRadio = row.querySelector('.primary-commodity-radio');
+    if (primaryRadio && primaryRadio.checked) {
+        // Set the first remaining commodity as primary
+        const firstRow = container.querySelector('.commodity-row:not([data-commodity-index="' + row.getAttribute('data-commodity-index') + '"])');
+        if (firstRow) {
+            firstRow.querySelector('.primary-commodity-radio').checked = true;
+        }
+    }
+    
+    row.remove();
+    validateDuplicateCommodities();
+}
+
+function validateDuplicateCommodities() {
+    const selects = document.querySelectorAll('.commodity-select');
+    const selectedValues = [];
+    let hasDuplicates = false;
+    
+    selects.forEach(select => {
+        const value = select.value;
+        if (value && selectedValues.includes(value)) {
+            hasDuplicates = true;
+            select.classList.add('is-invalid');
+        } else {
+            select.classList.remove('is-invalid');
+            if (value) selectedValues.push(value);
+        }
+    });
+    
+    // Show/hide duplicate warning
+    let warningDiv = document.getElementById('duplicateWarning');
+    if (hasDuplicates) {
+        if (!warningDiv) {
+            warningDiv = document.createElement('div');
+            warningDiv.id = 'duplicateWarning';
+            warningDiv.className = 'alert alert-warning mt-2';
+            warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Duplicate commodities are not allowed.';
+            document.getElementById('commoditiesContainer').appendChild(warningDiv);
+        }
+    } else if (warningDiv) {
+        warningDiv.remove();
+    }
+    
+    return !hasDuplicates;
+}
+
+// Add event listeners
+document.getElementById('addCommodityBtn').addEventListener('click', addCommodityRow);
+
+// Add validation for existing commodity select
+document.querySelector('.commodity-select').addEventListener('change', function() {
+    validateDuplicateCommodities();
+});
+
 // Form validation and submission
 document.getElementById('farmerRegistrationForm').addEventListener('submit', function(e) {
+    // Validate commodities first
+    if (!validateDuplicateCommodities()) {
+        e.preventDefault();
+        alert('Please remove duplicate commodities before submitting.');
+        return false;
+    }
+    
+    // Check if at least one commodity is selected
+    const commoditySelects = document.querySelectorAll('.commodity-select');
+    let hasValidCommodity = false;
+    commoditySelects.forEach(select => {
+        if (select.value) hasValidCommodity = true;
+    });
+    
+    if (!hasValidCommodity) {
+        e.preventDefault();
+        alert('At least one commodity must be selected.');
+        return false;
+    }
+    
+    // Check if a primary commodity is selected
+    const primaryRadios = document.querySelectorAll('.primary-commodity-radio');
+    let hasPrimary = false;
+    primaryRadios.forEach(radio => {
+        if (radio.checked) hasPrimary = true;
+    });
+    
+    if (!hasPrimary) {
+        e.preventDefault();
+        alert('Please select which commodity is the primary one.');
+        return false;
+    }
+    
     const rsbsaRegistered = document.getElementById('rsbsa_registered').value;
     const rsbsaRegistrationNumber = document.getElementById('rsbsa_registration_number').value;
     const ncfrsRegistered = document.getElementById('ncfrs_registered') ? document.getElementById('ncfrs_registered').value : '';

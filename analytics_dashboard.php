@@ -3,11 +3,11 @@ require_once 'conn.php';
 require_once 'check_session.php';
 
 // Get date range from request or set defaults
-$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01'); // First day of current month
-$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d'); // Today
-$report_type = isset($_GET['report_type']) ? $_GET['report_type'] : '';
-$chart_type = isset($_GET['chart_type']) ? $_GET['chart_type'] : '';
-$barangay_filter = isset($_GET['barangay_filter']) ? $_GET['barangay_filter'] : '';
+$start_date = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01')); // First day of current month
+$end_date = isset($_POST['end_date']) ? $_POST['end_date'] : (isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d')); // Today
+$report_type = isset($_POST['report_type']) ? $_POST['report_type'] : (isset($_GET['report_type']) ? $_GET['report_type'] : '');
+$chart_type = isset($_POST['chart_type']) ? $_POST['chart_type'] : (isset($_GET['chart_type']) ? $_GET['chart_type'] : '');
+$barangay_filter = isset($_POST['barangay_filter']) ? $_POST['barangay_filter'] : (isset($_GET['barangay_filter']) ? $_GET['barangay_filter'] : '');
 
 // Get barangays for filter dropdown
 function getBarangays($conn) {
@@ -363,7 +363,7 @@ $barangays = getBarangays($conn);
                 <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
                     <i class="fas fa-sliders-h text-agri-green mr-3"></i>Analytics Controls
                 </h3>
-                <form method="GET" action="" class="space-y-4">
+                <form method="POST" action="" class="space-y-4">
                     <!-- Report Type Selection -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Choose a report type...</label>
@@ -409,6 +409,14 @@ $barangays = getBarangays($conn);
                         </button>
                     </div>
                 </form>
+
+                <!-- Loading indicator -->
+                <div id="loadingIndicator" class="hidden text-center py-4">
+                    <div class="inline-flex items-center">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-agri-green mr-3"></div>
+                        <span class="text-gray-600">Generating analytics...</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Chart Display -->
@@ -702,6 +710,60 @@ $barangays = getBarangays($conn);
             document.querySelector('input[name="start_date"]').value = startDate.toISOString().split('T')[0];
             document.querySelector('input[name="end_date"]').value = endDate.toISOString().split('T')[0];
         }
+
+        // AJAX form submission to avoid URL parameters
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Prevent normal form submission
+                    
+                    // Show loading indicator
+                    loadingIndicator.classList.remove('hidden');
+                    
+                    // Get form data
+                    const formData = new FormData(form);
+                    
+                    // Submit via AJAX
+                    fetch(window.location.href, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        // Parse the response and update the page content
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        
+                        // Update the main content area
+                        const newContent = doc.querySelector('.container');
+                        const currentContent = document.querySelector('.container');
+                        
+                        if (newContent && currentContent) {
+                            currentContent.innerHTML = newContent.innerHTML;
+                            
+                            // Re-initialize any scripts if needed
+                            const scripts = newContent.querySelectorAll('script');
+                            scripts.forEach(script => {
+                                const newScript = document.createElement('script');
+                                newScript.textContent = script.textContent;
+                                document.head.appendChild(newScript);
+                            });
+                        }
+                        
+                        // Hide loading indicator
+                        loadingIndicator.classList.add('hidden');
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        loadingIndicator.classList.add('hidden');
+                        alert('An error occurred while generating the report. Please try again.');
+                    });
+                });
+            }
+        });
     </script>
 
     <style>

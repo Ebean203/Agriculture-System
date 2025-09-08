@@ -108,9 +108,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Input Distribution Records Report</title>
-    <?php include 'includes/assets.php'; ?>
-    <style>
+    <title>Input Distribution Records Report</title>';
+    include 'includes/assets.php';
+    echo '<style>
         body { 
             font-family: Arial, sans-serif; 
             margin: 20px; 

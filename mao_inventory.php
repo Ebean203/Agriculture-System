@@ -603,31 +603,35 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
                         </div>
                     </div>
                     
-                    <!-- Visitation Tracking Section (Initially Hidden) -->
-                    <div id="visitation_section" class="border-t border-gray-200 pt-6 mt-6 hidden">
+                    <!-- Visitation Tracking Section (Always Visible - Required for All Inputs) -->
+                    <div id="visitation_section" class="border-t border-gray-200 pt-6 mt-6">
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <!-- Visitation Info Panel -->
                             <div class="lg:col-span-2">
-                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <h4 class="text-lg font-semibold text-green-800 flex items-center mb-3">
-                                        <i class="fas fa-calendar-check text-green-600 mr-2"></i>
-                                        Visitation Tracking Required
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <h4 class="text-lg font-semibold text-blue-800 flex items-center mb-3">
+                                        <i class="fas fa-calendar-check text-blue-600 mr-2"></i>
+                                        Visitation Required for All Distributions
                                     </h4>
-                                    <div class="space-y-2 text-sm text-green-700">
-                                        <p><i class="fas fa-check-circle mr-2"></i>Follow-up visitation for yield monitoring</p>
-                                        <p><i class="fas fa-check-circle mr-2"></i>Agricultural compliance verification</p>
-                                        <p><i class="fas fa-check-circle mr-2"></i>Progress tracking and support</p>
+                                    <div class="space-y-2 text-sm text-blue-700">
+                                        <p><i class="fas fa-check-circle mr-2"></i>Mandatory follow-up for all agricultural inputs</p>
+                                        <p><i class="fas fa-check-circle mr-2"></i>Ensures proper usage and compliance verification</p>
+                                        <p><i class="fas fa-check-circle mr-2"></i>Progress tracking and farmer support</p>
+                                        <p><i class="fas fa-info-circle mr-2"></i>Policy update: All distributions now require visitation</p>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Visitation Date Input -->
                             <div class="lg:col-span-1">
-                                <label for="visitation_date" class="block text-sm font-medium text-gray-700 mb-2">Planned Visitation Date</label>
+                                <label for="visitation_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Planned Visitation Date <span class="text-red-500">*</span>
+                                    <span class="text-xs text-blue-600 font-semibold">(Required for All Inputs)</span>
+                                </label>
                                 <input type="date" class="w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green text-lg" name="visitation_date" id="visitation_date" value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>" required>
                                 <p class="text-sm text-gray-600 mt-2">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    Recommended: 7-14 days after distribution
+                                    Recommended: 7-14 days after distribution. All inputs now require follow-up visitation.
                                 </p>
                             </div>
                         </div>
@@ -767,44 +771,20 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
             const visitationDate = document.getElementById('visitation_date');
             
             if (visitationSection && visitationIndicator && visitationDate) {
-                const inputNameLower = inputName.toLowerCase();
+                // MODIFIED: All inputs now require visitation dates
+                // Always show visitation section and set default date
+                visitationSection.classList.remove('hidden');
+                visitationIndicator.classList.remove('hidden');
                 
-                // Check if input requires visitation based on name (seeds or live animals)
-                const requiresVisitation = inputNameLower.includes('seed') || 
-                                         inputNameLower.includes('grain') || 
-                                         inputNameLower.includes('variety') ||
-                                         inputNameLower.includes('chicken') || 
-                                         inputNameLower.includes('pig') || 
-                                         inputNameLower.includes('goat') || 
-                                         inputNameLower.includes('duck') || 
-                                         inputNameLower.includes('cattle') || 
-                                         inputNameLower.includes('livestock') ||
-                                         inputNameLower.includes('animal') ||
-                                         inputNameLower.includes('poultry');
+                // Make visitation date required for ALL inputs
+                visitationDate.setAttribute('required', 'required');
                 
-                if (requiresVisitation) {
-                    // Show visitation section and set default date
-                    visitationSection.classList.remove('hidden');
-                    visitationIndicator.classList.remove('hidden');
-                    
-                    // Make visitation date required
-                    visitationDate.setAttribute('required', 'required');
-                    
-                    // Set default visitation date (7 days after distribution)
-                    const dateGivenField = document.querySelector('input[name="date_given"]');
-                    const distributionDate = (dateGivenField && dateGivenField.value) ? dateGivenField.value : new Date().toISOString().split('T')[0];
-                    const visitationDateObj = new Date(distributionDate);
-                    visitationDateObj.setDate(visitationDateObj.getDate() + 7);
-                    visitationDate.value = visitationDateObj.toISOString().split('T')[0];
-                } else {
-                    // Hide visitation section - not required
-                    visitationSection.classList.add('hidden');
-                    visitationIndicator.classList.add('hidden');
-                    
-                    // Remove required attribute since it's not needed
-                    visitationDate.removeAttribute('required');
-                    visitationDate.value = ''; // Clear the field since it will be set to NULL on backend
-                }
+                // Set default visitation date (7 days after distribution)
+                const dateGivenField = document.querySelector('input[name="date_given"]');
+                const distributionDate = (dateGivenField && dateGivenField.value) ? dateGivenField.value : new Date().toISOString().split('T')[0];
+                const visitationDateObj = new Date(distributionDate);
+                visitationDateObj.setDate(visitationDateObj.getDate() + 7);
+                visitationDate.value = visitationDateObj.toISOString().split('T')[0];
             }
         }
 
@@ -944,12 +924,23 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
                 return false;
             }
             
-            // Check visitation date only if visitation section is visible (meaning it's required)
+            // Check visitation date - now required for all inputs
             const visitationSection = document.getElementById('visitation_section');
             if (visitationSection && !visitationSection.classList.contains('hidden')) {
                 if (!visitationDate || !visitationDate.value) {
-                    alert('Visitation date is required for this type of input.');
+                    alert('Visitation date is required for all input distributions.');
                     return false;
+                }
+                
+                // Validate that visitation date is not before distribution date
+                if (dateGiven && dateGiven.value && visitationDate.value) {
+                    const distributionDate = new Date(dateGiven.value);
+                    const visitDate = new Date(visitationDate.value);
+                    
+                    if (visitDate < distributionDate) {
+                        alert('Visitation date cannot be earlier than the distribution date.');
+                        return false;
+                    }
                 }
             }
             

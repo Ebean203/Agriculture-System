@@ -43,30 +43,33 @@ $farmer_id = mysqli_real_escape_string($conn, $farmer_id);
 $quantity_distributed = mysqli_real_escape_string($conn, $quantity_distributed);
 $date_given = mysqli_real_escape_string($conn, $date_given);
 
-// Handle visitation date based on whether input requires visitation
-$input_info_query = "SELECT requires_visitation FROM input_categories WHERE input_id = '$input_id'";
-$input_info_result = mysqli_query($conn, $input_info_query);
-$input_info = mysqli_fetch_assoc($input_info_result);
-$requires_visitation = $input_info['requires_visitation'] ?? 1;
+// Handle visitation date - now required for ALL inputs
+$requires_visitation = 1; // Force all inputs to require visitation
 
-if ($requires_visitation) {
-    // Input requires visitation - use the inputted date or default to 7 days after distribution
-    $visitation_date = isset($_POST['visitation_date']) && !empty($_POST['visitation_date']) ? 
-                       trim($_POST['visitation_date']) : 
-                       date('Y-m-d', strtotime($date_given . ' +7 days'));
-    
-    // Validate visitation date format only when it's required
-    if (!DateTime::createFromFormat('Y-m-d', $visitation_date)) {
-        $_SESSION['error'] = "Invalid visitation date format!";
-        header("Location: mao_inventory.php");
-        exit();
-    }
-    
-    $visitation_date = mysqli_real_escape_string($conn, $visitation_date);
-} else {
-    // Input doesn't require visitation - store NULL
-    $visitation_date = NULL;
+// Visitation date is now mandatory for all distributions
+if (!isset($_POST['visitation_date']) || empty($_POST['visitation_date'])) {
+    $_SESSION['error'] = "Visitation date is required for all input distributions!";
+    header("Location: mao_inventory.php");
+    exit();
 }
+
+$visitation_date = trim($_POST['visitation_date']);
+
+// Validate visitation date format
+if (!DateTime::createFromFormat('Y-m-d', $visitation_date)) {
+    $_SESSION['error'] = "Invalid visitation date format!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+// Validate that visitation date is not before distribution date
+if (strtotime($visitation_date) < strtotime($date_given)) {
+    $_SESSION['error'] = "Visitation date cannot be earlier than the distribution date!";
+    header("Location: mao_inventory.php");
+    exit();
+}
+
+$visitation_date = mysqli_real_escape_string($conn, $visitation_date);
 
 // Verify input exists and get current stock (using YOUR database structure)
 $input_check = "SELECT ic.input_id, ic.input_name, COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand 
@@ -120,14 +123,9 @@ $farmer_data = mysqli_fetch_assoc($farmer_result);
 mysqli_begin_transaction($conn);
 
 try {
-    // Record distribution - handle NULL visitation_date properly
-    if ($visitation_date === NULL) {
-        $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) 
-                              VALUES ('$farmer_id', '$input_id', '$quantity_distributed', '$date_given', NULL)";
-    } else {
-        $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) 
-                              VALUES ('$farmer_id', '$input_id', '$quantity_distributed', '$date_given', '$visitation_date')";
-    }
+    // Record distribution - visitation_date is now always required
+    $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) 
+                          VALUES ('$farmer_id', '$input_id', '$quantity_distributed', '$date_given', '$visitation_date')";
     
     if (!mysqli_query($conn, $distribution_query)) {
         throw new Exception("Error recording distribution: " . mysqli_error($conn));
@@ -148,21 +146,16 @@ try {
     $input_result = mysqli_query($conn, $input_query);
     $input_data = mysqli_fetch_assoc($input_result);
     
-    // Log activity with proper visitation info
-    $visitation_info = $visitation_date ? $visitation_date : 'N/A';
-    $activity_details = "Input ID: $input_id, Farmer ID: $farmer_id, Quantity: $quantity_distributed, Date: $date_given, Visitation Date: $visitation_info";
+    // Log activity with visitation info
+    $activity_details = "Input ID: $input_id, Farmer ID: $farmer_id, Quantity: $quantity_distributed, Date: $date_given, Visitation Date: $visitation_date";
     
     logActivity($conn, "Distributed $quantity_distributed units of {$input_data['input_name']} to {$farmer_data['first_name']} {$farmer_data['last_name']} ($farmer_id)", 'input', $activity_details);
     
     // Commit transaction
     mysqli_commit($conn);
     
-    // Create success message based on whether visitation is required
-    if ($requires_visitation && $visitation_date) {
-        $success_message = "Input distributed successfully to {$farmer_data['first_name']} {$farmer_data['last_name']}! Visitation scheduled for " . date('M d, Y', strtotime($visitation_date)) . ".";
-    } else {
-        $success_message = "Input distributed successfully to {$farmer_data['first_name']} {$farmer_data['last_name']}!";
-    }
+    // Create success message - all inputs now require visitation
+    $success_message = "Input distributed successfully to {$farmer_data['first_name']} {$farmer_data['last_name']}! Visitation scheduled for " . date('M d, Y', strtotime($visitation_date)) . ".";
     $_SESSION['success'] = $success_message;
     
 } catch (Exception $e) {

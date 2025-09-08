@@ -138,12 +138,13 @@ if ($_POST) {
                 $check_result = mysqli_query($conn, $check_query);
             } while (mysqli_num_rows($check_result) > 0);
 
-            // Prepare associative data for farmers; we'll only insert columns that exist in the farmers table
+            // Prepare associative data for farmers (excluding commodity-related fields)
             $farmer_data = [
                 'farmer_id' => $farmer_id,
                 'first_name' => $first_name,
                 'middle_name' => $middle_name,
                 'last_name' => $last_name,
+                'suffix' => $suffix,
                 'birth_date' => $birth_date,
                 'gender' => $gender,
                 'contact_number' => $contact_number,
@@ -152,18 +153,7 @@ if ($_POST) {
                 'is_member_of_4ps' => $is_member_of_4ps,
                 'is_ip' => $is_ip,
                 'other_income_source' => $other_income_source,
-                'primary_commodity' => $primary_commodity,
-                'land_area_hectares' => $land_area_hectares,
-                'years_farming' => $years_farming,
-                'ncfrs_registered' => $ncfrs_registered,
-                'ncfrs_id' => $ncfrs_id,
-                'fisherfold_registered' => $fisherfold_registered,
-                'fisherfold_id' => $fisherfold_id,
-                'membership_group' => $membership_group,
-                'has_boat' => $has_boat,
-                'boat_name' => $boat_name,
-                'boat_registration_no' => $boat_registration_no,
-                'engine_hp' => $engine_hp
+                'registration_date' => date('Y-m-d H:i:s')
             ];
 
             // Fetch existing farmer table columns
@@ -198,6 +188,18 @@ if ($_POST) {
             $farmer_result = mysqli_query($conn, $farmer_query);
             if (!$farmer_result) {
                 throw new Exception("Error inserting farmer: " . mysqli_error($conn));
+            }
+
+            // Insert commodity data into junction table if commodity is selected
+            if (!is_null($primary_commodity)) {
+                $commodity_query = "INSERT INTO farmer_commodities (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
+                                   VALUES (" . sql_val($farmer_id) . ", " . $primary_commodity . ", " . 
+                                   (is_null($land_area_hectares) ? "NULL" : $land_area_hectares) . ", " . 
+                                   (is_null($years_farming) ? "NULL" : $years_farming) . ", 1)";
+                $commodity_result = mysqli_query($conn, $commodity_query);
+                if (!$commodity_result) {
+                    throw new Exception("Error inserting commodity data: " . mysqli_error($conn));
+                }
             }
 
             // Insert household info into separate table

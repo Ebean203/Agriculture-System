@@ -13,7 +13,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Build search condition for export
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-    $search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
+    $search_condition = 'WHERE f.archived = 0';
     $search_params = [];
     
     if (!empty($search)) {
@@ -99,9 +99,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>NCFRS Records Report</title>
-    <?php include 'includes/assets.php'; ?>
-    <style>
+    <title>NCFRS Records Report</title>';
+    include 'includes/assets.php';
+    echo '<style>
         body { 
             font-family: Arial, sans-serif; 
             margin: 20px; 
@@ -181,7 +181,7 @@ $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
 
 // Build search condition
-$search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
+$search_condition = 'WHERE f.archived = 0';
 $search_params = [];
 
 if (!empty($search)) {

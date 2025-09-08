@@ -19,12 +19,11 @@ try {
         }
         
         // Search farmers by name, contact number
-        $archived_condition = $include_archived ? "" : "f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers) AND";
+        $archived_condition = $include_archived ? "" : "f.archived = 0 AND";
         $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.contact_number, b.barangay_name,
-                       CASE WHEN af.farmer_id IS NOT NULL THEN 1 ELSE 0 END as is_archived
+                       f.archived as is_archived
                 FROM farmers f 
                 LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                LEFT JOIN archived_farmers af ON f.farmer_id = af.farmer_id
                 WHERE $archived_condition (CONCAT(f.first_name, ' ', f.middle_name, ' ', f.last_name) LIKE ? 
                      OR f.contact_number LIKE ?
                      OR f.farmer_id LIKE ?)

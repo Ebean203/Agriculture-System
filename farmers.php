@@ -8,12 +8,11 @@ $pageTitle = 'Farmers Management';
 
 // Function to handle farmer archiving
 function handleFarmerArchive($conn, $farmer_id, $archive_reason = null) {
-    $archived_by = $_SESSION['username'] ?? 'admin';
     $archive_reason = $archive_reason ?? 'Archived by admin';
     
     try {
         // Check if farmer is already archived
-        $check_stmt = $conn->prepare("SELECT archive_id FROM archived_farmers WHERE farmer_id = ?");
+        $check_stmt = $conn->prepare("SELECT archived FROM farmers WHERE farmer_id = ? AND archived = 1");
         $check_stmt->bind_param("s", $farmer_id);
         $check_stmt->execute();
         
@@ -21,9 +20,9 @@ function handleFarmerArchive($conn, $farmer_id, $archive_reason = null) {
             return ['success' => false, 'message' => 'Farmer is already archived!'];
         }
         
-        // Archive the farmer
-        $stmt = $conn->prepare("INSERT INTO archived_farmers (farmer_id, archived_by, archive_reason) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $farmer_id, $archived_by, $archive_reason);
+        // Archive the farmer by updating the archived flag and reason
+        $stmt = $conn->prepare("UPDATE farmers SET archived = 1, archive_reason = ? WHERE farmer_id = ?");
+        $stmt->bind_param("ss", $archive_reason, $farmer_id);
         $stmt->execute();
         
         return ['success' => true, 'message' => 'Farmer archived successfully!'];
@@ -46,27 +45,42 @@ function handleFarmerEdit($conn, $post_data) {
         // Start transaction
         $conn->autocommit(false);
         
-        // Update farmers table
+        // Update farmers table (without commodity fields)
         $stmt = $conn->prepare("UPDATE farmers SET 
             first_name = ?, middle_name = ?, last_name = ?, suffix = ?, 
             birth_date = ?, gender = ?, contact_number = ?, barangay_id = ?, 
-            address_details = ?, is_member_of_4ps = ?, is_ip = ?, other_income_source = ?,
-            commodity_id = ?, land_area_hectares = ?, years_farming = ?
+            address_details = ?, is_member_of_4ps = ?, is_ip = ?, other_income_source = ?
             WHERE farmer_id = ?");
         
         if (!$stmt) {
             throw new Exception("Failed to prepare UPDATE statement: " . $conn->error);
         }
         
-        $stmt->bind_param("sssssssisiisidis", 
+        $stmt->bind_param("sssssssisiiis", 
             $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'],
             $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'],
             $validated['address_details'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['other_income_source'],
-            $validated['primary_commodity'], $validated['land_area_hectares'], $validated['years_farming'], 
             $validated['farmer_id']);
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to execute UPDATE: " . $stmt->error);
+        }
+        
+        // Update or insert commodity relationship in junction table
+        $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
+            (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
+            VALUES (?, ?, ?, ?, 1)
+            ON DUPLICATE KEY UPDATE 
+            commodity_id = VALUES(commodity_id),
+            land_area_hectares = VALUES(land_area_hectares),
+            years_farming = VALUES(years_farming)");
+        
+        $commodity_stmt->bind_param("sidi", 
+            $validated['farmer_id'], $validated['primary_commodity'], 
+            $validated['land_area_hectares'], $validated['years_farming']);
+        
+        if (!$commodity_stmt->execute()) {
+            throw new Exception("Failed to update commodity data: " . $commodity_stmt->error);
         }
         
         $farmers_updated = $stmt->affected_rows > 0;
@@ -157,19 +171,51 @@ function handleFarmerRegistration($conn, $post_data) {
         
         $conn->begin_transaction();
         
-        // Insert farmer with all fields matching new schema including registration timestamp
+        // Insert farmer with all fields matching new schema (without commodity fields)
         $stmt = $conn->prepare("INSERT INTO farmers 
             (farmer_id, first_name, middle_name, last_name, suffix, birth_date, gender, 
-             contact_number, barangay_id, address_details, commodity_id, 
-             other_income_source, is_member_of_4ps, is_ip, land_area_hectares, years_farming, registration_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+             contact_number, barangay_id, address_details, 
+             other_income_source, is_member_of_4ps, is_ip, registration_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
-        $stmt->bind_param("ssssssssisissiid", 
+        $stmt->bind_param("ssssssssissii", 
             $farmer_id, $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'], 
             $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'], $validated['address_details'], 
-            $validated['primary_commodity'], $validated['other_income_source'], $validated['is_member_of_4ps'], $validated['is_ip'], 
-            $validated['land_area_hectares'], $validated['years_farming']);
+            $validated['other_income_source'], $validated['is_member_of_4ps'], $validated['is_ip']);
         $stmt->execute();
+        
+        // Insert commodity relationship into junction table
+        if (isset($post_data['commodities']) && is_array($post_data['commodities'])) {
+            $primary_commodity_index = isset($post_data['primary_commodity_index']) ? intval($post_data['primary_commodity_index']) : 0;
+            
+            foreach ($post_data['commodities'] as $index => $commodity_data) {
+                if (!empty($commodity_data['commodity_id']) && !empty($commodity_data['land_area_hectares']) && isset($commodity_data['years_farming'])) {
+                    $is_primary = ($index == $primary_commodity_index) ? 1 : 0;
+                    
+                    $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
+                        (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
+                        VALUES (?, ?, ?, ?, ?)");
+                    $commodity_stmt->bind_param("sidii", 
+                        $farmer_id, 
+                        intval($commodity_data['commodity_id']), 
+                        floatval($commodity_data['land_area_hectares']), 
+                        intval($commodity_data['years_farming']),
+                        $is_primary
+                    );
+                    $commodity_stmt->execute();
+                }
+            }
+        } else {
+            // Fallback for single commodity (backward compatibility)
+            if (isset($validated['primary_commodity'])) {
+                $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
+                    (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
+                    VALUES (?, ?, ?, ?, 1)");
+                $commodity_stmt->bind_param("sidi", 
+                    $farmer_id, $validated['primary_commodity'], $validated['land_area_hectares'], $validated['years_farming']);
+                $commodity_stmt->execute();
+            }
+        }
         
         // Insert household info
         $household_stmt = $conn->prepare("INSERT INTO household_info 
@@ -268,6 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
             
             try {
                 $stmt = $conn->prepare("SELECT f.*, h.*, c.commodity_name, b.barangay_name,
+                                      fc.land_area_hectares, fc.years_farming,
                                       DATE_FORMAT(f.registration_date, '%M %d, %Y at %h:%i %p') as formatted_registration_date,
                                       rsbsa.farmer_id as rsbsa_registered,
                                       ncfrs.farmer_id as ncfrs_registered,
@@ -277,7 +324,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
                                       boats.boat_id as vessel_id
                                       FROM farmers f 
                                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
-                                      LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
+                                      LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
+                                      LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
                                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
                                       LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                                       LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
@@ -306,8 +354,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
             }
             
             try {
-                $stmt = $conn->prepare("SELECT f.*, h.* FROM farmers f 
+                $stmt = $conn->prepare("SELECT f.*, h.*, fc.commodity_id, fc.land_area_hectares, fc.years_farming, c.commodity_name 
+                                      FROM farmers f 
                                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
+                                      LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
+                                      LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                                       WHERE f.farmer_id = ?");
                 $stmt->bind_param("s", $_GET['id']);
                 $stmt->execute();
@@ -608,7 +659,7 @@ while ($row = $barangays_result->fetch_assoc()) {
 // Search and filter functionality
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-$search_condition = 'WHERE f.farmer_id NOT IN (SELECT farmer_id FROM archived_farmers)';
+$search_condition = 'WHERE f.archived = 0';
 $search_params = [];
 
 if (!empty($search)) {
@@ -634,11 +685,12 @@ $count_stmt->execute();
 $total_records = $count_stmt->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Get farmers data with commodity and household information
+// Get farmers data with commodity and household information from junction table
 $sql = "SELECT f.*, c.commodity_name, b.barangay_name, h.civil_status, h.spouse_name, 
-               h.household_size, h.education_level, h.occupation
+               h.household_size, h.education_level, h.occupation, fc.land_area_hectares, fc.years_farming
         FROM farmers f 
-        LEFT JOIN commodities c ON f.commodity_id = c.commodity_id 
+        LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
+        LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition 
