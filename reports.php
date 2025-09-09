@@ -1116,9 +1116,9 @@ function generateRegistrationAnalyticsReport($start_date, $end_date, $conn) {
     $html = '';
     
     // Registration statistics
-    $rsbsa_count = $conn->query("SELECT COUNT(*) as count FROM rsbsa_registered_farmers r INNER JOIN farmers f ON r.farmer_id = f.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $ncfrs_count = $conn->query("SELECT COUNT(*) as count FROM ncfrs_registered_farmers n INNER JOIN farmers f ON n.farmer_id = f.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $fisherfolk_count = $conn->query("SELECT COUNT(*) as count FROM fisherfolk_registered_farmers ff INNER JOIN farmers f ON ff.farmer_id = f.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
+    $rsbsa_count = $conn->query("SELECT COUNT(*) as count FROM farmers f WHERE f.is_rsbsa = 1 AND f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
+    $ncfrs_count = $conn->query("SELECT COUNT(*) as count FROM farmers f WHERE f.is_ncfrs = 1 AND f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
+    $fisherfolk_count = $conn->query("SELECT COUNT(*) as count FROM farmers f WHERE f.is_fisherfolk = 1 AND f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     
     $html .= '<div class="summary-box">
         <h3 style="margin-top: 0; color: #15803d;">📋 Registration Analytics Summary</h3>

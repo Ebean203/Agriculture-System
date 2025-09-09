@@ -11,21 +11,23 @@ try {
     
     if ($count_only) {
         // Return only notification count
-        $count = getNotificationCount($conn);
+        $total_count = getNotificationCount($conn);
+        $unread_count = getUnreadNotificationCount($conn);
         
         echo json_encode([
             'success' => true,
-            'unread_count' => $count,
-            'total_count' => $count
+            'unread_count' => $unread_count,
+            'total_count' => $total_count
         ]);
     } else {
         // Return full notifications
         $notifications = getNotifications($conn);
+        $unread_count = getUnreadNotificationCount($conn);
         
         echo json_encode([
             'success' => true,
             'notifications' => $notifications,
-            'unread_count' => count($notifications),
+            'unread_count' => $unread_count,
             'total_count' => count($notifications)
         ]);
     }

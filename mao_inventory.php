@@ -1055,6 +1055,147 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
     </script>
+    
+    <!-- Notification-based Navigation Handler -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check URL parameters for notification-based navigation
+            const urlParams = new URLSearchParams(window.location.search);
+            const highlightId = urlParams.get('highlight');
+            const searchItem = urlParams.get('search');
+            const itemName = urlParams.get('item');
+            
+            // Highlight specific inventory item
+            if (highlightId) {
+                highlightInventoryItem(highlightId);
+            }
+            
+            // Search and highlight by item name
+            if (searchItem || itemName) {
+                const searchTerm = searchItem || itemName;
+                highlightInventoryItemByName(searchTerm);
+            }
+            
+            // Clean URL after highlighting (optional)
+            if (highlightId || searchItem || itemName) {
+                setTimeout(() => {
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                }, 3000);
+            }
+        });
+        
+        function highlightInventoryItem(inputId) {
+            // Find inventory card by input ID
+            const updateBtn = document.querySelector(`[data-input-id="${inputId}"]`);
+            if (updateBtn) {
+                const card = updateBtn.closest('.inventory-card');
+                if (card) {
+                    // Add highlight effect
+                    card.style.border = '3px solid #ef4444';
+                    card.style.backgroundColor = '#fef2f2';
+                    card.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.3)';
+                    
+                    // Scroll to the card
+                    card.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                    
+                    // Pulse effect
+                    card.style.animation = 'pulse 2s infinite';
+                    
+                    // Show notification message
+                    showNotificationAlert(card);
+                    
+                    // Remove highlight after 5 seconds
+                    setTimeout(() => {
+                        card.style.border = '';
+                        card.style.backgroundColor = '';
+                        card.style.boxShadow = '';
+                        card.style.animation = '';
+                    }, 5000);
+                }
+            }
+        }
+        
+        function highlightInventoryItemByName(itemName) {
+            // Find inventory card by searching for item name
+            const cards = document.querySelectorAll('.inventory-card');
+            cards.forEach(card => {
+                const nameElement = card.querySelector('h3');
+                if (nameElement && nameElement.textContent.toLowerCase().includes(itemName.toLowerCase())) {
+                    // Add highlight effect
+                    card.style.border = '3px solid #ef4444';
+                    card.style.backgroundColor = '#fef2f2';
+                    card.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.3)';
+                    
+                    // Scroll to the card
+                    card.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                    
+                    // Pulse effect
+                    card.style.animation = 'pulse 2s infinite';
+                    
+                    // Show notification message
+                    showNotificationAlert(card);
+                    
+                    // Remove highlight after 5 seconds
+                    setTimeout(() => {
+                        card.style.border = '';
+                        card.style.backgroundColor = '';
+                        card.style.boxShadow = '';
+                        card.style.animation = '';
+                    }, 5000);
+                }
+            });
+        }
+        
+        function showNotificationAlert(card) {
+            // Create a temporary alert overlay
+            const alert = document.createElement('div');
+            alert.className = 'absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold z-10';
+            alert.innerHTML = '<i class="fas fa-bell mr-1"></i>ALERT!';
+            alert.style.position = 'absolute';
+            alert.style.zIndex = '1000';
+            
+            // Make card position relative if not already
+            const cardStyle = getComputedStyle(card);
+            if (cardStyle.position === 'static') {
+                card.style.position = 'relative';
+            }
+            
+            card.appendChild(alert);
+            
+            // Remove alert after 3 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 3000);
+        }
+    </script>
+    
+    <!-- Add CSS for pulse animation -->
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .inventory-card {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .inventory-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+    
     <?php if ($offline_mode): ?>
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <?php else: ?>

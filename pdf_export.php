@@ -182,21 +182,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         $export_sql = "SELECT f.*, h.*, 
                       GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodity_name, 
                       b.barangay_name,
-                      CASE WHEN rsbsa.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as rsbsa_registered,
-                      CASE WHEN ncfrs.farmer_id IS NOT NULL THEN 'Yes' ELSE 'No' END as ncfrs_registered,
-                      COALESCE(ncfrs.ncfrs_registration_number, '') as ncfrs_number,
-                      CASE WHEN fisherfolk.fisherfolk_id IS NOT NULL THEN 'Yes' ELSE 'No' END as fisherfolk_registered,
-                      COALESCE(fisherfolk.fisherfolk_registration_number, '') as fisherfolk_number,
-                      COALESCE(boats.boat_name, '') as boat_name
+                      CASE WHEN f.is_rsbsa = 1 THEN 'Yes' ELSE 'No' END as rsbsa_registered,
+                      CASE WHEN f.is_ncfrs = 1 THEN 'Yes' ELSE 'No' END as ncfrs_registered,
+                      CASE WHEN f.is_fisherfolk = 1 THEN 'Yes' ELSE 'No' END as fisherfolk_registered,
+                      CASE WHEN f.is_boat = 1 THEN 'Has Boat' ELSE 'No Boat' END as boat_status
                       FROM farmers f 
                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
                       LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
                       LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
-                      LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
-                      LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
-                      LEFT JOIN boats ON f.farmer_id = boats.farmer_id
-                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON boats.boat_id = fisherfolk.boat_id
                       $search_condition
                       GROUP BY f.farmer_id
                       ORDER BY f.registration_date DESC";

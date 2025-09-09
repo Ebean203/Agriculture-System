@@ -5,375 +5,8 @@ require_once 'check_session.php';
 // Handle form submissions
 if ($_POST) {
     if (isset($_POST['action']) && $_POST['action'] == 'register_farmer') {
-        // Start transaction
-        mysqli_autocommit($conn, FALSE);
-        
-        try {
-            // Initialize success flag
-            $success = true;
-            // Helper to convert PHP value to SQL literal
-            function sql_val($v) {
-                global $conn;
-                if ($v === NULL) return "NULL";
-                return "'" . mysqli_real_escape_string($conn, (string)$v) . "'";
-            }
-
-            // Extract and sanitize POST fields we'll use
-            $first_name = isset($_POST['first_name']) ? mysqli_real_escape_string($conn, $_POST['first_name']) : '';
-            $middle_name = isset($_POST['middle_name']) ? mysqli_real_escape_string($conn, $_POST['middle_name']) : '';
-            $last_name = isset($_POST['last_name']) ? mysqli_real_escape_string($conn, $_POST['last_name']) : '';
-            $birth_date = isset($_POST['birth_date']) ? mysqli_real_escape_string($conn, $_POST['birth_date']) : NULL;
-            $gender = isset($_POST['gender']) ? mysqli_real_escape_string($conn, $_POST['gender']) : '';
-            $contact_number = isset($_POST['contact_number']) ? mysqli_real_escape_string($conn, $_POST['contact_number']) : '';
-            // barangay_id should be stored as FK
-            $barangay_id = isset($_POST['barangay_id']) ? mysqli_real_escape_string($conn, $_POST['barangay_id']) : NULL;
-            $address_details = isset($_POST['address_details']) ? mysqli_real_escape_string($conn, $_POST['address_details']) : '';
-            $is_member_of_4ps = isset($_POST['is_member_of_4ps']) ? 1 : 0;
-            $is_ip = isset($_POST['is_ip']) ? 1 : 0;
-            $other_income_source = isset($_POST['other_income_source']) ? mysqli_real_escape_string($conn, $_POST['other_income_source']) : NULL;
-
-            // Basic validation
-            if (empty($first_name)) {
-                throw new Exception("First name is required.");
-            }
-            if (empty($last_name)) {
-                throw new Exception("Last name is required.");
-            }
-            if (empty($gender)) {
-                throw new Exception("Gender is required.");
-            }
-
-            // Household fields (to be stored in separate table)
-            $civil_status = isset($_POST['civil_status']) ? mysqli_real_escape_string($conn, $_POST['civil_status']) : NULL;
-            $spouse_name = isset($_POST['spouse_name']) ? mysqli_real_escape_string($conn, $_POST['spouse_name']) : NULL;
-            $household_size = isset($_POST['household_size']) && $_POST['household_size'] !== '' ? intval($_POST['household_size']) : NULL;
-            
-            // Validate education level
-            $education_level = isset($_POST['education_level']) ? mysqli_real_escape_string($conn, $_POST['education_level']) : NULL;
-            if (!empty($education_level)) {
-                $valid_education_levels = ['Elementary', 'Highschool', 'College', 'Vocational', 'Graduate', 'Not Specified'];
-                if (!in_array($education_level, $valid_education_levels)) {
-                    throw new Exception("Education level must be one of: " . implode(', ', $valid_education_levels));
-                }
-            } else {
-                // Set default value if empty
-                $education_level = 'Not Specified';
-            }
-            
-            $occupation = isset($_POST['occupation']) ? mysqli_real_escape_string($conn, $_POST['occupation']) : NULL;
-
-            // Farming / other fields to keep in farmers table
-            $primary_commodity_input = isset($_POST['primary_commodity']) ? $_POST['primary_commodity'] : '';
-            $primary_commodity = NULL;
-            
-            // Validate primary_commodity
-            if (!empty($primary_commodity_input) && is_numeric($primary_commodity_input)) {
-                $commodity_id = intval($primary_commodity_input);
-                if ($commodity_id > 0) {
-                    // Check if commodity exists
-                    $commodity_check = mysqli_query($conn, "SELECT commodity_id FROM commodities WHERE commodity_id = $commodity_id");
-                    if (mysqli_num_rows($commodity_check) > 0) {
-                        $primary_commodity = $commodity_id;
-                    } else {
-                        throw new Exception("Invalid commodity selected. Please choose a valid commodity.");
-                    }
-                }
-            }
-            
-            $land_area_hectares = isset($_POST['land_area_hectares']) && $_POST['land_area_hectares'] !== '' ? floatval($_POST['land_area_hectares']) : NULL;
-            $years_farming = isset($_POST['years_farming']) && $_POST['years_farming'] !== '' ? intval($_POST['years_farming']) : NULL;
-
-            // NCFRS / FISHERfold / Boat
-            $ncfrs_registered = isset($_POST['ncfrs_registered']) ? mysqli_real_escape_string($conn, $_POST['ncfrs_registered']) : NULL;
-            $ncfrs_id = isset($_POST['ncfrs_id']) ? mysqli_real_escape_string($conn, $_POST['ncfrs_id']) : NULL;
-            $fisherfold_registered = isset($_POST['fisherfold_registered']) ? mysqli_real_escape_string($conn, $_POST['fisherfold_registered']) : NULL;
-            $fisherfold_id = isset($_POST['fisherfold_id']) ? mysqli_real_escape_string($conn, $_POST['fisherfold_id']) : NULL;
-            $membership_group = isset($_POST['membership_group']) ? mysqli_real_escape_string($conn, $_POST['membership_group']) : NULL;
-            $has_boat = isset($_POST['has_boat']) ? mysqli_real_escape_string($conn, $_POST['has_boat']) : NULL;
-            $boat_name = isset($_POST['boat_name']) ? mysqli_real_escape_string($conn, $_POST['boat_name']) : NULL;
-            $boat_registration_no = isset($_POST['boat_registration_no']) ? mysqli_real_escape_string($conn, $_POST['boat_registration_no']) : NULL;
-            $engine_hp = isset($_POST['engine_hp']) && $_POST['engine_hp'] !== '' ? floatval($_POST['engine_hp']) : NULL;
-
-            // RSBSA fields
-            $rsbsa_registered = isset($_POST['rsbsa_registered']) ? mysqli_real_escape_string($conn, $_POST['rsbsa_registered']) : NULL;
-            $geo_reference_status = isset($_POST['geo_reference_status']) ? mysqli_real_escape_string($conn, $_POST['geo_reference_status']) : NULL;
-            $date_of_registration = isset($_POST['date_of_registration']) && $_POST['date_of_registration'] !== '' ? mysqli_real_escape_string($conn, $_POST['date_of_registration']) : NULL;
-
-            // Validation for required registration fields
-            if (empty($rsbsa_registered)) {
-                throw new Exception("RSBSA Registration status is required.");
-            }
-            if (empty($ncfrs_registered)) {
-                throw new Exception("NCFRS Registration status is required.");
-            }
-            if (empty($fisherfold_registered)) {
-                throw new Exception("FishR Registration status is required.");
-            }
-            if (empty($has_boat)) {
-                throw new Exception("Boat ownership status is required.");
-            }
-            
-            // Specific validation for "Yes" selections
-            if ($rsbsa_registered == 'Yes' && empty($_POST['rsbsa_registration_number'])) {
-                throw new Exception("RSBSA Registration Number is required when farmer is RSBSA registered.");
-            }
-            if ($ncfrs_registered == 'Yes' && empty($ncfrs_id)) {
-                throw new Exception("NCFRS ID is required when farmer is NCFRS registered.");
-            }
-            if ($fisherfold_registered == 'Yes' && empty($fisherfold_id)) {
-                throw new Exception("Fisherfolk ID is required when farmer is FishR registered.");
-            }
-            if ($has_boat == 'Yes' && empty($boat_registration_no)) {
-                throw new Exception("Boat registration number is required when farmer has a boat.");
-            }
-
-            // Generate unique farmer ID - format: FMR + date + random number
-            do {
-                $date_part = date('Ymd'); // YYYYMMDD format
-                $random_part = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-                $farmer_id = 'FMR' . $date_part . $random_part;
-                
-                // Check if this ID already exists
-                $check_query = "SELECT farmer_id FROM farmers WHERE farmer_id = '$farmer_id'";
-                $check_result = mysqli_query($conn, $check_query);
-            } while (mysqli_num_rows($check_result) > 0);
-
-            // Prepare associative data for farmers (excluding commodity-related fields)
-            $farmer_data = [
-                'farmer_id' => $farmer_id,
-                'first_name' => $first_name,
-                'middle_name' => $middle_name,
-                'last_name' => $last_name,
-                'suffix' => $suffix,
-                'birth_date' => $birth_date,
-                'gender' => $gender,
-                'contact_number' => $contact_number,
-                'barangay_id' => $barangay_id,
-                'address_details' => $address_details,
-                'is_member_of_4ps' => $is_member_of_4ps,
-                'is_ip' => $is_ip,
-                'other_income_source' => $other_income_source,
-                'registration_date' => date('Y-m-d H:i:s')
-            ];
-
-            // Fetch existing farmer table columns
-            $existing_cols = [];
-            $col_res = mysqli_query($conn, "SHOW COLUMNS FROM farmers");
-            if ($col_res) {
-                while ($r = mysqli_fetch_assoc($col_res)) {
-                    $existing_cols[] = $r['Field'];
-                }
-            }
-
-            $insert_cols = [];
-            $insert_vals = [];
-            foreach ($farmer_data as $col => $val) {
-                if (in_array($col, $existing_cols)) {
-                    $insert_cols[] = $col;
-                    if (is_null($val)) {
-                        $insert_vals[] = "NULL";
-                    } elseif (is_int($val)) {
-                        $insert_vals[] = $val;
-                    } else {
-                        $insert_vals[] = sql_val($val);
-                    }
-                }
-            }
-
-            if (count($insert_cols) === 0) {
-                throw new Exception('No valid farmer columns found in database to insert.');
-            }
-
-            $farmer_query = "INSERT INTO farmers (" . implode(',', $insert_cols) . ") VALUES (" . implode(',', $insert_vals) . ")";
-            $farmer_result = mysqli_query($conn, $farmer_query);
-            if (!$farmer_result) {
-                throw new Exception("Error inserting farmer: " . mysqli_error($conn));
-            }
-
-            // Insert commodity data into junction table if commodity is selected
-            if (!is_null($primary_commodity)) {
-                $commodity_query = "INSERT INTO farmer_commodities (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
-                                   VALUES (" . sql_val($farmer_id) . ", " . $primary_commodity . ", " . 
-                                   (is_null($land_area_hectares) ? "NULL" : $land_area_hectares) . ", " . 
-                                   (is_null($years_farming) ? "NULL" : $years_farming) . ", 1)";
-                $commodity_result = mysqli_query($conn, $commodity_query);
-                if (!$commodity_result) {
-                    throw new Exception("Error inserting commodity data: " . mysqli_error($conn));
-                }
-            }
-
-            // Insert household info into separate table
-            $house_sql = "INSERT INTO household_info (farmer_id, civil_status, spouse_name, household_size, education_level, occupation) VALUES (" .
-                sql_val($farmer_id) . "," . sql_val($civil_status) . "," . sql_val($spouse_name) . "," .
-                (is_null($household_size) ? "NULL" : $household_size) . "," . sql_val($education_level) . "," . sql_val($occupation) . ")";
-
-            $house_result = mysqli_query($conn, $house_sql);
-            if (!$house_result) {
-                throw new Exception("Error inserting household info: " . mysqli_error($conn));
-            }
-
-            // If RSBSA registered, insert into rsbsa_registered_farmers table including extra fields and file upload
-            if ($rsbsa_registered == 'Yes' && !empty($_POST['rsbsa_registration_number'])) {
-                $rsbsa_registration_number = mysqli_real_escape_string($conn, $_POST['rsbsa_registration_number']);
-
-                // Check if RSBSA Registration Number already exists
-                $rsbsa_check_query = "SELECT rsbsa_id FROM rsbsa_registered_farmers WHERE rsbsa_registration_number = '$rsbsa_registration_number'";
-                $rsbsa_check_result = mysqli_query($conn, $rsbsa_check_query);
-
-                if (mysqli_num_rows($rsbsa_check_result) > 0) {
-                    throw new Exception("RSBSA Registration Number already exists in the system.");
-                }
-
-                // Build RSBSA data and only insert columns that exist in rsbsa_registered_farmers
-                $rsbsa_data = [
-                    'farmer_id' => $farmer_id,
-                    'rsbsa_registration_number' => $rsbsa_registration_number,
-                    'geo_reference_status' => $geo_reference_status,
-                    'date_of_registration' => $date_of_registration
-                ];
-
-                $rsbsa_existing = [];
-                $rcols = mysqli_query($conn, "SHOW COLUMNS FROM rsbsa_registered_farmers");
-                if ($rcols) {
-                    while ($rc = mysqli_fetch_assoc($rcols)) {
-                        $rsbsa_existing[] = $rc['Field'];
-                    }
-                }
-
-                $rsbsa_columns = [];
-                $rsbsa_values = [];
-                foreach ($rsbsa_data as $col => $val) {
-                    if (in_array($col, $rsbsa_existing)) {
-                        $rsbsa_columns[] = $col;
-                        if (is_null($val)) {
-                            $rsbsa_values[] = "NULL";
-                        } else {
-                            $rsbsa_values[] = sql_val($val);
-                        }
-                    }
-                }
-
-                if (count($rsbsa_columns) === 0) {
-                    throw new Exception('No valid rsbsa_registered_farmers columns found to insert.');
-                }
-
-                $rsbsa_query = "INSERT INTO rsbsa_registered_farmers (" . implode(',', $rsbsa_columns) . ") VALUES (" . implode(',', $rsbsa_values) . ")";
-                $rsbsa_result = mysqli_query($conn, $rsbsa_query);
-                if (!$rsbsa_result) {
-                    throw new Exception("Error inserting RSBSA registration: " . mysqli_error($conn));
-                }
-            }
-            
-            // Handle NCFRS Registration
-            if ($ncfrs_registered == 'Yes' && !empty($ncfrs_id)) {
-                // Check if NCFRS ID already exists
-                $ncfrs_check_query = "SELECT ncfrs_id FROM ncfrs_registered_farmers WHERE ncfrs_registration_number = '$ncfrs_id'";
-                $ncfrs_check_result = mysqli_query($conn, $ncfrs_check_query);
-                
-                if (mysqli_num_rows($ncfrs_check_result) > 0) {
-                    throw new Exception("NCFRS ID already exists in the system.");
-                }
-                
-                $ncfrs_query = "INSERT INTO ncfrs_registered_farmers (farmer_id, ncfrs_registration_number) 
-                               VALUES ('$farmer_id', '$ncfrs_id')";
-                $ncfrs_result = mysqli_query($conn, $ncfrs_query);
-                if (!$ncfrs_result) {
-                    throw new Exception("Error inserting NCFRS registration: " . mysqli_error($conn));
-                }
-            }
-            
-            // Handle Fisherfolk Registration
-            if ($fisherfold_registered == 'Yes' && !empty($fisherfold_id)) {
-                // Check if Fisherfolk ID already exists
-                $fisherfolk_check_query = "SELECT fisherfolk_id FROM fisherfolk_registered_farmers WHERE fisherfolk_registration_number = '$fisherfold_id'";
-                $fisherfolk_check_result = mysqli_query($conn, $fisherfolk_check_query);
-                
-                if (mysqli_num_rows($fisherfolk_check_result) > 0) {
-                    throw new Exception("Fisherfolk ID already exists in the system.");
-                }
-                
-                $fisherfolk_query = "INSERT INTO fisherfolk_registered_farmers (farmer_id, fisherfolk_registration_number) 
-                                    VALUES ('$farmer_id', '$fisherfold_id')";
-                $fisherfolk_result = mysqli_query($conn, $fisherfolk_query);
-                if (!$fisherfolk_result) {
-                    throw new Exception("Error inserting Fisherfolk registration: " . mysqli_error($conn));
-                }
-            }
-            
-            // Handle Boat Registration
-            if ($has_boat == 'Yes' && !empty($boat_name)) {
-                $boat_type = 'Fishing Boat'; // Default type
-                
-                // Check if boat registration number already exists (if provided)
-                if (!empty($boat_registration_no)) {
-                    $boat_check_query = "SELECT boat_id FROM boats WHERE registration_number = '$boat_registration_no'";
-                    $boat_check_result = mysqli_query($conn, $boat_check_query);
-                    
-                    if (mysqli_num_rows($boat_check_result) > 0) {
-                        throw new Exception("Boat registration number already exists in the system.");
-                    }
-                }
-                
-                $boat_query = "INSERT INTO boats (farmer_id, boat_name, boat_type, registration_number) 
-                              VALUES ('$farmer_id', '$boat_name', '$boat_type', " . 
-                              ($boat_registration_no ? "'$boat_registration_no'" : "NULL") . ")";
-                $boat_result = mysqli_query($conn, $boat_query);
-                if (!$boat_result) {
-                    throw new Exception("Error inserting boat information: " . mysqli_error($conn));
-                }
-            }
-            
-            
-            // Log the activity
-            require_once 'includes/activity_logger.php';
-            $activity_details = json_encode([
-                'farmer_id' => $farmer_id,
-                'name' => "$first_name $last_name",
-                'rsbsa' => $rsbsa_registered == 'Yes' ? 'Yes' : 'No',
-                'ncfrs' => $ncfrs_registered == 'Yes' ? 'Yes' : 'No',
-                'fisherfolk' => $fisherfold_registered == 'Yes' ? 'Yes' : 'No',
-                'boat' => $has_boat == 'Yes' ? 'Yes' : 'No'
-            ]);
-            logActivity($conn, "Registered new farmer: $first_name $last_name", 'farmer_registration', $activity_details);
-
-            // Create detailed success message
-            $registrations = [];
-            if ($rsbsa_registered == 'Yes') $registrations[] = 'RSBSA';
-            if ($ncfrs_registered == 'Yes') $registrations[] = 'NCFRS';
-            if ($fisherfold_registered == 'Yes') $registrations[] = 'FishR';
-            if ($has_boat == 'Yes') $registrations[] = 'Boat';
-            
-            $registration_text = empty($registrations) ? 
-                "No additional registrations." : 
-                "Additional registrations: " . implode(', ', $registrations) . ".";
-
-            // Commit transaction
-            mysqli_commit($conn);
-            $success_message = "Farmer registered successfully! Farmer ID: $farmer_id. $registration_text";
-            
-        } catch (Exception $e) {
-            // Rollback transaction
-            mysqli_rollback($conn);
-            $success = false;
-            $error_message = $e->getMessage();
-        } finally {
-            // Restore autocommit
-            mysqli_autocommit($conn, TRUE);
-        }
-        
-        // Re-enable autocommit
-        mysqli_autocommit($conn, TRUE);
-        
-        // Set session messages for display
-        session_start();
-        if ($success) {
-            $_SESSION['success_message'] = $success_message;
-        } else {
-            $_SESSION['error_message'] = $error_message;
-        }
-        
-        // Redirect to prevent form resubmission
-        header("Location: index.php");
+        // Redirect to farmers.php to handle registration using the new system
+        header("Location: farmers.php");
         exit();
     }
 }
@@ -385,40 +18,40 @@ unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
 // Initialize default values
-$total_farmers = $rsbsa_registered = $ncfrs_registered = $fisherfolk_registered = $total_boats = $total_commodities = $recent_yields = 0;
+$total_farmers = $total_boats = $total_commodities = $recent_yields = 0;
 $recent_activities = [];
 
 // Get dashboard statistics using procedural MySQL
 // Count total farmers
-$query = "SELECT COUNT(*) as total_farmers FROM farmers";
+$query = "SELECT COUNT(*) as total_farmers FROM farmers WHERE archived = 0";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_farmers = $row['total_farmers'];
 }
 
 // Count RSBSA registered farmers
-$query = "SELECT COUNT(*) as rsbsa_registered FROM rsbsa_registered_farmers";
+$query = "SELECT COUNT(*) as rsbsa_registered FROM farmers WHERE is_rsbsa = 1 AND archived = 0";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $rsbsa_registered = $row['rsbsa_registered'];
 }
 
 // Count NCFRS registered farmers
-$query = "SELECT COUNT(*) as ncfrs_registered FROM ncfrs_registered_farmers";
+$query = "SELECT COUNT(*) as ncfrs_registered FROM farmers WHERE is_ncfrs = 1 AND archived = 0";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $ncfrs_registered = $row['ncfrs_registered'];
 }
 
 // Count Fisherfolk registered farmers
-$query = "SELECT COUNT(*) as fisherfolk_registered FROM fisherfolk_registered_farmers";
+$query = "SELECT COUNT(*) as fisherfolk_registered FROM farmers WHERE is_fisherfolk = 1 AND archived = 0";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $fisherfolk_registered = $row['fisherfolk_registered'];
 }
 
-// Count total boats
-$query = "SELECT COUNT(*) as total_boats FROM boats";
+// Count farmers with boats
+$query = "SELECT COUNT(*) as total_boats FROM farmers WHERE is_boat = 1 AND archived = 0";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_boats = $row['total_boats'];
@@ -442,8 +75,7 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
 $query = "
     SELECT ym.*, f.first_name, f.last_name, c.commodity_name, s.first_name as staff_first_name, s.last_name as staff_last_name
     FROM yield_monitoring ym
-    JOIN land_parcels lp ON ym.parcel_id = lp.parcel_id
-    JOIN farmers f ON lp.farmer_id = f.farmer_id
+    JOIN farmers f ON ym.farmer_id = f.farmer_id
     JOIN commodities c ON ym.commodity_id = c.commodity_id
     JOIN mao_staff s ON ym.recorded_by_staff_id = s.staff_id
     ORDER BY ym.record_date DESC

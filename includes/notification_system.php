@@ -94,6 +94,7 @@ function getStockNotifications($conn) {
     // Query for low stock items from mao_inventory table
     $query = "
         SELECT 
+            ic.input_id,
             ic.input_name as item_name,
             ic.input_name as category,
             mi.quantity_on_hand as current_stock,
@@ -158,5 +159,44 @@ function getStockNotifications($conn) {
 function getNotificationCount($conn) {
     $notifications = getNotifications($conn);
     return count($notifications);
+}
+
+function getUnreadNotificationCount($conn) {
+    $user_id = $_SESSION['user_id'] ?? 0;
+    $notifications = getNotifications($conn);
+    $unread_count = 0;
+    
+    // Check if notification_reads table exists
+    $table_check = "SHOW TABLES LIKE 'notification_reads'";
+    $table_result = mysqli_query($conn, $table_check);
+    
+    if (mysqli_num_rows($table_result) == 0) {
+        // Table doesn't exist, create it
+        $create_table = "CREATE TABLE IF NOT EXISTS notification_reads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            notification_id VARCHAR(255) NOT NULL,
+            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_user_notification (user_id, notification_id)
+        )";
+        mysqli_query($conn, $create_table);
+        
+        // All notifications are unread if table was just created
+        return count($notifications);
+    }
+    
+    foreach ($notifications as $notification) {
+        // Check if this notification is read by this user
+        $notification_id = mysqli_real_escape_string($conn, $notification['id']);
+        $query = "SELECT id FROM notification_reads 
+                  WHERE user_id = $user_id AND notification_id = '$notification_id'";
+        $result = mysqli_query($conn, $query);
+        
+        if (!$result || mysqli_num_rows($result) == 0) {
+            $unread_count++;
+        }
+    }
+    
+    return $unread_count;
 }
 ?>

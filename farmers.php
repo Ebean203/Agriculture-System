@@ -49,17 +49,17 @@ function handleFarmerEdit($conn, $post_data) {
         $stmt = $conn->prepare("UPDATE farmers SET 
             first_name = ?, middle_name = ?, last_name = ?, suffix = ?, 
             birth_date = ?, gender = ?, contact_number = ?, barangay_id = ?, 
-            address_details = ?, is_member_of_4ps = ?, is_ip = ?, other_income_source = ?
+            address_details = ?, is_member_of_4ps = ?, is_ip = ?, is_rsbsa = ?, is_ncfrs = ?, is_boat = ?, is_fisherfolk = ?, other_income_source = ?
             WHERE farmer_id = ?");
         
         if (!$stmt) {
             throw new Exception("Failed to prepare UPDATE statement: " . $conn->error);
         }
         
-        $stmt->bind_param("sssssssisiiis", 
+        $stmt->bind_param("sssssssisiiiiiiss", 
             $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'],
             $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'],
-            $validated['address_details'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['other_income_source'],
+            $validated['address_details'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk'], $validated['other_income_source'],
             $validated['farmer_id']);
         
         if (!$stmt->execute()) {
@@ -84,6 +84,7 @@ function handleFarmerEdit($conn, $post_data) {
         }
         
         $farmers_updated = $stmt->affected_rows > 0;
+        $commodity_updated = $commodity_stmt->affected_rows > 0;
         
         // Update or insert household_info
         $household_stmt = $conn->prepare("SELECT id FROM household_info WHERE farmer_id = ?");
@@ -113,6 +114,7 @@ function handleFarmerEdit($conn, $post_data) {
             if (!$update_household->execute()) {
                 throw new Exception("Failed to execute household UPDATE: " . $update_household->error);
             }
+            $household_updated = $update_household->affected_rows > 0;
         } else {
             // Insert new household info
             $insert_household = $conn->prepare("INSERT INTO household_info 
@@ -130,13 +132,15 @@ function handleFarmerEdit($conn, $post_data) {
             if (!$insert_household->execute()) {
                 throw new Exception("Failed to execute household INSERT: " . $insert_household->error);
             }
+            $household_updated = $insert_household->affected_rows > 0;
         }
         
         // Commit transaction
         $conn->commit();
         $conn->autocommit(true);
         
-        if ($farmers_updated) {
+        // Check if any data was actually updated
+        if ($farmers_updated || $commodity_updated || $household_updated) {
             return ['success' => true, 'message' => 'Farmer updated successfully!'];
         } else {
             return ['success' => false, 'message' => 'No changes were made. The farmer data may be identical to what was already saved.'];
@@ -175,13 +179,13 @@ function handleFarmerRegistration($conn, $post_data) {
         $stmt = $conn->prepare("INSERT INTO farmers 
             (farmer_id, first_name, middle_name, last_name, suffix, birth_date, gender, 
              contact_number, barangay_id, address_details, 
-             other_income_source, is_member_of_4ps, is_ip, registration_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+             other_income_source, is_member_of_4ps, is_ip, is_rsbsa, is_ncfrs, is_boat, is_fisherfolk, registration_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
-        $stmt->bind_param("ssssssssissii", 
+        $stmt->bind_param("ssssssssissiiiiii", 
             $farmer_id, $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'], 
             $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'], $validated['address_details'], 
-            $validated['other_income_source'], $validated['is_member_of_4ps'], $validated['is_ip']);
+            $validated['other_income_source'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk']);
         $stmt->execute();
         
         // Insert commodity relationship into junction table
@@ -192,14 +196,19 @@ function handleFarmerRegistration($conn, $post_data) {
                 if (!empty($commodity_data['commodity_id']) && !empty($commodity_data['land_area_hectares']) && isset($commodity_data['years_farming'])) {
                     $is_primary = ($index == $primary_commodity_index) ? 1 : 0;
                     
+                    // Store values in variables for bind_param (required for pass by reference)
+                    $commodity_id = intval($commodity_data['commodity_id']);
+                    $land_area = floatval($commodity_data['land_area_hectares']);
+                    $years_farming = intval($commodity_data['years_farming']);
+                    
                     $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
                         (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
                         VALUES (?, ?, ?, ?, ?)");
                     $commodity_stmt->bind_param("sidii", 
                         $farmer_id, 
-                        intval($commodity_data['commodity_id']), 
-                        floatval($commodity_data['land_area_hectares']), 
-                        intval($commodity_data['years_farming']),
+                        $commodity_id, 
+                        $land_area, 
+                        $years_farming,
                         $is_primary
                     );
                     $commodity_stmt->execute();
@@ -225,30 +234,6 @@ function handleFarmerRegistration($conn, $post_data) {
             $farmer_id, $validated['civil_status'], $validated['spouse_name'], $validated['household_size'], 
             $validated['education_level'], $validated['occupation']);
         $household_stmt->execute();
-        
-        // Handle RSBSA registration
-        if (isset($post_data['rsbsa_registered']) && $post_data['rsbsa_registered'] === 'Yes') {
-            $rsbsa_stmt = $conn->prepare("INSERT INTO rsbsa_registered_farmers (farmer_id) VALUES (?)");
-            $rsbsa_stmt->bind_param("s", $farmer_id);
-            $rsbsa_stmt->execute();
-        }
-        
-        // Handle NCFRS registration
-        if (isset($post_data['ncfrs_registered']) && $post_data['ncfrs_registered'] === 'Yes') {
-            $ncfrs_registration_number = !empty($post_data['ncfrs_registration_number']) ? trim($post_data['ncfrs_registration_number']) : '';
-            $ncfrs_stmt = $conn->prepare("INSERT INTO ncfrs_registered_farmers (farmer_id, ncfrs_registration_number) VALUES (?, ?)");
-            $ncfrs_stmt->bind_param("ss", $farmer_id, $ncfrs_registration_number);
-            $ncfrs_stmt->execute();
-        }
-        
-        // Handle Fisherfolk registration
-        if (isset($post_data['fisherfolk_registered']) && $post_data['fisherfolk_registered'] === 'Yes') {
-            $fisherfolk_registration_number = !empty($post_data['fisherfolk_registration_number']) ? trim($post_data['fisherfolk_registration_number']) : '';
-            $vessel_id = !empty($post_data['vessel_id']) ? intval($post_data['vessel_id']) : 1;
-            $fisherfolk_stmt = $conn->prepare("INSERT INTO fisherfolk_registered_farmers (fisherfolk_registration_number, boat_id) VALUES (?, ?)");
-            $fisherfolk_stmt->bind_param("si", $fisherfolk_registration_number, $vessel_id);
-            $fisherfolk_stmt->execute();
-        }
         
         $conn->commit();
         return ['success' => true, 'message' => "Farmer registered successfully! Farmer ID: " . $farmer_id];
@@ -315,22 +300,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
             try {
                 $stmt = $conn->prepare("SELECT f.*, h.*, c.commodity_name, b.barangay_name,
                                       fc.land_area_hectares, fc.years_farming,
-                                      DATE_FORMAT(f.registration_date, '%M %d, %Y at %h:%i %p') as formatted_registration_date,
-                                      rsbsa.farmer_id as rsbsa_registered,
-                                      ncfrs.farmer_id as ncfrs_registered,
-                                      ncfrs.ncfrs_registration_number,
-                                      fisherfolk.fisherfolk_id as fisherfolk_registered,
-                                      fisherfolk.fisherfolk_registration_number,
-                                      boats.boat_id as vessel_id
+                                      DATE_FORMAT(f.registration_date, '%M %d, %Y at %h:%i %p') as formatted_registration_date
                                       FROM farmers f 
                                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
                                       LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
                                       LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
                                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
-                                      LEFT JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
-                                      LEFT JOIN ncfrs_registered_farmers ncfrs ON f.farmer_id = ncfrs.farmer_id
-                                      LEFT JOIN boats ON f.farmer_id = boats.farmer_id
-                                      LEFT JOIN fisherfolk_registered_farmers fisherfolk ON boats.boat_id = fisherfolk.boat_id
                                       WHERE f.farmer_id = ?");
                 $stmt->bind_param("s", $_GET['id']);
                 $stmt->execute();
@@ -582,48 +557,37 @@ function generateFarmerViewHTML($farmer) {
     
     // RSBSA Registration
     $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['rsbsa_registered']) ? 'bg-primary-subtle text-primary' : 'bg-light text-muted') . '">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_rsbsa']) ? 'bg-primary-subtle text-primary' : 'bg-light text-muted') . '">';
     $html .= '<i class="fas fa-file-contract d-block mb-2 fs-4"></i>';
     $html .= '<div class="fw-semibold mb-1">RSBSA</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['rsbsa_registered']) ? 'bg-primary' : 'bg-secondary') . '">' . (!empty($farmer['rsbsa_registered']) ? 'Registered' : 'Not Registered') . '</span>';
+    $html .= '<span class="badge ' . (!empty($farmer['is_rsbsa']) ? 'bg-primary' : 'bg-secondary') . '">' . (!empty($farmer['is_rsbsa']) ? 'Registered' : 'Not Registered') . '</span>';
     $html .= '</div>';
     $html .= '</div>';
     
     // NCFRS Registration
     $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['ncfrs_registered']) ? 'bg-success-subtle text-success' : 'bg-light text-muted') . '">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_ncfrs']) ? 'bg-success-subtle text-success' : 'bg-light text-muted') . '">';
     $html .= '<i class="fas fa-database d-block mb-2 fs-4"></i>';
     $html .= '<div class="fw-semibold mb-1">NCFRS</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['ncfrs_registered']) ? 'bg-success' : 'bg-secondary') . '">' . (!empty($farmer['ncfrs_registered']) ? 'Registered' : 'Not Registered') . '</span>';
-    if (!empty($farmer['ncfrs_registration_number'])) {
-        $html .= '<div class="small mt-1">ID: ' . htmlspecialchars($farmer['ncfrs_registration_number']) . '</div>';
-    }
+    $html .= '<span class="badge ' . (!empty($farmer['is_ncfrs']) ? 'bg-success' : 'bg-secondary') . '">' . (!empty($farmer['is_ncfrs']) ? 'Registered' : 'Not Registered') . '</span>';
     $html .= '</div>';
     $html .= '</div>';
     
     // Fisherfolk Registration
     $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['fisherfolk_registered']) ? 'bg-info-subtle text-info' : 'bg-light text-muted') . '">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_fisherfolk']) ? 'bg-info-subtle text-info' : 'bg-light text-muted') . '">';
     $html .= '<i class="fas fa-fish d-block mb-2 fs-4"></i>';
     $html .= '<div class="fw-semibold mb-1">Fisherfolk</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['fisherfolk_registered']) ? 'bg-info' : 'bg-secondary') . '">' . (!empty($farmer['fisherfolk_registered']) ? 'Registered' : 'Not Registered') . '</span>';
-    if (!empty($farmer['fisherfolk_registration_number'])) {
-        $html .= '<div class="small mt-1">ID: ' . htmlspecialchars($farmer['fisherfolk_registration_number']) . '</div>';
-    }
+    $html .= '<span class="badge ' . (!empty($farmer['is_fisherfolk']) ? 'bg-info' : 'bg-secondary') . '">' . (!empty($farmer['is_fisherfolk']) ? 'Registered' : 'Not Registered') . '</span>';
     $html .= '</div>';
     $html .= '</div>';
     
     // Vessel Information
     $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['vessel_id']) ? 'bg-warning-subtle text-warning' : 'bg-light text-muted') . '">';
+    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_boat']) ? 'bg-warning-subtle text-warning' : 'bg-light text-muted') . '">';
     $html .= '<i class="fas fa-ship d-block mb-2 fs-4"></i>';
     $html .= '<div class="fw-semibold mb-1">Vessel</div>';
-    if (!empty($farmer['vessel_id'])) {
-        $html .= '<span class="badge bg-warning">Has Vessel</span>';
-        $html .= '<div class="small mt-1">Vessel ID: ' . htmlspecialchars($farmer['vessel_id']) . '</div>';
-    } else {
-        $html .= '<span class="badge bg-secondary">No Vessel</span>';
-    }
+    $html .= '<span class="badge ' . (!empty($farmer['is_boat']) ? 'bg-warning' : 'bg-secondary') . '">' . (!empty($farmer['is_boat']) ? 'Has Boat' : 'No Boat') . '</span>';
     $html .= '</div>';
     $html .= '</div>';
     
@@ -1214,7 +1178,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
             suggestions.classList.remove('hidden');
 
             // Make AJAX request to get farmer suggestions
-            fetch('get_farmers.php?action=search&query=' + encodeURIComponent(query))
+            fetch('get_farmers.php?action=search&include_archived=false&query=' + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.farmers && data.farmers.length > 0) {

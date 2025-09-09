@@ -142,12 +142,13 @@ if ($_SESSION['role'] !== 'admin') {
                                 <div class="col-md-4 mb-3">
                                     <label for="edit_education_level" class="form-label">Education Level <span class="text-danger">*</span></label>
                                     <select class="form-select" id="edit_education_level" name="education_level" required>
-                                        <option value="">Select</option>
+                                        <option value="">Select Education Level</option>
                                         <option value="Elementary">Elementary</option>
-                                        <option value="High School">High School</option>
+                                        <option value="Highschool">High School</option>
                                         <option value="College">College</option>
                                         <option value="Vocational">Vocational</option>
                                         <option value="Graduate">Graduate</option>
+                                        <option value="Not Specified">Not Specified</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
@@ -168,6 +169,22 @@ if ($_SESSION['role'] !== 'admin') {
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="edit_is_ip" name="is_ip">
                                         <label class="form-check-label" for="edit_is_ip">Indigenous Peoples (IP)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_is_rsbsa" name="is_rsbsa">
+                                        <label class="form-check-label" for="edit_is_rsbsa">RSBSA Registered</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_is_ncfrs" name="is_ncfrs">
+                                        <label class="form-check-label" for="edit_is_ncfrs">NCFRS Registered</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_is_fisherfolk" name="is_fisherfolk">
+                                        <label class="form-check-label" for="edit_is_fisherfolk">Fisherfolk Registered</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_is_boat" name="is_boat">
+                                        <label class="form-check-label" for="edit_is_boat">Has Boat</label>
                                     </div>
                                 </div>
                             </div>
@@ -354,6 +371,10 @@ function editFarmer(farmerId) {
                 // Handle checkboxes
                 document.getElementById('edit_is_member_of_4ps').checked = farmer.is_member_of_4ps == '1';
                 document.getElementById('edit_is_ip').checked = farmer.is_ip == '1';
+                document.getElementById('edit_is_rsbsa').checked = farmer.is_rsbsa == '1';
+                document.getElementById('edit_is_ncfrs').checked = farmer.is_ncfrs == '1';
+                document.getElementById('edit_is_fisherfolk').checked = farmer.is_fisherfolk == '1';
+                document.getElementById('edit_is_boat').checked = farmer.is_boat == '1';
                 
                 // Trigger spouse field visibility
                 toggleEditSpouseField();

@@ -8,12 +8,28 @@ if ($_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Helper function to format farmer name properly (exclude N/A suffixes)
+function formatFarmerName($first_name, $middle_name, $last_name, $suffix) {
+    $name_parts = [];
+    
+    if (!empty($first_name)) $name_parts[] = $first_name;
+    if (!empty($middle_name)) $name_parts[] = $middle_name;
+    if (!empty($last_name)) $name_parts[] = $last_name;
+    
+    // Only add suffix if it's not N/A (case insensitive)
+    if (!empty($suffix) && !in_array(strtolower($suffix), ['n/a', 'na'])) {
+        $name_parts[] = $suffix;
+    }
+    
+    return trim(implode(' ', $name_parts));
+}
+
 // Handle PDF export
 if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Build search condition for export
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-    $search_condition = 'WHERE f.archived = 0';
+    $search_condition = 'WHERE f.archived = 0 AND f.is_fisherfolk = 1';
     $search_params = [];
     
     if (!empty($search)) {
@@ -31,17 +47,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details,
                    GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
-                   b.barangay_name, boats.boat_name, 
-                   boats.boat_type, boats.registration_number, f.registration_date,
-                   ff.fisherfolk_registration_number
+                   b.barangay_name, f.registration_date as fisherfolk_registration_date
                    FROM farmers f
-                   INNER JOIN fisherfolk_registered_farmers ff ON f.farmer_id = ff.fisherfolk_id
-                   INNER JOIN boats ON ff.boat_id = boats.boat_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
                    LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
                    LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                    $search_condition
-                   GROUP BY f.farmer_id, ff.fisherfolk_registration_number
+                   GROUP BY f.farmer_id
                    ORDER BY f.registration_date DESC";
     
     if (!empty($search_params)) {
@@ -69,10 +81,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Full Name</th>
                     <th>Contact</th>
                     <th>Barangay</th>
-                    <th>FishR Reg. No.</th>
-                    <th>Boat Name</th>
-                    <th>Boat Type</th>
-                    <th>Boat Reg. No.</th>
                     <th>Commodities & Land Area</th>
                     <th>Registration Date</th>
                 </tr>
@@ -80,18 +88,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
             <tbody>';
         
         while ($row = $export_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
+            $full_name = formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $row['suffix']);
             $html .= '<tr>
                 <td>' . htmlspecialchars($row['farmer_id']) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars($row['fisherfolk_registration_number']) . '</td>
-                <td>' . htmlspecialchars($row['boat_name']) . '</td>
-                <td>' . htmlspecialchars($row['boat_type']) . '</td>
-                <td>' . htmlspecialchars($row['registration_number']) . '</td>
                 <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
-                <td>' . htmlspecialchars($row['registration_date']) . '</td>
+                <td>' . htmlspecialchars(date('M d, Y', strtotime($row['fisherfolk_registration_date']))) . '</td>
             </tr>';
         }
         
@@ -139,7 +143,7 @@ $limit = 10;
 $offset = ($page - 1) * $limit;
 
 // Build search condition
-$search_condition = 'WHERE f.archived = 0';
+$search_condition = 'WHERE f.archived = 0 AND f.is_fisherfolk = 1';
 $search_params = [];
 $param_types = '';
 
@@ -159,8 +163,6 @@ if (!empty($barangay_filter)) {
 // Get total count for pagination
 $count_sql = "SELECT COUNT(DISTINCT f.farmer_id) as total 
               FROM farmers f
-              INNER JOIN fisherfolk_registered_farmers ff ON f.farmer_id = ff.fisherfolk_id
-              INNER JOIN boats ON ff.boat_id = boats.boat_id
               LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
               LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
               LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
@@ -183,17 +185,13 @@ $total_pages = ceil($total_records / $limit);
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.address_details,
         GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
-        b.barangay_name, boats.boat_name, 
-        boats.boat_type, boats.registration_number, f.registration_date,
-        ff.fisherfolk_registration_number
+        b.barangay_name, f.registration_date as fisherfolk_registration_date
         FROM farmers f
-        INNER JOIN fisherfolk_registered_farmers ff ON f.farmer_id = ff.fisherfolk_id
-        INNER JOIN boats ON ff.boat_id = boats.boat_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
         LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         $search_condition
-        GROUP BY f.farmer_id, ff.fisherfolk_registration_number
+        GROUP BY f.farmer_id
         ORDER BY f.registration_date DESC
         LIMIT ? OFFSET ?";
 
@@ -330,9 +328,9 @@ if (!empty($search_params)) {
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fisher Details</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Location</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FishR Registration</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Boat Information</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Commodity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -347,10 +345,7 @@ if (!empty($search_params)) {
                                             </div>
                                             <div class="ml-4">
                                                 <div class="text-sm font-medium text-gray-900">
-                                                    <?php 
-                                                    $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
-                                                    echo htmlspecialchars($full_name); 
-                                                    ?>
+                                                    <?php echo htmlspecialchars(formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $row['suffix'])); ?>
                                                 </div>
                                                 <div class="text-sm text-gray-500">ID: <?php echo htmlspecialchars($row['farmer_id']); ?></div>
                                             </div>
@@ -361,21 +356,21 @@ if (!empty($search_params)) {
                                         <div class="text-sm text-gray-500"><?php echo htmlspecialchars($row['barangay_name']); ?></div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($row['fisherfolk_registration_number'] ?: 'Not specified'); ?></div>
-                                        <div class="text-sm text-gray-500">
-                                            Registered: <?php echo date('M d, Y', strtotime($row['registration_date'])); ?>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            <?php echo date('M d, Y', strtotime($row['fisherfolk_registration_date'])); ?>
                                         </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($row['boat_name'] ?: 'Not specified'); ?></div>
                                         <div class="text-sm text-gray-500">
-                                            <strong>Type:</strong> <?php echo htmlspecialchars($row['boat_type'] ?: 'Not specified'); ?><br>
-                                            <strong>Reg:</strong> <?php echo htmlspecialchars($row['registration_number'] ?: 'Not specified'); ?>
+                                            Fisherfolk Registration
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             <?php echo htmlspecialchars($row['commodities_info'] ?: 'Not specified'); ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <i class="fas fa-fish mr-1"></i>Fisherfolk Registered
                                         </span>
                                     </td>
                                 </tr>
@@ -482,7 +477,7 @@ if (!empty($search_params)) {
             suggestions.classList.remove('hidden');
 
             // Make AJAX request to get farmer suggestions
-            fetch('get_farmers.php?action=search&query=' + encodeURIComponent(query))
+            fetch('get_farmers.php?action=search&include_archived=false&filter_type=fisherfolk&query=' + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.farmers && data.farmers.length > 0) {

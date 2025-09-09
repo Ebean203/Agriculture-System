@@ -8,18 +8,34 @@ if ($_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Helper function to format farmer name properly (exclude N/A suffixes)
+function formatFarmerName($first_name, $middle_name, $last_name, $suffix) {
+    $name_parts = [];
+    
+    if (!empty($first_name)) $name_parts[] = $first_name;
+    if (!empty($middle_name)) $name_parts[] = $middle_name;
+    if (!empty($last_name)) $name_parts[] = $last_name;
+    
+    // Only add suffix if it's not N/A (case insensitive)
+    if (!empty($suffix) && !in_array(strtolower($suffix), ['n/a', 'na'])) {
+        $name_parts[] = $suffix;
+    }
+    
+    return trim(implode(' ', $name_parts));
+}
+
 // Handle PDF export
 if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Build search condition for export
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-    $search_condition = 'WHERE f.archived = 0';
+    $search_condition = 'WHERE f.archived = 0 AND f.is_boat = 1';
     $search_params = [];
     
     if (!empty($search)) {
-        $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR boats.registration_number LIKE ?)";
+        $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
         $search_term = "%$search%";
-        $search_params = [$search_term, $search_term, $search_term, $search_term];
+        $search_params = [$search_term, $search_term, $search_term];
     }
     
     if (!empty($barangay_filter)) {
@@ -31,14 +47,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details, b.barangay_name,
                    GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
-                   boats.boat_id, boats.registration_number, boats.boat_name, boats.boat_type
+                   f.registration_date as boat_registration_date
                    FROM farmers f
-                   INNER JOIN boats ON f.farmer_id = boats.farmer_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
                    LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
                    LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                    $search_condition
-                   GROUP BY f.farmer_id, boats.boat_id
+                   GROUP BY f.farmer_id
                    ORDER BY f.registration_date DESC";
     
     if (!empty($search_params)) {
@@ -52,8 +67,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     
     // Create PDF content
     $html = '<div class="header">
-        <div class="title">Boat Records Report</div>
-        <div class="subtitle">Fishing Boat Registration and Management System</div>
+        <div class="title">Boat Owner Records Report</div>
+        <div class="subtitle">Farmers with Boat Registration Status</div>
         <div class="subtitle">Generated on: ' . date('F d, Y h:i A') . '</div>
         <div class="subtitle">Total Records: ' . $export_result->num_rows . '</div>
     </div>';
@@ -63,35 +78,33 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
             <thead>
                 <tr>
                     <th>Farmer ID</th>
-                    <th>Owner Name</th>
+                    <th>Farmer Name</th>
                     <th>Contact</th>
                     <th>Barangay</th>
-                    <th>Boat Name</th>
-                    <th>Registration No.</th>
-                    <th>Boat Type</th>
+                    <th>Commodities</th>
+                    <th>Registration Date</th>
                 </tr>
             </thead>
             <tbody>';
         
         while ($row = $export_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
+            $full_name = formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $row['suffix']);
             
             $html .= '<tr>
                 <td>' . htmlspecialchars($row['farmer_id']) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars($row['boat_name']) . '</td>
-                <td>' . htmlspecialchars($row['registration_number']) . '</td>
-                <td>' . htmlspecialchars($row['boat_type']) . '</td>
+                <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
+                <td>' . htmlspecialchars(date('M d, Y', strtotime($row['boat_registration_date']))) . '</td>
             </tr>';
         }
         
         $html .= '</tbody></table>';
     } else {
         $html .= '<div style="text-align: center; padding: 50px;">
-            <h3>No Boat Records Found</h3>
-            <p>No boats are currently registered in the system.</p>
+            <h3>No Boat Owner Records Found</h3>
+            <p>No farmers with boat registration status are currently in the system.</p>
         </div>';
     }
     
@@ -182,13 +195,13 @@ $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
 
 // Build search condition
-$search_condition = 'WHERE f.archived = 0';
+$search_condition = 'WHERE f.archived = 0 AND f.is_boat = 1';
 $search_params = [];
 
 if (!empty($search)) {
-    $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR boats.registration_number LIKE ?)";
+    $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
     $search_term = "%$search%";
-    $search_params = [$search_term, $search_term, $search_term, $search_term];
+    $search_params = [$search_term, $search_term, $search_term];
 }
 
 if (!empty($barangay_filter)) {
@@ -199,7 +212,6 @@ if (!empty($barangay_filter)) {
 // Count total records
 $count_sql = "SELECT COUNT(DISTINCT f.farmer_id) as total 
               FROM farmers f 
-              INNER JOIN boats ON f.farmer_id = boats.farmer_id
               LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
               LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
               LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
@@ -222,15 +234,14 @@ $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
         GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
         b.barangay_name, h.household_size,
-        boats.boat_id, boats.registration_number, boats.boat_name, boats.boat_type
+        f.registration_date as boat_registration_date
         FROM farmers f
-        INNER JOIN boats ON f.farmer_id = boats.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
         LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition
-        GROUP BY f.farmer_id, boats.boat_id
+        GROUP BY f.farmer_id
         ORDER BY f.registration_date DESC, f.farmer_id DESC
         LIMIT ? OFFSET ?";
 
@@ -397,76 +408,73 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                         <thead class="bg-agri-green text-white">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-id-card mr-1"></i>Boat ID
+                                    <i class="fas fa-id-card mr-1"></i>Farmer ID
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-user mr-1"></i>Owner Name
+                                    <i class="fas fa-user mr-1"></i>Farmer Name
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-ship mr-1"></i>Boat Details
+                                    <i class="fas fa-phone mr-1"></i>Contact
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-certificate mr-1"></i>Registration
+                                    <i class="fas fa-map-marker-alt mr-1"></i>Barangay
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-map-marker-alt mr-1"></i>Location
+                                    <i class="fas fa-seedling mr-1"></i>Commodities
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-clipboard-list mr-1"></i>Details
+                                    <i class="fas fa-calendar mr-1"></i>Registration Date
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                    <i class="fas fa-ship mr-1"></i>Status
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <?php if ($result->num_rows > 0): ?>
-                                <?php while ($boat = $result->fetch_assoc()): ?>
+                                <?php while ($farmer = $result->fetch_assoc()): ?>
                                     <tr class="hover:bg-agri-light transition-colors">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             <span class="bg-agri-green text-white px-2 py-1 rounded text-xs">
-                                                #<?php echo $boat['boat_id']; ?>
+                                                #<?php echo $farmer['farmer_id']; ?>
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">
-                                                <?php echo htmlspecialchars(trim($boat['first_name'] . ' ' . $boat['middle_name'] . ' ' . $boat['last_name'] . ' ' . $boat['suffix'])); ?>
+                                                <?php echo htmlspecialchars(formatFarmerName($farmer['first_name'], $farmer['middle_name'], $farmer['last_name'], $farmer['suffix'])); ?>
                                             </div>
                                             <div class="text-sm text-gray-500">
-                                                <i class="fas fa-phone mr-1"></i>
-                                                <?php echo htmlspecialchars($boat['contact_number']); ?>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                <i class="fas fa-ship mr-1 text-green-600"></i>
-                                                <?php echo htmlspecialchars($boat['boat_name']); ?>
-                                            </div>
-                                            <div class="text-sm text-gray-500">
-                                                <?php echo htmlspecialchars($boat['boat_type']); ?>
+                                                <i class="fas fa-birthday-cake mr-1"></i>
+                                                <?php echo $farmer['birth_date'] ? date('M d, Y', strtotime($farmer['birth_date'])) : 'N/A'; ?>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                                                <i class="fas fa-certificate mr-1"></i>
-                                                <?php echo htmlspecialchars($boat['registration_number']); ?>
-                                            </span>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                Reg: <?php echo date('M d, Y', strtotime($boat['registration_date'])); ?>
-                                            </div>
+                                            <i class="fas fa-phone mr-1 text-green-600"></i>
+                                            <?php echo htmlspecialchars($farmer['contact_number']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <i class="fas fa-map-pin mr-1 text-red-600"></i>
-                                            <?php echo htmlspecialchars($boat['barangay_name']); ?>
+                                            <?php echo htmlspecialchars($farmer['barangay_name']); ?>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div class="flex items-center">
-                                                <span class="h-2 w-2 bg-green-400 rounded-full mr-2"></span>
-                                                Active Boat
-                                            </div>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                                                <i class="fas fa-leaf mr-1"></i>
+                                                <?php echo htmlspecialchars($farmer['commodities_info'] ?? 'N/A'); ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <?php echo date('M d, Y', strtotime($farmer['boat_registration_date'])); ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+                                                <i class="fas fa-ship mr-1"></i>Boat Owner
+                                            </span>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center">
                                         <i class="fas fa-ship text-6xl text-gray-300 mb-4"></i>
                                         <h3 class="text-lg font-medium text-gray-900 mb-2">No Boat Records Found</h3>
@@ -565,7 +573,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             suggestions.classList.remove('hidden');
 
             // Make AJAX request to get farmer suggestions
-            fetch('get_farmers.php?action=search&query=' + encodeURIComponent(query))
+            fetch('get_farmers.php?action=search&include_archived=false&filter_type=boat&query=' + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.farmers && data.farmers.length > 0) {

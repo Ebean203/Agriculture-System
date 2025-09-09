@@ -12,6 +12,7 @@ try {
         // Search functionality for auto-suggest
         $query = isset($_GET['query']) ? trim($_GET['query']) : '';
         $include_archived = isset($_GET['include_archived']) ? $_GET['include_archived'] === 'true' : false;
+        $filter_type = isset($_GET['filter_type']) ? $_GET['filter_type'] : '';
         
         if (strlen($query) < 1) {
             echo json_encode(['success' => false, 'message' => 'Query too short']);
@@ -19,12 +20,30 @@ try {
         }
         
         // Search farmers by name, contact number
-        $archived_condition = $include_archived ? "" : "f.archived = 0 AND";
+        $archived_condition = $include_archived ? "" : "f.archived = 0 AND ";
+        
+        // Add type-specific filtering
+        $type_condition = "";
+        switch($filter_type) {
+            case 'rsbsa':
+                $type_condition = "f.is_rsbsa = 1 AND ";
+                break;
+            case 'ncfrs':
+                $type_condition = "f.is_ncfrs = 1 AND ";
+                break;
+            case 'fisherfolk':
+                $type_condition = "f.is_fisherfolk = 1 AND ";
+                break;
+            case 'boat':
+                $type_condition = "f.is_boat = 1 AND ";
+                break;
+        }
+        
         $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.contact_number, b.barangay_name,
                        f.archived as is_archived
                 FROM farmers f 
                 LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                WHERE $archived_condition (CONCAT(f.first_name, ' ', f.middle_name, ' ', f.last_name) LIKE ? 
+                WHERE {$archived_condition}{$type_condition}(CONCAT(f.first_name, ' ', f.middle_name, ' ', f.last_name) LIKE ? 
                      OR f.contact_number LIKE ?
                      OR f.farmer_id LIKE ?)
                 ORDER BY f.first_name, f.last_name

@@ -8,12 +8,28 @@ if ($_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Helper function to format farmer name properly (exclude N/A suffixes)
+function formatFarmerName($first_name, $middle_name, $last_name, $suffix) {
+    $name_parts = [];
+    
+    if (!empty($first_name)) $name_parts[] = $first_name;
+    if (!empty($middle_name)) $name_parts[] = $middle_name;
+    if (!empty($last_name)) $name_parts[] = $last_name;
+    
+    // Only add suffix if it's not N/A (case insensitive)
+    if (!empty($suffix) && !in_array(strtolower($suffix), ['n/a', 'na'])) {
+        $name_parts[] = $suffix;
+    }
+    
+    return trim(implode(' ', $name_parts));
+}
+
 // Handle PDF export
 if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Build search condition for export
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
-    $search_condition = 'WHERE f.archived = 0';
+    $search_condition = 'WHERE f.archived = 0 AND f.is_rsbsa = 1';
     $search_params = [];
     
     if (!empty($search)) {
@@ -31,16 +47,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details,
                    GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
-                   b.barangay_name, rsbsa.rsbsa_registration_number, 
-                   rsbsa.geo_reference_status, rsbsa.date_of_registration
+                   b.barangay_name, f.registration_date as rsbsa_registration_date
                    FROM farmers f
-                   INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
                    LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
                    LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
                    $search_condition
-                   GROUP BY f.farmer_id, rsbsa.rsbsa_registration_number
-                   ORDER BY rsbsa.date_of_registration DESC";
+                   GROUP BY f.farmer_id
+                   ORDER BY f.registration_date DESC";
     
     if (!empty($search_params)) {
         $stmt = $conn->prepare($export_sql);
@@ -67,25 +81,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Full Name</th>
                     <th>Contact</th>
                     <th>Barangay</th>
-                    <th>RSBSA Reg. No.</th>
-                    <th>Geo Status</th>
+                    <th>Registration Date</th>
                     <th>Commodities & Land Area</th>
-                    <th>RSBSA Date</th>
                 </tr>
             </thead>
             <tbody>';
         
         while ($row = $export_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
+            $full_name = formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $row['suffix']);
             $html .= '<tr>
                 <td>' . htmlspecialchars($row['farmer_id']) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars($row['rsbsa_registration_number']) . '</td>
-                <td>' . htmlspecialchars($row['geo_reference_status']) . '</td>
+                <td>' . htmlspecialchars(date('M d, Y', strtotime($row['rsbsa_registration_date']))) . '</td>
                 <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
-                <td>' . htmlspecialchars($row['date_of_registration']) . '</td>
             </tr>';
         }
         
@@ -182,7 +192,7 @@ while ($row = $barangays_result->fetch_assoc()) {
 }
 
 // Build search condition
-$search_condition = 'WHERE f.archived = 0';
+$search_condition = 'WHERE f.archived = 0 AND f.is_rsbsa = 1';
 $search_params = [];
 
 if (!empty($search)) {
@@ -199,7 +209,6 @@ if (!empty($barangay_filter)) {
 // Get total records for pagination
 $count_sql = "SELECT COUNT(*) as total 
               FROM farmers f 
-              INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id 
               $search_condition";
 
 if (!empty($search_params)) {
@@ -220,17 +229,15 @@ $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
         GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
         b.barangay_name, h.household_size,
-        rsbsa.rsbsa_registration_number, rsbsa.geo_reference_status, 
-        rsbsa.date_of_registration as rsbsa_registration_date
+        f.registration_date as rsbsa_registration_date
         FROM farmers f
-        INNER JOIN rsbsa_registered_farmers rsbsa ON f.farmer_id = rsbsa.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
         LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition
-        GROUP BY f.farmer_id, rsbsa.rsbsa_registration_number
-        ORDER BY rsbsa.date_of_registration DESC, f.registration_date DESC
+        GROUP BY f.farmer_id
+        ORDER BY f.registration_date DESC
         LIMIT ? OFFSET ?";
 
 if (!empty($search_params)) {
@@ -403,16 +410,13 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                     <i class="fas fa-map-marker-alt mr-1"></i>Barangay
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-certificate mr-1"></i>RSBSA Reg. No.
+                                    <i class="fas fa-seedling mr-1"></i>Commodities
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-map mr-1"></i>Geo Status
+                                    <i class="fas fa-calendar mr-1"></i>Registration Date
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-calendar mr-1"></i>RSBSA Date
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-seedling mr-1"></i>Details
+                                    <i class="fas fa-certificate mr-1"></i>Status
                                 </th>
                             </tr>
                         </thead>
@@ -427,7 +431,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-900">
-                                                <?php echo htmlspecialchars(trim($farmer['first_name'] . ' ' . $farmer['middle_name'] . ' ' . $farmer['last_name'] . ' ' . $farmer['suffix'])); ?>
+                                                <?php echo htmlspecialchars(formatFarmerName($farmer['first_name'], $farmer['middle_name'], $farmer['last_name'], $farmer['suffix'])); ?>
                                             </div>
                                             <div class="text-sm text-gray-500">
                                                 <i class="fas fa-birthday-cake mr-1"></i>
@@ -449,7 +453,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <?php echo date('M d, Y', strtotime($farmer['registration_date'])); ?>
+                                            <?php echo date('M d, Y', strtotime($farmer['rsbsa_registration_date'])); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">
@@ -585,7 +589,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             suggestions.classList.remove('hidden');
 
             // Make AJAX request to get farmer suggestions
-            fetch('get_farmers.php?action=search&query=' + encodeURIComponent(query))
+            fetch('get_farmers.php?action=search&include_archived=false&filter_type=rsbsa&query=' + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.farmers && data.farmers.length > 0) {

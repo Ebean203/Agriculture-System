@@ -706,6 +706,40 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                 }, 200); // Delay to allow click events on suggestions
             }
         }
+        
+        // Handle notification-based navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchParam = urlParams.get('search');
+            
+            if (searchParam) {
+                // Pre-fill search field
+                const searchInput = document.getElementById('distribution_search');
+                if (searchInput && !searchInput.value) {
+                    searchInput.value = searchParam;
+                    
+                    // Trigger search automatically
+                    const form = searchInput.closest('form');
+                    if (form) {
+                        form.submit();
+                    }
+                    
+                    // Highlight search field briefly
+                    searchInput.style.border = '2px solid #ef4444';
+                    searchInput.style.backgroundColor = '#fef2f2';
+                    setTimeout(() => {
+                        searchInput.style.border = '';
+                        searchInput.style.backgroundColor = '';
+                    }, 3000);
+                }
+                
+                // Clean URL after search
+                setTimeout(() => {
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                }, 2000);
+            }
+        });
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>

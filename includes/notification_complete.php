@@ -80,8 +80,17 @@ window.notificationDropdown = {
             const urgencyClass = this.getUrgencyClass(notification.type);
             const iconClass = this.getIconClass(notification.category, notification.type);
             
+            // Prepare data for click handler
+            const inputId = notification.data && notification.data.input_id ? notification.data.input_id : '';
+            const itemName = notification.data && notification.data.item_name ? notification.data.item_name : '';
+            
             html += `
-                <div class="p-3 border-b border-gray-100 hover:bg-gray-50 ${index === notifications.length - 1 ? 'border-b-0' : ''}">
+                <div class="notification-item p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${index === notifications.length - 1 ? 'border-b-0' : ''}"
+                     data-notification-id="${notification.id}"
+                     data-category="${notification.category}"
+                     data-item-name="${itemName}"
+                     data-input-id="${inputId}"
+                     onclick="handleNotificationClick('${notification.id}', '${notification.category}', '${itemName}', '${inputId}')">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0">
                             <i class="${iconClass}"></i>
@@ -206,6 +215,74 @@ document.addEventListener('click', function(event) {
         window.notificationDropdown.close();
     }
 });
+
+// Global function for index.php notification button
+function toggleNotificationDropdown() {
+    window.notificationDropdown.toggle();
+}
+
+// Global click handler functions for notifications
+function handleNotificationClick(notificationId, category, itemName, inputId) {
+    console.log('Notification clicked:', {
+        notificationId: notificationId,
+        category: category,
+        itemName: itemName,
+        inputId: inputId
+    });
+    
+    // Close notification dropdown
+    window.notificationDropdown.close();
+    
+    // Navigate to appropriate page with specific item focus
+    navigateToNotificationPage(category, itemName, inputId);
+}
+
+function navigateToNotificationPage(category, itemName, inputId) {
+    console.log('Navigating to:', {
+        category: category,
+        itemName: itemName,
+        inputId: inputId
+    });
+    
+    // Navigate based on notification category with smart routing
+    switch(category) {
+        case 'inventory':
+            // Redirect to inventory management page with specific item highlight
+            if (inputId && inputId !== '') {
+                console.log('Redirecting to inventory with inputId:', inputId);
+                // Navigate to inventory page and highlight specific item
+                window.location.href = 'mao_inventory.php?highlight=' + inputId + '&item=' + encodeURIComponent(itemName);
+            } else {
+                console.log('Redirecting to inventory with search:', itemName);
+                // Search by item name if no ID available
+                window.location.href = 'mao_inventory.php?search=' + encodeURIComponent(itemName);
+            }
+            break;
+        case 'visitation':
+            console.log('Redirecting to visitation records');
+            // Redirect to input distribution records page with specific search
+            if (itemName && itemName !== '') {
+                window.location.href = 'input_distribution_records.php?search=' + encodeURIComponent(itemName);
+            } else {
+                window.location.href = 'input_distribution_records.php';
+            }
+            break;
+        case 'farmer':
+            console.log('Redirecting to farmers page');
+            // Redirect to farmers page
+            window.location.href = 'farmers.php';
+            break;
+        case 'yield':
+            console.log('Redirecting to yield monitoring');
+            // Redirect to yield monitoring page
+            window.location.href = 'yield_monitoring.php';
+            break;
+        default:
+            console.log('Redirecting to dashboard (default)');
+            // Default to dashboard
+            window.location.href = 'index.php';
+    }
+}
 </script>
 
 <style>

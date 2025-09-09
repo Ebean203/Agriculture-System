@@ -89,69 +89,33 @@ if ($_SESSION['role'] !== 'admin') {
                                 <div class="row">
                                     <!-- RSBSA -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="rsbsa_registered" class="form-label">RSBSA Registered? <span class="text-danger">*</span></label>
-                                        <select class="form-select" id="rsbsa_registered" name="rsbsa_registered" required onchange="toggleRSBSAFields()">
-                                            <option value="">Select</option>
-                                            <option value="Yes">Yes</option>
-                                            <option value="No">No</option>
-                                        </select>
-                                        <div id="rsbsa_details" style="display:none; margin-top:10px;">
-                                            <div class="mb-2">
-                                                <input type="text" class="form-control" id="rsbsa_registration_number" name="rsbsa_registration_number" placeholder="RSBSA Registration Number">
-                                            </div>
-                                            <div class="mb-2">
-                                                <select class="form-select" id="geo_reference_status" name="geo_reference_status">
-                                                    <option value="">Geo-reference status</option>
-                                                    <option value="Geo-referenced">Geo-referenced</option>
-                                                    <option value="Not Geo-referenced">Not Geo-referenced</option>
-                                                    <option value="Pending">Pending</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="date" class="form-control" id="date_of_registration" name="date_of_registration" placeholder="Date of registration">
-                                            </div>
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" value="1" id="is_rsbsa" name="is_rsbsa">
+                                            <label class="form-check-label" for="is_rsbsa">RSBSA Registered</label>
                                         </div>
                                     </div>
 
                                     <!-- NCFRS -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="ncfrs_registered" class="form-label">NCFRS Registered? <span class="text-danger">*</span></label>
-                                        <select class="form-select" id="ncfrs_registered" name="ncfrs_registered" required onchange="toggleNCFRSFields()">
-                                            <option value="">Select</option>
-                                            <option value="Yes">Yes</option>
-                                            <option value="No">No</option>
-                                        </select>
-                                        <div id="ncfrs_details" style="display:none; margin-top:10px;">
-                                            <input type="text" class="form-control" id="ncfrs_id" name="ncfrs_id" placeholder="NCFRS ID">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" value="1" id="is_ncfrs" name="is_ncfrs">
+                                            <label class="form-check-label" for="is_ncfrs">NCFRS Registered</label>
                                         </div>
                                     </div>
 
-                                    <!-- FISHERfold -->
+                                    <!-- FISHERfolk -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="fisherfold_registered" class="form-label">FishR Registered? <span class="text-danger">*</span></label>
-                                        <select class="form-select" id="fisherfold_registered" name="fisherfold_registered" required onchange="toggleFisherfoldFields()">
-                                            <option value="">Select</option>
-                                            <option value="Yes">Yes</option>
-                                            <option value="No">No</option>
-                                        </select>
-                                        <div id="fisherfold_details" style="display:none; margin-top:10px;">
-                                            <input type="text" class="form-control mb-2" id="fisherfold_id" name="fisherfold_id" placeholder="Fisherfolk ID">
-                                            <input type="text" class="form-control" id="membership_group" name="membership_group" placeholder="Organization">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" value="1" id="is_fisherfolk" name="is_fisherfolk">
+                                            <label class="form-check-label" for="is_fisherfolk">Fisherfolk Registered</label>
                                         </div>
                                     </div>
 
                                     <!-- Boat -->
                                     <div class="col-md-3 mb-3">
-                                        <label for="has_boat" class="form-label">Has Boat? <span class="text-danger">*</span></label>
-                                        <select class="form-select" id="has_boat" name="has_boat" required onchange="toggleBoatFields()">
-                                            <option value="">Select</option>
-                                            <option value="Yes">Yes</option>
-                                            <option value="No">No</option>
-                                        </select>
-                                        <div id="boat_details" style="display:none; margin-top:10px;">
-                                            <input type="text" class="form-control mb-2" id="boat_name" name="boat_name" placeholder="Boat name">
-                                            <input type="text" class="form-control mb-2" id="boat_registration_no" name="boat_registration_no" placeholder="Registration #">
-                                            <input type="number" step="0.1" min="0" class="form-control" id="engine_hp" name="engine_hp" placeholder="Engine HP">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" value="1" id="is_boat" name="is_boat">
+                                            <label class="form-check-label" for="is_boat">Has Boat</label>
                                         </div>
                                     </div>
                                 </div>
@@ -236,12 +200,13 @@ if ($_SESSION['role'] !== 'admin') {
                                 <div class="col-md-6 mb-3">
                                     <label for="education_level" class="form-label">Highest Education Attained <span class="text-danger">*</span></label>
                                     <select class="form-select" id="education_level" name="education_level" required>
-                                        <option value="">Select</option>
+                                        <option value="">Select Education Level</option>
                                         <option value="Elementary">Elementary</option>
-                                        <option value="High School">High School</option>
+                                        <option value="Highschool">High School</option>
                                         <option value="College">College</option>
                                         <option value="Vocational">Vocational</option>
                                         <option value="Graduate">Graduate</option>
+                                        <option value="Not Specified">Not Specified</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -356,67 +321,6 @@ if ($_SESSION['role'] !== 'admin') {
 </div>
 
 <script>
-function toggleRSBSAFields() {
-    const rsbsaRegistered = document.getElementById('rsbsa_registered').value;
-    const rsbsaDetails = document.getElementById('rsbsa_details');
-    const rsbsaRegistrationField = document.getElementById('rsbsa_registration_number');
-    
-    if (rsbsaRegistered === 'Yes') {
-        rsbsaDetails.style.display = 'block';
-        rsbsaRegistrationField.setAttribute('required', 'required');
-    } else {
-        rsbsaDetails.style.display = 'none';
-        rsbsaRegistrationField.removeAttribute('required');
-        // Clear RSBSA fields when hiding
-        document.getElementById('rsbsa_registration_number').value = '';
-    }
-}
-
-function toggleNCFRSFields() {
-    const val = document.getElementById('ncfrs_registered').value;
-    const details = document.getElementById('ncfrs_details');
-    const idField = document.getElementById('ncfrs_id');
-    if (val === 'Yes') {
-        details.style.display = 'block';
-        idField.setAttribute('required', 'required');
-    } else {
-        details.style.display = 'none';
-        idField.removeAttribute('required');
-        idField.value = '';
-    }
-}
-
-function toggleFisherfoldFields() {
-    const val = document.getElementById('fisherfold_registered').value;
-    const details = document.getElementById('fisherfold_details');
-    const idField = document.getElementById('fisherfold_id');
-    if (val === 'Yes') {
-        details.style.display = 'block';
-        idField.setAttribute('required', 'required');
-    } else {
-        details.style.display = 'none';
-        idField.removeAttribute('required');
-        idField.value = '';
-        document.getElementById('membership_group').value = '';
-    }
-}
-
-function toggleBoatFields() {
-    const val = document.getElementById('has_boat').value;
-    const details = document.getElementById('boat_details');
-    const regField = document.getElementById('boat_registration_no');
-    if (val === 'Yes') {
-        details.style.display = 'block';
-        regField.setAttribute('required', 'required');
-    } else {
-        details.style.display = 'none';
-        regField.removeAttribute('required');
-        document.getElementById('boat_name').value = '';
-        regField.value = '';
-        document.getElementById('engine_hp').value = '';
-    }
-}
-
 function toggleSpouseField() {
     const civilStatus = document.getElementById('civil_status').value;
     const spouseField = document.getElementById('spouse_field');
@@ -606,40 +510,6 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
         return false;
     }
     
-    const rsbsaRegistered = document.getElementById('rsbsa_registered').value;
-    const rsbsaRegistrationNumber = document.getElementById('rsbsa_registration_number').value;
-    const ncfrsRegistered = document.getElementById('ncfrs_registered') ? document.getElementById('ncfrs_registered').value : '';
-    const ncfrsId = document.getElementById('ncfrs_id') ? document.getElementById('ncfrs_id').value : '';
-    const fisherRegistered = document.getElementById('fisherfold_registered') ? document.getElementById('fisherfold_registered').value : '';
-    const fisherId = document.getElementById('fisherfold_id') ? document.getElementById('fisherfold_id').value : '';
-    const hasBoat = document.getElementById('has_boat') ? document.getElementById('has_boat').value : '';
-    const boatReg = document.getElementById('boat_registration_no') ? document.getElementById('boat_registration_no').value : '';
-    
-    if (rsbsaRegistered === 'Yes' && !rsbsaRegistrationNumber.trim()) {
-        e.preventDefault();
-        alert('RSBSA Registration Number is required when farmer is RSBSA registered.');
-        document.getElementById('rsbsa_registration_number').focus();
-        return false;
-    }
-    if (ncfrsRegistered === 'Yes' && !ncfrsId.trim()) {
-        e.preventDefault();
-        alert('NCFRS ID is required when farmer is NCFRS registered.');
-        document.getElementById('ncfrs_id').focus();
-        return false;
-    }
-    if (fisherRegistered === 'Yes' && !fisherId.trim()) {
-        e.preventDefault();
-        alert('Fisherfolk ID is required when farmer is FISHERfold registered.');
-        document.getElementById('fisherfold_id').focus();
-        return false;
-    }
-    if (hasBoat === 'Yes' && !boatReg.trim()) {
-        e.preventDefault();
-        alert('Boat registration number is required when Has Boat is Yes.');
-        document.getElementById('boat_registration_no').focus();
-        return false;
-    }
-    
     // Show loading state
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
@@ -669,15 +539,6 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
 
 .text-danger {
     font-weight: bold;
-}
-
-#rsbsa_details {
-    border-left: 3px solid #28a745;
-    padding-left: 15px;
-    margin-top: 15px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    padding: 15px;
 }
 
 .alert-info {

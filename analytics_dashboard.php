@@ -48,8 +48,7 @@ function getYieldData($conn, $start_date, $end_date, $barangay_filter = '') {
     $query = "
         SELECT DATE(ym.record_date) as date, SUM(ym.yield_amount) as total_yield
         FROM yield_monitoring ym
-        JOIN land_parcels lp ON ym.parcel_id = lp.parcel_id
-        JOIN farmers f ON lp.farmer_id = f.farmer_id
+        JOIN farmers f ON ym.farmer_id = f.farmer_id
         WHERE DATE(ym.record_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
         GROUP BY DATE(ym.record_date)
         ORDER BY date
@@ -105,8 +104,7 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
     $query = "
         SELECT COUNT(*) as count 
         FROM farmers f 
-        JOIN rsbsa_registered_farmers r ON f.farmer_id = r.farmer_id
-        WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
+        WHERE f.is_rsbsa = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
     ";
     $result = mysqli_query($conn, $query);
     if ($result && $row = mysqli_fetch_assoc($result)) {
@@ -117,22 +115,19 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
     $query = "
         SELECT COUNT(*) as count 
         FROM farmers f 
-        JOIN ncfrs_registered_farmers n ON f.farmer_id = n.farmer_id
-        WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
+        WHERE f.is_ncfrs = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
     ";
     $result = mysqli_query($conn, $query);
     if ($result && $row = mysqli_fetch_assoc($result)) {
         $ncfrs_count = $row['count'];
     }
     
-    // Get Fisherfolk registered farmers (through boats, handle empty table gracefully)
+    // Get Fisherfolk registered farmers
     $fisherfolk_count = 0;
     $query = "
-        SELECT COUNT(DISTINCT f.farmer_id) as count 
+        SELECT COUNT(*) as count 
         FROM farmers f 
-        JOIN boats b ON f.farmer_id = b.farmer_id
-        JOIN fisherfolk_registered_farmers ff ON b.boat_id = ff.vessel_id
-        WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
+        WHERE f.is_fisherfolk = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
     ";
     $result = mysqli_query($conn, $query);
     if ($result && $row = mysqli_fetch_assoc($result)) {
@@ -185,8 +180,7 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
 $query = "
     SELECT SUM(ym.yield_amount) as total 
     FROM yield_monitoring ym
-    JOIN land_parcels lp ON ym.parcel_id = lp.parcel_id
-    JOIN farmers f ON lp.farmer_id = f.farmer_id
+    JOIN farmers f ON ym.farmer_id = f.farmer_id
     WHERE DATE(ym.record_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
 ";
 $result = mysqli_query($conn, $query);
@@ -194,7 +188,7 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_yield = $row['total'] ?? 0;
 }
 
-$query = "SELECT COUNT(*) as count FROM boats b JOIN farmers f ON b.farmer_id = f.farmer_id WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
+$query = "SELECT COUNT(*) as count FROM farmers f WHERE f.is_boat = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
 $result = mysqli_query($conn, $query);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_boats = $row['count'];

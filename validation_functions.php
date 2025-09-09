@@ -147,13 +147,34 @@ function validateFarmerData($postData) {
     // Integer fields - now all required
     $validated['barangay_id'] = validateInteger($postData['barangay_id'] ?? '', 'Barangay', 1);
     $validated['household_size'] = validateInteger($postData['household_size'] ?? '', 'Household Size', 1, 50);
-    $validated['primary_commodity'] = validateInteger($postData['commodity_id'] ?? '', 'Primary Commodity', 1);
-    $validated['years_farming'] = validateInteger($postData['years_farming'] ?? '', 'Years Farming', 0, 100);
     
-    // Decimal field - now required
-    $validated['land_area_hectares'] = validateDecimal($postData['land_area_hectares'] ?? '', 'Land Area', 0);
-    if ($validated['land_area_hectares'] === null) {
-        throw new Exception("Land Area is required and cannot be empty.");
+    // Commodity validation - handle new array structure
+    if (isset($postData['commodities']) && is_array($postData['commodities']) && !empty($postData['commodities'])) {
+        // New multi-commodity structure - validate at least one commodity exists
+        $hasValidCommodity = false;
+        foreach ($postData['commodities'] as $commodity) {
+            if (!empty($commodity['commodity_id']) && !empty($commodity['land_area_hectares']) && isset($commodity['years_farming'])) {
+                $hasValidCommodity = true;
+                break;
+            }
+        }
+        if (!$hasValidCommodity) {
+            throw new Exception('At least one commodity with valid data is required.');
+        }
+        // Set a placeholder for primary_commodity - will be handled in the backend
+        $validated['primary_commodity'] = 1;
+        $validated['land_area_hectares'] = 0.01; // Placeholder
+        $validated['years_farming'] = 0; // Placeholder
+    } else {
+        // Fallback validation for old single commodity structure (backward compatibility)
+        $validated['primary_commodity'] = validateInteger($postData['commodity_id'] ?? '', 'Primary Commodity', 1);
+        $validated['years_farming'] = validateInteger($postData['years_farming'] ?? '', 'Years Farming', 0, 100);
+        
+        // Decimal field - now required
+        $validated['land_area_hectares'] = validateDecimal($postData['land_area_hectares'] ?? '', 'Land Area', 0);
+        if ($validated['land_area_hectares'] === null) {
+            throw new Exception("Land Area is required and cannot be empty.");
+        }
     }
     
     // Household info - validate civil status first
@@ -173,6 +194,10 @@ function validateFarmerData($postData) {
     // Boolean fields
     $validated['is_member_of_4ps'] = isset($postData['is_member_of_4ps']) ? 1 : 0;
     $validated['is_ip'] = isset($postData['is_ip']) ? 1 : 0;
+    $validated['is_rsbsa'] = isset($postData['is_rsbsa']) ? 1 : 0;
+    $validated['is_ncfrs'] = isset($postData['is_ncfrs']) ? 1 : 0;
+    $validated['is_boat'] = isset($postData['is_boat']) ? 1 : 0;
+    $validated['is_fisherfolk'] = isset($postData['is_fisherfolk']) ? 1 : 0;
     
     return $validated;
 }
@@ -197,13 +222,34 @@ function validateFarmerDataForEdit($postData) {
     // Integer fields - now all required
     $validated['barangay_id'] = validateInteger($postData['barangay_id'] ?? '', 'Barangay', 1);
     $validated['household_size'] = validateInteger($postData['household_size'] ?? '', 'Household Size', 1, 50);
-    $validated['primary_commodity'] = validateInteger($postData['commodity_id'] ?? '', 'Primary Commodity', 1);
-    $validated['years_farming'] = validateInteger($postData['years_farming'] ?? '', 'Years Farming', 0, 100);
     
-    // Decimal field - now required
-    $validated['land_area_hectares'] = validateDecimal($postData['land_area_hectares'] ?? '', 'Land Area', 0);
-    if ($validated['land_area_hectares'] === null) {
-        throw new Exception("Land Area is required and cannot be empty.");
+    // Commodity validation - handle new array structure
+    if (isset($postData['commodities']) && is_array($postData['commodities']) && !empty($postData['commodities'])) {
+        // New multi-commodity structure - validate at least one commodity exists
+        $hasValidCommodity = false;
+        foreach ($postData['commodities'] as $commodity) {
+            if (!empty($commodity['commodity_id']) && !empty($commodity['land_area_hectares']) && isset($commodity['years_farming'])) {
+                $hasValidCommodity = true;
+                break;
+            }
+        }
+        if (!$hasValidCommodity) {
+            throw new Exception('At least one commodity with valid data is required.');
+        }
+        // Set a placeholder for primary_commodity - will be handled in the backend
+        $validated['primary_commodity'] = 1;
+        $validated['land_area_hectares'] = 0.01; // Placeholder
+        $validated['years_farming'] = 0; // Placeholder
+    } else {
+        // Fallback validation for old single commodity structure (backward compatibility)
+        $validated['primary_commodity'] = validateInteger($postData['commodity_id'] ?? '', 'Primary Commodity', 1);
+        $validated['years_farming'] = validateInteger($postData['years_farming'] ?? '', 'Years Farming', 0, 100);
+        
+        // Decimal field - now required
+        $validated['land_area_hectares'] = validateDecimal($postData['land_area_hectares'] ?? '', 'Land Area', 0);
+        if ($validated['land_area_hectares'] === null) {
+            throw new Exception("Land Area is required and cannot be empty.");
+        }
     }
     
     // Household info - validate civil status first
@@ -223,6 +269,10 @@ function validateFarmerDataForEdit($postData) {
     // Boolean fields
     $validated['is_member_of_4ps'] = isset($postData['is_member_of_4ps']) ? 1 : 0;
     $validated['is_ip'] = isset($postData['is_ip']) ? 1 : 0;
+    $validated['is_rsbsa'] = isset($postData['is_rsbsa']) ? 1 : 0;
+    $validated['is_ncfrs'] = isset($postData['is_ncfrs']) ? 1 : 0;
+    $validated['is_boat'] = isset($postData['is_boat']) ? 1 : 0;
+    $validated['is_fisherfolk'] = isset($postData['is_fisherfolk']) ? 1 : 0;
     
     return $validated;
 }
