@@ -259,7 +259,7 @@ if ($result) {
                     <div class="flex items-center justify-between">
                         <div>
                             <h2 class="text-3xl font-bold mb-2">Welcome to Lagonglong FARMS</h2>
-                            <p class="text-lg text-green-100 mb-3">Empowering farmers through modern technology and sustainable practices</p>
+                            <p class="text-lg text-green-100 mb-3">Empowering the agriculture office of Lagonglong to better serve its farmers through comprehensive agricultural services and resources</p>
                             <div class="flex items-center text-green-200">
                                 <i class="fas fa-calendar-alt mr-2"></i>
                                 <span><?php echo date('l, F j, Y'); ?></span>

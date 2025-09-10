@@ -21,6 +21,7 @@ if ($offline_mode) {
         }
     </script>';
     echo '<link href="assets/css/custom.css" rel="stylesheet">';
+    echo '<script src="assets/js/bootstrap.bundle.min.js"></script>';
 } else {
     // CDN assets (for when you have internet)
     echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">';
@@ -32,13 +33,14 @@ if ($offline_mode) {
                 extend: {
                     colors: {
                         "agri-green": "#16a34a",
-                        "agri-dark": "#16a34a",
+                        "agri-dark": "#16a34a", 
                         "agri-light": "#dcfce7"
                     }
                 }
             }
         }
     </script>';
+    echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>';
 }
 ?>
 

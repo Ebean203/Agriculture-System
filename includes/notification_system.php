@@ -28,13 +28,26 @@ function getNotifications($conn) {
 function getVisitationNotifications($conn, $today) {
     $notifications = [];
     
-    // Calculate the date 10 days from now
-    $reminder_date = date('Y-m-d', strtotime($today . ' + 10 days'));
+    // Calculate the date 5 days from now
+    $reminder_date = date('Y-m-d', strtotime($today . ' + 5 days'));
     
     // Query for upcoming visitations from mao_distribution_log table
     $query = "
         SELECT 
-            CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name, ' ', COALESCE(f.suffix, '')) as farmer_name,
+            CONCAT(
+                f.first_name, 
+                CASE 
+                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.middle_name) 
+                    ELSE '' 
+                END,
+                ' ', f.last_name,
+                CASE 
+                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.suffix) 
+                    ELSE '' 
+                END
+            ) as farmer_name,
             f.barangay_id,
             b.barangay_name,
             mdl.visitation_date,
@@ -56,17 +69,18 @@ function getVisitationNotifications($conn, $today) {
     if ($result && mysqli_num_rows($result) > 0) {
         while ($row = mysqli_fetch_assoc($result)) {
             $days_until = $row['days_until_visit'];
+            $formatted_date = date('M j, Y', strtotime($row['visitation_date']));
             
             if ($days_until == 0) {
-                $message = "Visitation TODAY for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
+                $message = "Visitation TODAY (" . $formatted_date . ") for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
                 $priority = 1; // Highest priority
                 $type = 'urgent';
             } elseif ($days_until == 1) {
-                $message = "Visitation TOMORROW for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
+                $message = "Visitation TOMORROW (" . $formatted_date . ") for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
                 $priority = 2;
                 $type = 'warning';
             } else {
-                $message = "Visitation in " . $days_until . " days for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
+                $message = "Visitation scheduled for " . $formatted_date . " (" . $days_until . " days) - " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
                 $priority = 3;
                 $type = 'info';
             }

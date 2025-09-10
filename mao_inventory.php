@@ -1155,12 +1155,27 @@ while ($row = mysqli_fetch_assoc($result)) {
             });
 
             if (filteredFarmers.length > 0) {
+                // Check for exact match and auto-select if found
+                const exactMatch = filteredFarmers.find(farmer => {
+                    const fullName = `${farmer.first_name} ${farmer.last_name}`.toLowerCase();
+                    return fullName === query.toLowerCase();
+                });
+                
+                if (exactMatch) {
+                    const selectedFarmerField = document.getElementById('selected_farmer_id');
+                    if (selectedFarmerField) {
+                        selectedFarmerField.value = exactMatch.farmer_id || '';
+                    }
+                }
+                
                 let html = '';
                 filteredFarmers.forEach((farmer, index) => {
                     const fullName = `${farmer.first_name || ''} ${farmer.last_name || ''}`.trim();
                     const farmerId = farmer.farmer_id || '';
+                    // Escape quotes and special characters to prevent JavaScript errors
+                    const escapedName = fullName.replace(/'/g, "\\'").replace(/"/g, '\\"');
                     html += `<div class="suggestion-item px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100" 
-                                  onclick="selectFarmer('${farmerId}', '${fullName}')" 
+                                  onmousedown="selectFarmer('${farmerId}', '${escapedName}')" 
                                   data-index="${index}">
                                 <div class="font-medium">${fullName}</div>
                                 <div class="text-sm text-gray-600">ID: ${farmerId}</div>
@@ -1169,19 +1184,40 @@ while ($row = mysqli_fetch_assoc($result)) {
                 suggestions.innerHTML = html;
                 suggestions.classList.remove('hidden');
             } else {
+                // Clear selected farmer if no matches found
+                const selectedFarmerField = document.getElementById('selected_farmer_id');
+                if (selectedFarmerField) {
+                    selectedFarmerField.value = '';
+                }
                 suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
                 suggestions.classList.remove('hidden');
             }
         }
 
         function selectFarmer(farmerId, farmerName) {
+            console.log('selectFarmer called with:', farmerId, farmerName); // Debug log
+            
             const farmerNameField = document.getElementById('farmer_name');
             const selectedFarmerField = document.getElementById('selected_farmer_id');
             const suggestions = document.getElementById('farmer_suggestions');
             
-            if (farmerNameField) farmerNameField.value = farmerName || '';
-            if (selectedFarmerField) selectedFarmerField.value = farmerId || '';
-            if (suggestions) suggestions.classList.add('hidden');
+            if (farmerNameField) {
+                farmerNameField.value = farmerName || '';
+                console.log('Set farmer name field to:', farmerName); // Debug log
+            } else {
+                console.error('farmer_name field not found');
+            }
+            
+            if (selectedFarmerField) {
+                selectedFarmerField.value = farmerId || '';
+                console.log('Set farmer ID field to:', farmerId); // Debug log
+            } else {
+                console.error('selected_farmer_id field not found');
+            }
+            
+            if (suggestions) {
+                suggestions.classList.add('hidden');
+            }
         }
 
         function showSuggestions() {
@@ -1194,8 +1230,11 @@ while ($row = mysqli_fetch_assoc($result)) {
         function hideSuggestions() {
             // Delay hiding to allow click events on suggestions
             setTimeout(() => {
-                document.getElementById('farmer_suggestions').classList.add('hidden');
-            }, 200);
+                const suggestions = document.getElementById('farmer_suggestions');
+                if (suggestions) {
+                    suggestions.classList.add('hidden');
+                }
+            }, 300); // Increased delay to 300ms for better click handling
         }
 
         // Form validation functions

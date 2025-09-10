@@ -30,7 +30,7 @@ if ($_SESSION['role'] !== 'admin') {
 <div class="modal fade" id="editFarmerModal" tabindex="-1" aria-labelledby="editFarmerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-agri-green text-white">
                 <h5 class="modal-title" id="editFarmerModalLabel">
                     <i class="fas fa-user-edit me-2"></i>Edit Farmer Information
                 </h5>
@@ -232,7 +232,7 @@ if ($_SESSION['role'] !== 'admin') {
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-success">
                         <i class="fas fa-save me-1"></i>Update Farmer
                     </button>
                 </div>
