@@ -70,7 +70,46 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
     }
 }
 
+// Get notifications for inventory categorization
+require_once 'includes/notification_system.php';
+$notifications = getNotifications($conn);
 
+// Categorize items based on notification status
+$urgent_items = [];
+$warning_items = [];
+$normal_items = [];
+
+// Create lookup arrays for notification statuses
+$notification_lookup = [];
+foreach ($notifications as $notification) {
+    if ($notification['category'] == 'inventory') {
+        $item_name = $notification['data']['item_name'];
+        $input_id = $notification['data']['input_id'];
+        $notification_lookup[$input_id] = [
+            'type' => $notification['type'],
+            'message' => $notification['message'],
+            'item_name' => $item_name
+        ];
+    }
+}
+
+// Categorize all inventory items
+mysqli_data_seek($result, 0);
+while ($row = mysqli_fetch_assoc($result)) {
+    $input_id = $row['input_id'];
+    if (isset($notification_lookup[$input_id])) {
+        $notif_type = $notification_lookup[$input_id]['type'];
+        if ($notif_type == 'urgent') {
+            $urgent_items[] = $row;
+        } else if ($notif_type == 'warning') {
+            $warning_items[] = $row;
+        } else {
+            $normal_items[] = $row;
+        }
+    } else {
+        $normal_items[] = $row;
+    }
+}
 
 ?>
 
@@ -207,9 +246,22 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
                         <p class="text-gray-600 mt-2">Monitor and manage agricultural inputs available for distribution</p>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-3">
-                        <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="openModal('addStockModal')">
-                            <i class="fas fa-plus mr-2"></i>Add Stock
-                        </button>
+                        <div class="relative">
+                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleAddInputDropdown()">
+                                <i class="fas fa-plus mr-2"></i>Add Input
+                                <i class="fas fa-chevron-down ml-2 transition-transform" id="addInputArrow"></i>
+                            </button>
+                            <div id="addInputDropdown" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
+                                <button onclick="openAddNewInputTypeModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                                    <i class="fas fa-plus-circle text-green-600 mr-2"></i>
+                                    New Input Type
+                                </button>
+                                <button onclick="openAddToExistingModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                                    <i class="fas fa-layer-group text-blue-600 mr-2"></i>
+                                    Add to Existing
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -314,8 +366,269 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
                 </div>
             </div>
 
-            <!-- Inventory Items Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <?php
+            // Get notification data for automatic segregation
+            require_once 'includes/notification_system.php';
+            $notifications = getNotifications($conn);
+            
+            // Categorize items based on notification status
+            $critical_items = [];
+            $warning_items = [];
+            $normal_items = [];
+            
+            // Get all inventory items
+            mysqli_data_seek($result, 0);
+            $all_items = [];
+            while ($row = mysqli_fetch_assoc($result)) {
+                $all_items[$row['input_id']] = $row;
+            }
+            
+            // Categorize based on notifications
+            foreach ($notifications as $notification) {
+                if ($notification['category'] === 'inventory' && isset($notification['data']['input_id'])) {
+                    $input_id = $notification['data']['input_id'];
+                    if (isset($all_items[$input_id])) {
+                        if ($notification['type'] === 'urgent') {
+                            $critical_items[] = $all_items[$input_id];
+                        } elseif ($notification['type'] === 'warning') {
+                            $warning_items[] = $all_items[$input_id];
+                        }
+                        // Remove from all_items to avoid duplication
+                        unset($all_items[$input_id]);
+                    }
+                }
+            }
+            
+            // Remaining items are normal
+            $normal_items = array_values($all_items);
+            ?>
+
+            <!-- Reset result pointer for main inventory grid -->
+            <?php mysqli_data_seek($result, 0); ?>
+
+            <!-- Segregated Inventory Sections -->
+            <?php if (count($critical_items) > 0): ?>
+            <div class="mb-8">
+                <div class="bg-red-50 rounded-xl p-6 border-2 border-red-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-red-800 flex items-center">
+                            <i class="fas fa-fire text-red-600 mr-3 animate-pulse"></i>
+                            🚨 CRITICAL ITEMS - Immediate Action Required
+                        </h3>
+                        <span class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold">
+                            <?php echo count($critical_items); ?> Items
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <?php 
+                        foreach ($critical_items as $row) {
+                            renderInventoryCard($row, $distributions, 'urgent', $notification_lookup);
+                        }
+                        ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (count($warning_items) > 0): ?>
+            <div class="mb-8">
+                <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-yellow-800 flex items-center">
+                            <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
+                            ⚠️ WARNING ITEMS - Restock Soon
+                        </h3>
+                        <span class="bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold">
+                            <?php echo count($warning_items); ?> Items
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <?php 
+                        foreach ($warning_items as $row) {
+                            renderInventoryCard($row, $distributions, 'warning', $notification_lookup);
+                        }
+                        ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="mb-8">
+                <div class="bg-green-50 rounded-xl p-6 border-2 border-green-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-green-800 flex items-center">
+                            <i class="fas fa-check-circle text-green-600 mr-3"></i>
+                            ✅ NORMAL STOCK ITEMS
+                        </h3>
+                        <span class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">
+                            <?php echo count($normal_items); ?> Items
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <?php 
+                        foreach ($normal_items as $row) {
+                            renderInventoryCard($row, $distributions, 'normal', $notification_lookup);
+                        }
+                        ?>
+                    </div>
+                </div>
+            </div>
+
+            <?php
+            // Function to render inventory cards with status-specific styling
+            function renderInventoryCard($row, $distributions, $status, $notification_lookup) {
+                $quantity = intval($row['quantity_on_hand']);
+                $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
+                
+                // Ensure we have valid values
+                if ($quantity < 0) $quantity = 0;
+                if ($distributed < 0) $distributed = 0;
+                
+                // Determine stock status and styling based on segregation
+                $status_classes = [
+                    'urgent' => 'border-red-500 bg-red-50 shadow-red-200',
+                    'warning' => 'border-yellow-500 bg-yellow-50 shadow-yellow-200',
+                    'normal' => 'border-green-500 bg-white shadow-gray-200'
+                ];
+                
+                $badge_classes = [
+                    'urgent' => 'bg-red-600 text-white',
+                    'warning' => 'bg-yellow-600 text-white',
+                    'normal' => 'bg-green-600 text-white'
+                ];
+                
+                $status_text = [
+                    'urgent' => 'CRITICAL',
+                    'warning' => 'LOW STOCK',
+                    'normal' => 'NORMAL'
+                ];
+                
+                $card_class = $status_classes[$status];
+                $badge_class = $badge_classes[$status];
+                $status_display = $status_text[$status];
+                
+                // Define required variables for data attributes
+                $input_id = $row['input_id'];
+                $input_name_original = $row['input_name'];
+                $quantity_safe = $quantity;
+                
+                // Determine category icon
+                $input_name_lower = strtolower($row['input_name']);
+                $icon_bg = 'bg-gray-500';
+                $icon = 'fas fa-box';
+                
+                if (strpos($input_name_lower, 'seed') !== false) {
+                    $icon_bg = 'bg-green-500';
+                    $icon = 'fas fa-seedling';
+                } elseif (strpos($input_name_lower, 'fertilizer') !== false) {
+                    $icon_bg = 'bg-blue-500';
+                    $icon = 'fas fa-leaf';
+                } elseif (strpos($input_name_lower, 'pesticide') !== false || strpos($input_name_lower, 'herbicide') !== false) {
+                    $icon_bg = 'bg-yellow-500';
+                    $icon = 'fas fa-flask';
+                } elseif (strpos($input_name_lower, 'goat') !== false || strpos($input_name_lower, 'chicken') !== false) {
+                    $icon_bg = 'bg-orange-500';
+                    $icon = 'fas fa-paw';
+                } elseif (strpos($input_name_lower, 'tractor') !== false || strpos($input_name_lower, 'shovel') !== false || strpos($input_name_lower, 'sprayer') !== false || strpos($input_name_lower, 'pump') !== false) {
+                    $icon_bg = 'bg-purple-500';
+                    $icon = 'fas fa-tools';
+                }
+                
+                // Get notification message if exists
+                $notification_message = '';
+                if (isset($notification_lookup[$input_id])) {
+                    $notification_message = $notification_lookup[$input_id]['message'];
+                }
+                ?>
+                
+                <div class="inventory-card rounded-lg shadow-lg border-2 <?php echo $card_class; ?> h-full relative overflow-hidden">
+                    <?php if ($status == 'urgent'): ?>
+                        <div class="absolute top-0 right-0 bg-red-600 text-white px-3 py-1 text-xs font-bold transform rotate-12 translate-x-3 -translate-y-2">
+                            URGENT!
+                        </div>
+                    <?php elseif ($status == 'warning'): ?>
+                        <div class="absolute top-0 right-0 bg-yellow-600 text-white px-3 py-1 text-xs font-bold transform rotate-12 translate-x-3 -translate-y-2">
+                            LOW!
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div class="p-6">
+                        <!-- Header -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 <?php echo $icon_bg; ?> rounded-lg flex items-center justify-center mr-4">
+                                    <i class="<?php echo $icon; ?> text-white text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900"><?php echo htmlspecialchars($row['input_name']); ?></h3>
+                                    <p class="text-sm text-gray-600">Unit: <?php echo htmlspecialchars($row['unit']); ?></p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $badge_class; ?>">
+                                <?php echo $status_display; ?>
+                            </span>
+                        </div>
+                        
+                        <!-- Notification Alert -->
+                        <?php if ($notification_message): ?>
+                        <div class="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+                            <p class="text-sm font-medium text-red-800">
+                                <i class="fas fa-bell mr-2"></i><?php echo htmlspecialchars($notification_message); ?>
+                            </p>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Statistics -->
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <div class="text-center border-r border-gray-200">
+                                <div class="text-2xl font-bold <?php echo $status == 'urgent' ? 'text-red-600' : ($status == 'warning' ? 'text-yellow-600' : 'text-green-600'); ?>">
+                                    <?php echo number_format($quantity); ?>
+                                </div>
+                                <div class="text-xs text-gray-600">Available</div>
+                            </div>
+                            <div class="text-center border-r border-gray-200">
+                                <div class="text-2xl font-bold text-blue-600"><?php echo number_format($distributed); ?></div>
+                                <div class="text-xs text-gray-600">Distributed</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-600"><?php echo number_format($quantity + $distributed); ?></div>
+                                <div class="text-xs text-gray-600">Total</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Last Updated -->
+                        <?php if ($row['last_updated']): ?>
+                        <div class="mb-4 pt-4 border-t border-gray-200">
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-clock mr-1"></i> 
+                                Updated: <?php echo date('M d, Y g:i A', strtotime($row['last_updated'])); ?>
+                            </p>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex space-x-2">
+                            <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
+                                    data-input-id="<?php echo htmlspecialchars($input_id); ?>"
+                                    data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
+                                    data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
+                                <i class="fas fa-edit mr-1"></i> Update
+                            </button>
+                            <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
+                                    data-input-id="<?php echo htmlspecialchars($input_id); ?>"
+                                    data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
+                                    data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
+                                <i class="fas fa-share mr-1"></i> Distribute
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <?php
+            }
+            ?>
+
+            <!-- Old Inventory Items Grid (keeping as fallback) -->
+            <div class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="fallback-grid">
                 <?php
                 if ($row_count == 0): ?>
                     <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
@@ -1201,6 +1514,152 @@ if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
     <?php else: ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <?php endif; ?>
+    
+    <!-- Add New Input Type Modal -->
+    <div id="addNewInputTypeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Add New Input Type</h3>
+            </div>
+            <form action="add_new_input.php" method="POST" class="p-6">
+                <input type="hidden" name="action" value="new_type">
+                
+                <div class="mb-4">
+                    <label for="input_name" class="block text-sm font-medium text-gray-700 mb-2">Input Name</label>
+                    <input type="text" id="input_name" name="input_name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                           placeholder="e.g., Organic Fertilizer">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="unit" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+                    <select id="unit" name="unit" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                        <option value="">Select Unit</option>
+                        <option value="sack">Sack</option>
+                        <option value="pack">Pack</option>
+                        <option value="kg">Kilogram</option>
+                        <option value="liter">Liter</option>
+                        <option value="unit">Unit</option>
+                        <option value="meter">Meter</option>
+                        <option value="head">Head</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="initial_quantity" class="block text-sm font-medium text-gray-700 mb-2">Initial Quantity</label>
+                    <input type="number" id="initial_quantity" name="quantity_on_hand" required min="0"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                           placeholder="Enter initial stock quantity">
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddNewInputTypeModal()"
+                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                        Add Input Type
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add to Existing Input Type Modal -->
+    <div id="addToExistingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Add Stock to Existing Input</h3>
+            </div>
+            <form action="add_new_input.php" method="POST" class="p-6">
+                <input type="hidden" name="action" value="add_stock">
+                
+                <div class="mb-4">
+                    <label for="existing_input" class="block text-sm font-medium text-gray-700 mb-2">Select Input Type</label>
+                    <select id="existing_input" name="input_id" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Choose existing input type...</option>
+                        <?php
+                        mysqli_data_seek($result, 0);
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            echo '<option value="' . $row['input_id'] . '">' . htmlspecialchars($row['input_name']) . ' (' . htmlspecialchars($row['unit']) . ')</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="add_quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Add</label>
+                    <input type="number" id="add_quantity" name="add_quantity" required min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Enter quantity to add">
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddToExistingModal()"
+                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        Add Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Open Add New Input Type Modal
+        function openAddNewInputTypeModal() {
+            document.getElementById('addNewInputTypeModal').classList.remove('hidden');
+        }
+
+        // Close Add New Input Type Modal
+        function closeAddNewInputTypeModal() {
+            document.getElementById('addNewInputTypeModal').classList.add('hidden');
+        }
+
+        // Open Add to Existing Modal
+        function openAddToExistingModal() {
+            document.getElementById('addToExistingModal').classList.remove('hidden');
+        }
+
+        // Close Add to Existing Modal
+        function closeAddToExistingModal() {
+            document.getElementById('addToExistingModal').classList.add('hidden');
+        }
+
+        // Toggle Add Input Dropdown
+        function toggleAddInputDropdown() {
+            const dropdown = document.getElementById('addInputDropdown');
+            const arrow = document.getElementById('addInputArrow');
+            dropdown.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            const newInputModal = document.getElementById('addNewInputTypeModal');
+            const existingModal = document.getElementById('addToExistingModal');
+            const dropdown = document.getElementById('addInputDropdown');
+            
+            if (event.target === newInputModal) {
+                closeAddNewInputTypeModal();
+            }
+            if (event.target === existingModal) {
+                closeAddToExistingModal();
+            }
+            
+            // Close dropdown if clicking outside
+            if (!event.target.closest('.relative')) {
+                dropdown.classList.add('hidden');
+                document.getElementById('addInputArrow').classList.remove('rotate-180');
+            }
+        });
+    </script>
     
     <!-- Include Notification System -->
     <?php include 'includes/notification_complete.php'; ?>
