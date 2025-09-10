@@ -167,7 +167,8 @@ window.notificationDropdown = {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        this.updateNotificationBadge(data.total_count);
+                        // Use critical count for badge, but show total in dropdown
+                        this.updateNotificationBadge(data.critical_count || data.unread_count);
                     }
                 })
                 .catch(error => {
@@ -182,7 +183,8 @@ window.notificationDropdown = {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    this.updateNotificationBadge(data.total_count);
+                    // Use critical count for badge, but show total in dropdown
+                    this.updateNotificationBadge(data.critical_count || data.unread_count);
                 }
             })
             .catch(error => {

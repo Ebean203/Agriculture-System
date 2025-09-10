@@ -367,11 +367,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             </div>
 
             <?php
-            // Get notification data for automatic segregation
-            require_once 'includes/notification_system.php';
-            $notifications = getNotifications($conn);
-            
-            // Categorize items based on notification status
+            // Categorize items based on notification status (using already loaded notifications)
             $critical_items = [];
             $warning_items = [];
             $normal_items = [];

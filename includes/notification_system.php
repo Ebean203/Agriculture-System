@@ -111,22 +111,22 @@ function getStockNotifications($conn) {
             ic.input_id,
             ic.input_name as item_name,
             ic.input_name as category,
-            mi.quantity_on_hand as current_stock,
+            COALESCE(mi.quantity_on_hand, 0) as current_stock,
             ic.unit,
             mi.last_updated,
             CASE 
-                WHEN LOWER(ic.input_name) LIKE '%seed%' THEN 50
-                WHEN LOWER(ic.input_name) LIKE '%fertilizer%' THEN 100
-                WHEN LOWER(ic.input_name) LIKE '%pesticide%' THEN 20
-                WHEN LOWER(ic.input_name) LIKE '%tool%' THEN 5
-                WHEN LOWER(ic.input_name) LIKE '%equipment%' THEN 2
-                ELSE 10
+                WHEN LOWER(ic.input_name) LIKE '%seed%' THEN 20
+                WHEN LOWER(ic.input_name) LIKE '%fertilizer%' THEN 30
+                WHEN LOWER(ic.input_name) LIKE '%pesticide%' THEN 10
+                WHEN LOWER(ic.input_name) LIKE '%tool%' THEN 3
+                WHEN LOWER(ic.input_name) LIKE '%equipment%' THEN 1
+                ELSE 5
             END as minimum_level
-        FROM mao_inventory mi
-        JOIN input_categories ic ON mi.input_id = ic.input_id
-        WHERE mi.quantity_on_hand >= 0
-        HAVING mi.quantity_on_hand <= minimum_level
-        ORDER BY (mi.quantity_on_hand / minimum_level) ASC
+        FROM input_categories ic
+        LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id
+        WHERE COALESCE(mi.quantity_on_hand, 0) >= 0
+        HAVING current_stock <= minimum_level
+        ORDER BY (current_stock / minimum_level) ASC
     ";
     
     $result = mysqli_query($conn, $query);
@@ -148,22 +148,24 @@ function getStockNotifications($conn) {
                 $priority = 3;
                 $type = 'warning';
             } else {
-                $message = "Restock Soon: " . $row['item_name'] . " (" . $row['current_stock'] . " " . $row['unit'] . " remaining)";
-                $priority = 4;
-                $type = 'info';
+                // Skip info level notifications - only show warning and urgent
+                continue;
             }
             
-            $notifications[] = [
-                'id' => 'stock_' . str_replace(' ', '_', $row['item_name']),
-                'type' => $type,
-                'category' => 'inventory',
-                'title' => 'Inventory Alert',
-                'message' => $message,
-                'date' => $row['last_updated'],
-                'priority' => $priority,
-                'icon' => 'fas fa-exclamation-triangle',
-                'data' => $row
-            ];
+            // Only add warning and urgent notifications
+            if ($type === 'warning' || $type === 'urgent') {
+                $notifications[] = [
+                    'id' => 'stock_' . str_replace(' ', '_', $row['item_name']),
+                    'type' => $type,
+                    'category' => 'inventory',
+                    'title' => 'Inventory Alert',
+                    'message' => $message,
+                    'date' => $row['last_updated'],
+                    'priority' => $priority,
+                    'icon' => 'fas fa-exclamation-triangle',
+                    'data' => $row
+                ];
+            }
         }
     }
     
@@ -173,6 +175,20 @@ function getStockNotifications($conn) {
 function getNotificationCount($conn) {
     $notifications = getNotifications($conn);
     return count($notifications);
+}
+
+function getCriticalNotificationCount($conn) {
+    $notifications = getNotifications($conn);
+    $critical_count = 0;
+    
+    foreach ($notifications as $notification) {
+        // Only count urgent and high priority notifications
+        if ($notification['type'] === 'urgent' || $notification['priority'] <= 2) {
+            $critical_count++;
+        }
+    }
+    
+    return $critical_count;
 }
 
 function getUnreadNotificationCount($conn) {
