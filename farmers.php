@@ -657,15 +657,17 @@ $total_pages = ceil($total_records / $records_per_page);
 
 // Get farmers data with commodity and household information from junction table
 $sql = "SELECT f.*, c.commodity_name, b.barangay_name, h.civil_status, h.spouse_name, 
-               h.household_size, h.education_level, h.occupation, fc.land_area_hectares, fc.years_farming
+               h.household_size, h.education_level, h.occupation,
+               GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info
         FROM farmers f 
-        LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
-        LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
+    LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
+    LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition 
-        ORDER BY f.registration_date DESC, f.farmer_id DESC 
-        LIMIT ? OFFSET ?";
+    GROUP BY f.farmer_id
+    ORDER BY f.registration_date DESC, f.farmer_id DESC 
+    LIMIT ? OFFSET ?";
 
 if (!empty($search_params)) {
     $stmt = $conn->prepare($sql);
@@ -1064,9 +1066,18 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                             </div>
                                         </td>
                                         <td class="px-3 py-4">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-agri-light text-agri-dark">
-                                                <?php echo htmlspecialchars($farmer['commodity_name'] ?? 'Not specified'); ?>
-                                            </span>
+                                            <?php 
+                                                if (!empty($farmer['commodities_info'])) {
+                                                    $commodities = explode(', ', $farmer['commodities_info']);
+                                                    echo '<div class="flex flex-col gap-1">';
+                                                    foreach ($commodities as $commodity) {
+                                                        echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs">' . htmlspecialchars($commodity) . '</div>';
+                                                    }
+                                                    echo '</div>';
+                                                } else {
+                                                    echo '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-agri-light text-agri-dark">Not specified</span>';
+                                                }
+                                            ?>
                                         </td>
                                         <td class="px-3 py-4 text-xs text-gray-500">
                                             <?php 
