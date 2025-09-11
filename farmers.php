@@ -621,15 +621,21 @@ while ($row = $barangays_result->fetch_assoc()) {
 }
 
 // Search and filter functionality
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
+$search = isset($_POST['search']) ? trim($_POST['search']) : '';
+$barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
+
+// Handle clear all - reset search and filter
+if (isset($_POST['clear_all'])) {
+    $search = '';
+    $barangay_filter = '';
+}
 $search_condition = 'WHERE f.archived = 0';
 $search_params = [];
 
 if (!empty($search)) {
-    $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
+    $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
     $search_term = "%$search%";
-    $search_params = [$search_term, $search_term, $search_term];
+    $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
 }
 
 if (!empty($barangay_filter)) {
@@ -746,15 +752,38 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
             dropdownArrow.classList.toggle('rotate');
         }
 
+        // Function to handle navigation dropdown toggle
+        function toggleNavigationDropdown() {
+            const dropdown = document.getElementById('navigationDropdown');
+            const arrow = document.getElementById('navigationArrow');
+            
+            dropdown.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const userMenu = document.getElementById('userMenu');
             const dropdownMenu = document.getElementById('dropdownMenu');
             const dropdownArrow = document.getElementById('dropdownArrow');
             
+            // Handle user dropdown
             if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
                 dropdownMenu.classList.remove('show');
                 dropdownArrow.classList.remove('rotate');
+            }
+            
+            // Handle navigation dropdown
+            const navigationButton = event.target.closest('button');
+            const isNavigationButton = navigationButton && navigationButton.onclick && navigationButton.onclick.toString().includes('toggleNavigationDropdown');
+            const navigationDropdown = document.getElementById('navigationDropdown');
+            
+            if (!isNavigationButton && navigationDropdown && !navigationDropdown.contains(event.target)) {
+                navigationDropdown.classList.add('hidden');
+                const navigationArrow = document.getElementById('navigationArrow');
+                if (navigationArrow) {
+                    navigationArrow.classList.remove('rotate-180');
+                }
             }
         });
     </script>
@@ -784,30 +813,128 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Header Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
+                <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                    <div class="flex-1">
                         <h1 class="text-3xl font-bold text-gray-900 flex items-center">
                             <i class="fas fa-users text-agri-green mr-3"></i>
                             Farmers Management
                         </h1>
                         <p class="text-gray-600 mt-2">Manage and monitor all registered farmers</p>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <button data-bs-toggle="modal" data-bs-target="#farmerRegistrationModal"
-                                class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
-                            <i class="fas fa-plus mr-2"></i>Add New Farmer
-                        </button>
+                    <div class="flex flex-col sm:flex-row gap-3 min-w-fit">
+                        <div class="flex gap-3 whitespace-nowrap">
                         <button onclick="exportToPDF()" 
                                 class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center">
                             <i class="fas fa-file-pdf mr-2"></i>Export to PDF
                         </button>
+                        
+                        <button data-bs-toggle="modal" data-bs-target="#farmerRegistrationModal"
+                                class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
+                            <i class="fas fa-plus mr-2"></i>Add New Farmer
+                        </button>
+                        
+                        <!-- Page Navigation -->
+                        <div class="relative">
+                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" 
+                                    onclick="toggleNavigationDropdown()">
+                                <i class="fas fa-compass mr-2"></i>Go to Page
+                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                            </button>
+                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
+                                <!-- Dashboard Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
+                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-home text-blue-600 mr-3"></i>
+                                        Dashboard
+                                    </a>
+                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
+                                        Analytics Dashboard
+                                    </a>
+                                </div>
+                                
+                                <!-- Inventory Management Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
+                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-boxes text-orange-600 mr-3"></i>
+                                        MAO Inventory
+                                    </a>
+                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                        Distribution Records
+                                    </a>
+                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-calendar-check text-green-600 mr-3"></i>
+                                        MAO Activities
+                                    </a>
+                                </div>
+                                
+                                <!-- Records Management Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
+                                        <i class="fas fa-users text-green-600 mr-3"></i>
+                                        Farmers Registry
+                                    </a>
+                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                        RSBSA Records
+                                    </a>
+                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                        NCFRS Records
+                                    </a>
+                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                        FishR Records
+                                    </a>
+                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-ship text-indigo-600 mr-3"></i>
+                                        Boat Records
+                                    </a>
+                                </div>
+                                
+                                <!-- Monitoring & Reports Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                        Yield Monitoring
+                                    </a>
+                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                        Reports
+                                    </a>
+                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-list text-gray-600 mr-3"></i>
+                                        All Activities
+                                    </a>
+                                </div>
+                                
+                                <!-- Settings Section -->
+                                <div>
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
+                                        Staff Management
+                                    </a>
+                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                        System Settings
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Search and Filters -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <form method="GET" class="flex flex-col gap-4">
+                <form method="POST" class="flex flex-col gap-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Search Farmers</label>
@@ -844,9 +971,9 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                             <i class="fas fa-search mr-2"></i>Search
                         </button>
                         <?php if (!empty($search) || !empty($barangay_filter)): ?>
-                            <a href="farmers.php" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                            <button type="submit" name="clear_all" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-times mr-2"></i>Clear All
-                            </a>
+                            </button>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -883,14 +1010,14 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
                 <div class="overflow-hidden">
                     <table class="w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-agri-green">
                             <tr>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Farmer</th>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Contact</th>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Location</th>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Commodity</th>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">RegDate</th>
-                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Actions</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/4">Farmer</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/6">Contact</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/4">Location</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/6">Commodity</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/8">RegDate</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/8">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">

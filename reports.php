@@ -642,6 +642,30 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
                 }
             });
         }
+        
+        // Function to handle navigation dropdown toggle
+        function toggleNavigationDropdown() {
+            const dropdown = document.getElementById("navigationDropdown");
+            const arrow = document.getElementById("navigationArrow");
+            
+            dropdown.classList.toggle("hidden");
+            arrow.classList.toggle("rotate-180");
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(event) {
+            const navigationButton = event.target.closest("button");
+            const isNavigationButton = navigationButton && navigationButton.onclick && navigationButton.onclick.toString().includes("toggleNavigationDropdown");
+            const navigationDropdown = document.getElementById("navigationDropdown");
+            
+            if (!isNavigationButton && navigationDropdown && !navigationDropdown.contains(event.target)) {
+                navigationDropdown.classList.add("hidden");
+                const navigationArrow = document.getElementById("navigationArrow");
+                if (navigationArrow) {
+                    navigationArrow.classList.remove("rotate-180");
+                }
+            }
+        });
     </script>
 </head>
 <body>';
@@ -1236,9 +1260,104 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                             <?php echo date('F d, Y h:i A'); ?>
                         </div>
                     </div>
-                    <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
-                        <div class="text-3xl font-bold"><?php echo $saved_reports_result->num_rows; ?></div>
-                        <div class="text-sm opacity-90">Saved Reports</div>
+                    <div class="flex flex-col gap-4">
+                        <!-- Page Navigation -->
+                        <div class="relative">
+                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
+                                <i class="fas fa-compass mr-2"></i>Go to Page
+                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                            </button>
+                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
+                                <!-- Dashboard Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
+                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-home text-blue-600 mr-3"></i>
+                                        Dashboard
+                                    </a>
+                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
+                                        Analytics Dashboard
+                                    </a>
+                                </div>
+                                
+                                <!-- Inventory Management Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
+                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-warehouse text-green-600 mr-3"></i>
+                                        MAO Inventory
+                                    </a>
+                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                        Distribution Records
+                                    </a>
+                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-calendar-check text-green-600 mr-3"></i>
+                                        MAO Activities
+                                    </a>
+                                </div>
+                                
+                                <!-- Records Management Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-users text-green-600 mr-3"></i>
+                                        Farmers Registry
+                                    </a>
+                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                        RSBSA Records
+                                    </a>
+                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                        NCFRS Records
+                                    </a>
+                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                        FishR Records
+                                    </a>
+                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-ship text-indigo-600 mr-3"></i>
+                                        Boat Records
+                                    </a>
+                                </div>
+                                
+                                <!-- Monitoring & Reports Section -->
+                                <div class="border-b border-gray-200">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                        Yield Monitoring
+                                    </a>
+                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
+                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                        Reports
+                                    </a>
+                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-list text-gray-600 mr-3"></i>
+                                        All Activities
+                                    </a>
+                                </div>
+                                
+                                <!-- Settings Section -->
+                                <div>
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
+                                        Staff Management
+                                    </a>
+                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                        System Settings
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
+                            <div class="text-3xl font-bold"><?php echo $saved_reports_result->num_rows; ?></div>
+                            <div class="text-sm opacity-90">Saved Reports</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1338,66 +1457,65 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                     </div>
                 </div>
 
-                <!-- Report History -->
+                <!-- Report History (Compact) -->
                 <div>
-                    <div class="bg-white rounded-xl shadow-lg p-8">
-                        <div class="border-b border-gray-200 pb-6 mb-6">
-                            <h3 class="text-xl font-bold text-gray-900 flex items-center">
-                                <div class="bg-agri-green p-2 rounded-lg mr-3">
-                                    <i class="fas fa-history text-white"></i>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="border-b border-gray-200 pb-3 mb-3">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <div class="bg-agri-green p-1.5 rounded mr-2">
+                                    <i class="fas fa-history text-white text-sm"></i>
                                 </div>
                                 Recent Reports
                             </h3>
-                            <p class="text-gray-600 mt-2">Previously generated reports</p>
+                            <p class="text-gray-600 text-sm mt-1">Previously generated reports</p>
                         </div>
                         
                         <?php if ($saved_reports_result->num_rows > 0): ?>
-                            <div class="space-y-4 max-h-96 overflow-y-auto">
+                            <div class="space-y-2 max-h-72 overflow-y-auto">
                                 <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
-                                    <div class="recent-report-item border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
+                                    <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
                                         <div class="flex items-start justify-between">
                                             <div class="flex-1">
-                                                <div class="font-semibold text-gray-900 text-sm mb-1">
+                                                <div class="font-medium text-gray-900 text-sm mb-1">
                                                     <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
                                                 </div>
-                                                <div class="text-xs text-gray-600 mb-2">
+                                                <div class="text-xs text-gray-600 mb-1">
                                                     <i class="fas fa-calendar-alt mr-1"></i>
-                                                    <?php echo date('M d, Y', strtotime($report['start_date'])); ?> - 
-                                                    <?php echo date('M d, Y', strtotime($report['end_date'])); ?>
-                                                </div>
-                                                <div class="text-xs text-gray-500 mb-2">
-                                                    <i class="fas fa-user mr-1"></i>
-                                                    <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
+                                                    <?php echo date('M j', strtotime($report['start_date'])); ?> - 
+                                                    <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
                                                 </div>
                                                 <div class="text-xs text-gray-500">
+                                                    <i class="fas fa-user mr-1"></i>
+                                                    <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
+                                                    <span class="mx-1">•</span>
                                                     <i class="fas fa-clock mr-1"></i>
-                                                    <?php echo date('M d, Y h:i A', strtotime($report['timestamp'])); ?>
+                                                    <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="mt-3 pt-3 border-t border-gray-100">
+                                        <div class="mt-2 pt-2 border-t border-gray-100">
                                             <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
                                                target="_blank"
-                                               class="inline-flex items-center text-agri-green hover:text-agri-dark text-sm font-medium transition-colors">
-                                                <i class="fas fa-external-link-alt mr-2"></i>View Report
+                                               class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
+                                                <i class="fas fa-external-link-alt mr-1"></i>View Report
                                             </a>
                                         </div>
                                     </div>
                                 <?php endwhile; ?>
                             </div>
                             
-                            <div class="mt-6 pt-6 border-t border-gray-200">
-                                <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-sm flex items-center justify-center">
-                                    <i class="fas fa-archive mr-2"></i>View All Reports
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
+                                    <i class="fas fa-archive mr-1"></i>View All Reports
                                 </a>
                             </div>
                         <?php else: ?>
-                            <div class="text-center py-12">
-                                <div class="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                                    <i class="fas fa-file-alt text-3xl text-gray-400"></i>
+                            <div class="text-center py-8">
+                                <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                                    <i class="fas fa-file-alt text-xl text-gray-400"></i>
                                 </div>
-                                <h4 class="text-gray-900 font-medium mb-2">No reports yet</h4>
-                                <p class="text-gray-500 text-sm">Generate your first report to see it here</p>
+                                <h4 class="text-gray-900 font-medium mb-1 text-sm">No reports yet</h4>
+                                <p class="text-gray-500 text-xs">Generate your first report to see it here</p>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -1407,6 +1525,31 @@ $saved_reports_result = $conn->query($saved_reports_sql);
     </div>
 
     <script>
+        // Navigation dropdown functionality
+        function toggleNavigationDropdown() {
+            const dropdown = document.getElementById("navigationDropdown");
+            const arrow = document.getElementById("navigationArrow");
+            
+            if (dropdown.classList.contains("hidden")) {
+                dropdown.classList.remove("hidden");
+                arrow.style.transform = "rotate(180deg)";
+            } else {
+                dropdown.classList.add("hidden");
+                arrow.style.transform = "rotate(0deg)";
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(event) {
+            const dropdown = document.getElementById("navigationDropdown");
+            const button = event.target.closest("button");
+            
+            if (!dropdown.contains(event.target) && (!button || !button.getAttribute("onclick")?.includes("toggleNavigationDropdown"))) {
+                dropdown.classList.add("hidden");
+                document.getElementById("navigationArrow").style.transform = "rotate(0deg)";
+            }
+        });
+
         // Set maximum date to today and add form enhancements
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date().toISOString().split('T')[0];

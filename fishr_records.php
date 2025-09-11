@@ -27,15 +27,15 @@ function formatFarmerName($first_name, $middle_name, $last_name, $suffix) {
 // Handle PDF export
 if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Build search condition for export
-    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+    $search = isset($_POST['search']) ? trim($_POST['search']) : '';
     $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
     $search_condition = 'WHERE f.archived = 0 AND f.is_fisherfolk = 1';
     $search_params = [];
     
     if (!empty($search)) {
-        $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
+        $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
         $search_term = "%$search%";
-        $search_params = [$search_term, $search_term, $search_term];
+        $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
     }
     
     if (!empty($barangay_filter)) {
@@ -136,8 +136,15 @@ $barangays_query = "SELECT barangay_id, barangay_name FROM barangays ORDER BY ba
 $barangays_result = $conn->query($barangays_query);
 
 // Search and filter parameters
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
+$search = isset($_POST['search']) ? trim($_POST['search']) : '';
+$barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
+
+// Handle clear all - reset search and filter
+if (isset($_POST['clear_all'])) {
+    $search = '';
+    $barangay_filter = '';
+}
+
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10;
 $offset = ($page - 1) * $limit;
@@ -148,10 +155,10 @@ $search_params = [];
 $param_types = '';
 
 if (!empty($search)) {
-    $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
+    $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
     $search_term = "%$search%";
-    $search_params = array_merge($search_params, [$search_term, $search_term, $search_term]);
-    $param_types .= 'sss';
+    $search_params = array_merge($search_params, [$search_term, $search_term, $search_term, $search_term, $search_term]);
+    $param_types .= 'sssss';
 }
 
 if (!empty($barangay_filter)) {
@@ -241,17 +248,106 @@ if (!empty($search_params)) {
                         <i class="fas fa-file-pdf mr-2"></i>
                         Export PDF
                     </button>
-                    <a href="index.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
-                        <i class="fas fa-arrow-left mr-2"></i>
-                        Back to Dashboard
-                    </a>
+                    <!-- Go to Page (rightmost) -->
+                    <div class="relative">
+                        <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center font-medium" onclick="toggleNavigationDropdown()">
+                            <i class="fas fa-compass mr-2"></i>Go to Page
+                            <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                        </button>
+                        <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
+                            <!-- Dashboard Section -->
+                            <div class="border-b border-gray-200">
+                                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
+                                <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-home text-blue-600 mr-3"></i>
+                                    Dashboard
+                                </a>
+                                <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
+                                    Analytics Dashboard
+                                </a>
+                            </div>
+                            
+                            <!-- Inventory Management Section -->
+                            <div class="border-b border-gray-200">
+                                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
+                                <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-warehouse text-green-600 mr-3"></i>
+                                    MAO Inventory
+                                </a>
+                                <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                    Distribution Records
+                                </a>
+                                <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-calendar-check text-green-600 mr-3"></i>
+                                    MAO Activities
+                                </a>
+                            </div>
+                            
+                            <!-- Records Management Section -->
+                            <div class="border-b border-gray-200">
+                                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-users text-green-600 mr-3"></i>
+                                    Farmers Registry
+                                </a>
+                                <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                    RSBSA Records
+                                </a>
+                                <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                    NCFRS Records
+                                </a>
+                                <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
+                                    <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                    FishR Records
+                                </a>
+                                <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-ship text-indigo-600 mr-3"></i>
+                                    Boat Records
+                                </a>
+                            </div>
+                            
+                            <!-- Monitoring & Reports Section -->
+                            <div class="border-b border-gray-200">
+                                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                    Yield Monitoring
+                                </a>
+                                <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                    Reports
+                                </a>
+                                <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-list text-gray-600 mr-3"></i>
+                                    All Activities
+                                </a>
+                            </div>
+                            
+                            <!-- Settings Section -->
+                            <div>
+                                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-user-tie text-gray-600 mr-3"></i>
+                                    Staff Management
+                                </a>
+                                <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                    <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                    System Settings
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Search and Filter Section -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <form method="GET" class="flex flex-wrap gap-4 items-end">
+            <form method="POST" class="flex flex-wrap gap-4 items-end">
                 <div class="flex-1 min-w-64">
                     <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search Fishers</label>
                     <div class="relative">
@@ -299,38 +395,18 @@ if (!empty($search_params)) {
             </form>
         </div>
 
-        <!-- Results Summary -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <i class="fas fa-info-circle text-blue-500 mr-3"></i>
-                    <span class="text-blue-800">
-                        Found <strong><?php echo number_format($total_records); ?></strong> FishR registered fisher(s)
-                        <?php if (!empty($search) || !empty($barangay_filter)): ?>
-                            matching your search criteria
-                        <?php endif; ?>
-                    </span>
-                </div>
-                <?php if ($total_records > 0): ?>
-                    <span class="text-sm text-blue-600">
-                        Page <?php echo $page; ?> of <?php echo $total_pages; ?>
-                    </span>
-                <?php endif; ?>
-            </div>
-        </div>
-
         <!-- FishR Records Table -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <?php if ($total_records > 0): ?>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-blue-50">
+                        <thead class="bg-agri-green text-white">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fisher Details</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Location</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Commodity</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Fisher Details</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Contact & Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Registration Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Commodity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -533,6 +609,33 @@ if (!empty($search_params)) {
                 }, 200); // Delay to allow click events on suggestions
             }
         }
+
+        // Navigation dropdown functionality
+        function toggleNavigationDropdown() {
+            const dropdown = document.getElementById('navigationDropdown');
+            const arrow = document.getElementById('navigationArrow');
+            
+            if (dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('hidden');
+                arrow.classList.add('rotate-180');
+            } else {
+                dropdown.classList.add('hidden');
+                arrow.classList.remove('rotate-180');
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const navigationButton = event.target.closest('button');
+            const isNavigationButton = navigationButton && navigationButton.onclick && navigationButton.onclick.toString().includes('toggleNavigationDropdown');
+            const navigationDropdown = document.getElementById('navigationDropdown');
+            
+            if (!isNavigationButton && navigationDropdown && !navigationDropdown.contains(event.target)) {
+                navigationDropdown.classList.add('hidden');
+                const arrow = document.getElementById('navigationArrow');
+                if (arrow) arrow.classList.remove('rotate-180');
+            }
+        });
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>
