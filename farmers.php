@@ -66,25 +66,29 @@ function handleFarmerEdit($conn, $post_data) {
             throw new Exception("Failed to execute UPDATE: " . $stmt->error);
         }
         
-        // Update or insert commodity relationship in junction table
-        $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
-            (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
-            VALUES (?, ?, ?, ?, 1)
-            ON DUPLICATE KEY UPDATE 
-            commodity_id = VALUES(commodity_id),
-            land_area_hectares = VALUES(land_area_hectares),
-            years_farming = VALUES(years_farming)");
-        
-        $commodity_stmt->bind_param("sidi", 
-            $validated['farmer_id'], $validated['primary_commodity'], 
-            $validated['land_area_hectares'], $validated['years_farming']);
-        
-        if (!$commodity_stmt->execute()) {
-            throw new Exception("Failed to update commodity data: " . $commodity_stmt->error);
+        // --- Update multiple commodities ---
+        $submitted_commodities = $post_data['commodities'] ?? [];
+        if (!is_array($submitted_commodities) || count($submitted_commodities) === 0) {
+            throw new Exception("At least one commodity is required.");
         }
-        
+        // Remove all existing commodities for this farmer (will re-insert)
+        $conn->query("DELETE FROM farmer_commodities WHERE farmer_id = '" . $conn->real_escape_string($validated['farmer_id']) . "'");
+        $commodity_updated = false;
+        $primary_commodity_index = isset($post_data['primary_commodity_index']) ? intval($post_data['primary_commodity_index']) : 0;
+        foreach ($submitted_commodities as $idx => $comm) {
+            $is_primary = ($primary_commodity_index == $idx) ? 1 : 0;
+            $commodity_id = $comm['commodity_id'] ?? '';
+            $land_area = $comm['land_area_hectares'] ?? 0;
+            $years = $comm['years_farming'] ?? 0;
+            if (!$commodity_id) continue;
+            $ins_stmt = $conn->prepare("INSERT INTO farmer_commodities (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) VALUES (?, ?, ?, ?, ?)");
+            $ins_stmt->bind_param("sidii", $validated['farmer_id'], $commodity_id, $land_area, $years, $is_primary);
+            if (!$ins_stmt->execute()) {
+                throw new Exception("Failed to update commodity data: " . $ins_stmt->error);
+            }
+            $commodity_updated = true;
+        }
         $farmers_updated = $stmt->affected_rows > 0;
-        $commodity_updated = $commodity_stmt->affected_rows > 0;
         
         // Update or insert household_info
         $household_stmt = $conn->prepare("SELECT id FROM household_info WHERE farmer_id = ?");
@@ -289,8 +293,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
     header('Content-Type: application/json');
-    
     switch ($_GET['action']) {
+        case 'get_farmer':
+            if (isset($_GET['id'])) {
+                $farmer_id = $conn->real_escape_string($_GET['id']);
+                $farmer_sql = "SELECT * FROM farmers WHERE farmer_id = '$farmer_id' LIMIT 1";
+                $farmer_result = $conn->query($farmer_sql);
+                if ($farmer_result && $farmer_result->num_rows > 0) {
+                    $farmer = $farmer_result->fetch_assoc();
+                    // Fetch household info for this farmer
+                    $household_sql = "SELECT civil_status, spouse_name, household_size, education_level, occupation FROM household_info WHERE farmer_id = '$farmer_id' LIMIT 1";
+                    $household_result = $conn->query($household_sql);
+                    if ($household_result && $household_result->num_rows > 0) {
+                        $household = $household_result->fetch_assoc();
+                        $farmer = array_merge($farmer, $household);
+                    }
+                    // Fetch all commodities for this farmer
+                    $commodities = [];
+                    $com_sql = "SELECT commodity_id, land_area_hectares, years_farming, is_primary FROM farmer_commodities WHERE farmer_id = '$farmer_id' ORDER BY is_primary DESC, id ASC";
+                    $com_result = $conn->query($com_sql);
+                    if ($com_result) {
+                        while ($row = $com_result->fetch_assoc()) {
+                            $commodities[] = $row;
+                        }
+                    }
+                    $farmer['commodities'] = $commodities;
+                    echo json_encode(['success' => true, 'farmer' => $farmer]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Farmer not found']);
+                }
+                exit;
+            }
+            break;
+        // ...existing code...
         case 'view':
             if (!isset($_GET['id'])) {
                 echo json_encode(['success' => false, 'message' => 'Farmer ID is required']);

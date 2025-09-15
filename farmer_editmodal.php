@@ -20,6 +20,18 @@ if ($cq) {
     }
 }
 
+// Fetch commodities for the selected farmer (for edit)
+$farmer_commodities = [];
+if (!empty($_GET['farmer_id'])) {
+    $farmer_id = $conn->real_escape_string($_GET['farmer_id']);
+    $cq = $conn->query("SELECT commodity_id, land_area_hectares, years_farming, is_primary FROM farmer_commodities WHERE farmer_id = '$farmer_id' ORDER BY is_primary DESC, id ASC");
+    if ($cq) {
+        while ($row = $cq->fetch_assoc()) {
+            $farmer_commodities[] = $row;
+        }
+    }
+}
+
 if ($_SESSION['role'] !== 'admin') {
     header("Location: index.php");
     exit();
@@ -193,32 +205,28 @@ if ($_SESSION['role'] !== 'admin') {
 
                     <!-- Farming Details Section -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h6 class="mb-0"><i class="fas fa-tractor me-2"></i>Farming Details</h6>
+                            <button type="button" class="btn btn-sm btn-success" id="editAddCommodityBtn">
+                                <i class="fas fa-plus me-1"></i>Add Commodity
+                            </button>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <label for="edit_primary_commodity" class="form-label">Primary Commodity <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_primary_commodity" name="commodity_id" required>
-                                        <option value="">Select Commodity</option>
-                                        <?php foreach ($commodities as $commodity): ?>
-                                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>">
-                                                <?php echo htmlspecialchars($commodity['commodity_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
+                            <div class="row mb-2 border-bottom pb-2">
+                                <div class="col-md-4"><strong>Commodity</strong></div>
+                                <div class="col-md-2 text-center"><strong>Land Area (ha)</strong></div>
+                                <div class="col-md-2 text-center"><strong>Years Experience</strong></div>
+                                <div class="col-md-2 text-center"><strong>Primary</strong></div>
+                                <div class="col-md-2 text-center"><strong>Action</strong></div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="edit_land_area_hectares" class="form-label">Land Area (Hectares) <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="edit_land_area_hectares" name="land_area_hectares" step="0.01" min="0" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="edit_years_farming" class="form-label">Years in Farming <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="edit_years_farming" name="years_farming" min="0" required>
-                                </div>
+                            <div id="editCommoditiesContainer">
+                                <!-- Commodity rows will be dynamically inserted here by JS -->
+                            </div>
+                            <div class="alert alert-success mt-3">
+                                <small>
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <strong>Tip:</strong> You can add multiple commodities if the farmer grows different crops. Select which one is the primary commodity for reporting purposes.
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -242,6 +250,76 @@ if ($_SESSION['role'] !== 'admin') {
 </div>
 
 <script>
+// --- Commodity Management for Edit Modal ---
+let editCommodityIndex = 0;
+function renderEditCommodities(commodities) {
+    const container = document.getElementById('editCommoditiesContainer');
+    container.innerHTML = '';
+    commodities.forEach((commodity, idx) => {
+        const isPrimary = commodity.is_primary ? 'checked' : '';
+        const locked = idx === 0 ? 'disabled' : '';
+        container.innerHTML += `
+            <div class="commodity-row mb-3 p-3 border rounded bg-light" data-commodity-index="${idx}">
+                <div class="row align-items-end">
+                    <div class="col-md-4 mb-3">
+                        <select class="form-select commodity-select" name="commodities[${idx}][commodity_id]" required>
+                            <option value="">Select Commodity</option>
+                            ${window.editCommodityOptions}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <input type="number" step="0.01" min="0" class="form-control text-center" name="commodities[${idx}][land_area_hectares]" value="${commodity.land_area_hectares}" placeholder="0.00" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${idx}][years_farming]" value="${commodity.years_farming}" placeholder="0" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="form-check mt-2 text-center">
+                            <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="${idx}" ${isPrimary} required>
+                            <label class="form-check-label text-success fw-bold d-block">
+                                <i class="fas fa-star me-1"></i>Primary
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <div class="mt-2 text-center">
+                            ${idx === 0 ? '<span class="text-muted small"><i class="fas fa-lock me-1"></i>Primary</span>' : `<button type="button" class="btn btn-sm btn-danger" onclick="removeEditCommodity(${idx})"><i class="fas fa-trash"></i></button>`}
+                        </div>
+                    </div>
+                </div>
+                ${idx === 0 ? `<div class="row"><div class="col-12"><div class="alert alert-info py-2 mb-0"><small><i class="fas fa-info-circle me-1"></i>This is the primary commodity and cannot be removed. At least one commodity is required.</small></div></div></div>` : ''}
+            </div>
+        `;
+    });
+    // Set selected values for commodity selects
+    commodities.forEach((commodity, idx) => {
+        const select = container.querySelector(`[name='commodities[${idx}][commodity_id]']`);
+        if (select) select.value = commodity.commodity_id;
+    });
+}
+
+function removeEditCommodity(idx) {
+    window.editCommodities.splice(idx, 1);
+    // Always keep at least one commodity
+    if (window.editCommodities.length === 0) {
+        window.editCommodities.push({commodity_id: '', land_area_hectares: '', years_farming: '', is_primary: true});
+    }
+    // Ensure only one is primary
+    window.editCommodities.forEach((c, i) => c.is_primary = i === 0);
+    renderEditCommodities(window.editCommodities);
+}
+
+document.getElementById('editAddCommodityBtn').addEventListener('click', function() {
+    window.editCommodities.push({commodity_id: '', land_area_hectares: '', years_farming: '', is_primary: false});
+    renderEditCommodities(window.editCommodities);
+});
+
+// Prepare commodity options for JS
+window.editCommodityOptions = `<?php foreach ($commodities as $c): ?><option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option><?php endforeach; ?>`;
+
+// Initialize commodities from PHP (replace with actual farmer data)
+window.editCommodities = <?php echo json_encode($farmer_commodities && count($farmer_commodities) ? $farmer_commodities : [['commodity_id'=>'','land_area_hectares'=>'','years_farming'=>'','is_primary'=>true]]); ?>;
+renderEditCommodities(window.editCommodities);
 function toggleEditSpouseField() {
     const civilStatus = document.getElementById('edit_civil_status').value;
     const spouseField = document.getElementById('edit_spouse_field');
@@ -346,7 +424,6 @@ function editFarmer(farmerId) {
         .then(data => {
             if (data.success) {
                 const farmer = data.farmer;
-                
                 // Populate the form fields
                 document.getElementById('edit_farmer_id').value = farmer.farmer_id || '';
                 document.getElementById('edit_first_name').value = farmer.first_name || '';
@@ -355,19 +432,16 @@ function editFarmer(farmerId) {
                 document.getElementById('edit_suffix').value = farmer.suffix || '';
                 document.getElementById('edit_birth_date').value = farmer.birth_date || '';
                 document.getElementById('edit_gender').value = farmer.gender || '';
+                // --- PATCH: Populate household info fields from backend ---
                 document.getElementById('edit_civil_status').value = farmer.civil_status || '';
                 document.getElementById('edit_spouse_name').value = farmer.spouse_name || '';
-                document.getElementById('edit_contact_number').value = farmer.contact_number || '';
-                document.getElementById('edit_barangay_id').value = farmer.barangay_id || '';
-                document.getElementById('edit_address_details').value = farmer.address_details || '';
-                document.getElementById('edit_primary_commodity').value = farmer.commodity_id || '';
                 document.getElementById('edit_household_size').value = farmer.household_size || '1';
                 document.getElementById('edit_education_level').value = farmer.education_level || '';
                 document.getElementById('edit_occupation').value = farmer.occupation || 'Farmer';
+                document.getElementById('edit_contact_number').value = farmer.contact_number || '';
+                document.getElementById('edit_barangay_id').value = farmer.barangay_id || '';
+                document.getElementById('edit_address_details').value = farmer.address_details || '';
                 document.getElementById('edit_other_income_source').value = farmer.other_income_source || '';
-                document.getElementById('edit_land_area_hectares').value = farmer.land_area_hectares || '';
-                document.getElementById('edit_years_farming').value = farmer.years_farming || '';
-                
                 // Handle checkboxes
                 document.getElementById('edit_is_member_of_4ps').checked = farmer.is_member_of_4ps == '1';
                 document.getElementById('edit_is_ip').checked = farmer.is_ip == '1';
@@ -375,10 +449,12 @@ function editFarmer(farmerId) {
                 document.getElementById('edit_is_ncfrs').checked = farmer.is_ncfrs == '1';
                 document.getElementById('edit_is_fisherfolk').checked = farmer.is_fisherfolk == '1';
                 document.getElementById('edit_is_boat').checked = farmer.is_boat == '1';
-                
                 // Trigger spouse field visibility
                 toggleEditSpouseField();
-                
+                // --- PATCH: Multi-commodity support ---
+                // Set window.editCommodities from backend data (array of commodities)
+                window.editCommodities = Array.isArray(farmer.commodities) && farmer.commodities.length ? farmer.commodities : [{commodity_id:'',land_area_hectares:'',years_farming:'',is_primary:true}];
+                renderEditCommodities(window.editCommodities);
                 // Show the modal
                 new bootstrap.Modal(document.getElementById('editFarmerModal')).show();
             } else {

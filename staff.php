@@ -271,137 +271,15 @@ $staff_result = mysqli_query($conn, $staff_query);
     </footer>
 
     <!-- View Staff Modal -->
-    <div id="viewStaffModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full hidden z-50 transition-all duration-300">
-        <div class="relative top-4 mx-auto p-0 w-11/12 md:w-4/5 lg:w-3/5 xl:w-1/2 max-w-3xl">
-            <div class="bg-white rounded-xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-[1.01]">
-                <!-- Modal Header with Gradient Background -->
-                <div class="bg-gradient-to-r from-agri-green to-agri-dark p-4 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-12 -mt-12"></div>
-                    <div class="absolute bottom-0 left-0 w-16 h-16 bg-white opacity-10 rounded-full -ml-8 -mb-8"></div>
-                    <div class="relative flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-3">
-                                <i class="fas fa-user-circle text-xl text-white"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold text-white">Staff Profile</h3>
-                                <p class="text-green-100 text-xs">Detailed Information</p>
-                            </div>
-                        </div>
-                        <button onclick="closeViewModal()" class="text-white hover:text-green-200 transition-colors duration-200 p-2 rounded-full hover:bg-white hover:bg-opacity-20">
-                            <i class="fas fa-times text-lg"></i>
-                        </button>
-                    </div>
+    <div id="viewStaffModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title text-success"><i class="fas fa-user-circle me-2"></i>Staff Details</h5>
+                    <button type="button" class="btn-close" onclick="closeViewModal()"></button>
                 </div>
-                
-                <!-- Modal Body -->
-                <div class="p-5 bg-gradient-to-br from-gray-50 to-white">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                        <!-- Profile Section -->
-                        <div class="lg:col-span-1">
-                            <div class="text-center bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow duration-300">
-                                <div class="relative mb-3">
-                                    <div class="w-20 h-20 mx-auto bg-gradient-to-br from-agri-green to-agri-dark rounded-full flex items-center justify-center shadow-md">
-                                        <i class="fas fa-user text-3xl text-white"></i>
-                                    </div>
-                                    <div id="modal_head_badge_top" class="absolute -top-1 -right-1 hidden">
-                                        <div class="w-7 h-7 bg-yellow-400 rounded-full flex items-center justify-center shadow-md">
-                                            <i class="fas fa-crown text-yellow-800 text-xs"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                <h4 id="modal_staff_name" class="text-lg font-bold text-gray-900 mb-1"></h4>
-                                <p id="modal_staff_position" class="text-sm text-gray-600 mb-3 font-medium"></p>
-                                <div id="modal_head_badge" class="hidden mb-3">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 shadow-sm">
-                                        <i class="fas fa-crown mr-1"></i>Head
-                                    </span>
-                                </div>
-                                <div class="pt-3 border-t border-gray-200">
-                                    <div class="flex items-center justify-center text-xs text-gray-600">
-                                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span>
-                                        Active
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Details Section -->
-                        <div class="lg:col-span-2 space-y-4">
-                            <!-- Personal Information Card -->
-                            <div class="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-all duration-300 border-l-4 border-blue-500">
-                                <div class="flex items-center mb-3">
-                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-                                        <i class="fas fa-user text-blue-600 text-sm"></i>
-                                    </div>
-                                    <h5 class="text-lg font-bold text-gray-800">Personal Info</h5>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200">
-                                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">First Name</label>
-                                        <p id="modal_first_name" class="text-sm font-medium text-gray-900 mt-1"></p>
-                                    </div>
-                                    <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200">
-                                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Last Name</label>
-                                        <p id="modal_last_name" class="text-sm font-medium text-gray-900 mt-1"></p>
-                                    </div>
-                                    <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200 md:col-span-2">
-                                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Contact</label>
-                                        <p id="modal_contact_number" class="text-sm font-medium text-gray-900 mt-1 flex items-center">
-                                            <i class="fas fa-phone text-green-600 mr-2 text-xs"></i>
-                                            <span></span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Work Information Card -->
-                            <div class="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-all duration-300 border-l-4 border-green-500">
-                                <div class="flex items-center mb-3">
-                                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-2">
-                                        <i class="fas fa-briefcase text-green-600 text-sm"></i>
-                                    </div>
-                                    <h5 class="text-lg font-bold text-gray-800">Work Info</h5>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200">
-                                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Position</label>
-                                        <p id="modal_position" class="text-sm font-medium text-gray-900 mt-1"></p>
-                                    </div>
-                                    <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200">
-                                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Role</label>
-                                        <div class="mt-1">
-                                            <span id="modal_role" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold text-white shadow-sm">
-                                                <i class="fas fa-user-shield mr-1"></i>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200 md:col-span-2">
-                                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Username</label>
-                                        <p id="modal_username" class="text-sm font-mono bg-white px-2 py-1 rounded border mt-1 flex items-center">
-                                            <i class="fas fa-at text-gray-500 mr-1 text-xs"></i>
-                                            <span></span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Modal Footer -->
-                <div class="bg-gray-50 px-5 py-3 border-t border-gray-200">
-                    <div class="flex justify-between items-center">
-                        <div class="text-xs text-gray-500">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Updated: <?php echo date('M j, Y'); ?>
-                        </div>
-                        <div>
-                            <button onclick="closeViewModal()" class="px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-sm hover:shadow-md text-sm">
-                                <i class="fas fa-times mr-1"></i>Close
-                            </button>
-                        </div>
-                    </div>
+                <div class="modal-body p-0" id="viewStaffContent">
+                    <!-- Content will be loaded via JS -->
                 </div>
             </div>
         </div>
@@ -466,57 +344,64 @@ $staff_result = mysqli_query($conn, $staff_query);
         }
 
         function viewStaff(staff) {
-            // Populate modal with staff data
-            document.getElementById('modal_staff_name').textContent = staff.first_name + ' ' + staff.last_name;
-            document.getElementById('modal_staff_position').textContent = staff.position;
-            document.getElementById('modal_first_name').textContent = staff.first_name;
-            document.getElementById('modal_last_name').textContent = staff.last_name;
-            
-            // Update contact number with phone icon
-            const contactElement = document.getElementById('modal_contact_number').querySelector('span');
-            contactElement.textContent = staff.contact_number;
-            
-            document.getElementById('modal_position').textContent = staff.position;
-            
-            // Update username with @ icon
-            const usernameElement = document.getElementById('modal_username').querySelector('span');
-            usernameElement.textContent = staff.username;
-            
-            // Set role badge with icon
-            const roleElement = document.getElementById('modal_role');
-            const roleIcon = staff.role_id == 1 ? 'fa-user-shield' : 'fa-user';
-            roleElement.innerHTML = `<i class="fas ${roleIcon} mr-2"></i>${staff.role_name.charAt(0).toUpperCase() + staff.role_name.slice(1)}`;
-            roleElement.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold text-white shadow-md ' + 
-                                  (staff.role_id == 1 ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-green-500 to-green-600');
-            
-            // Show head badges if applicable
-            const headBadge = document.getElementById('modal_head_badge');
-            const headBadgeTop = document.getElementById('modal_head_badge_top');
-            const isHead = staff.position.toLowerCase().includes('head') || 
-                          staff.position.toLowerCase().includes('officer') ||
-                          staff.position.toLowerCase().includes('chief') ||
-                          staff.position.toLowerCase().includes('director') ||
-                          staff.position.toLowerCase().includes('manager');
-            
-            if (isHead) {
-                headBadge.classList.remove('hidden');
-                headBadgeTop.classList.remove('hidden');
-            } else {
-                headBadge.classList.add('hidden');
-                headBadgeTop.classList.add('hidden');
-            }
-            
-            // Show modal with animation
-            const modal = document.getElementById('viewStaffModal');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.querySelector('.relative').classList.add('animate-in');
-            }, 10);
+            // Build the HTML for staff details (uniform with farmers view)
+            const html = `
+                <div class=\"container-fluid p-0\">
+                    <div class=\"bg-gradient-primary text-white p-3 rounded-top mb-3\" style=\"background: linear-gradient(135deg, #28a745, #20c997);\">
+                        <div class=\"row align-items-center\">
+                            <div class=\"col-auto\">
+                                <div class=\"h-16 w-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 d-flex align-items-center justify-content-center me-3\">
+                                    <i class=\"fas fa-user text-gray-600 fa-2x\"></i>
+                                </div>
+                            </div>
+                            <div class=\"col\">
+                                <h4 class=\"mb-1\"><i class=\"fas fa-user-circle me-2\"></i>${staff.first_name} ${staff.last_name}</h4>
+                                <small class=\"opacity-75\"><i class=\"fas fa-id-card me-1\"></i>Staff ID: ${staff.staff_id ?? ''}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class=\"row g-3\">
+                        <div class=\"col-md-6\">
+                            <div class=\"card border-0 shadow-sm h-100\">
+                                <div class=\"card-header bg-light border-0\">
+                                    <h6 class=\"card-title mb-0 text-success\"><i class=\"fas fa-user me-2\"></i>Personal Information</h6>
+                                </div>
+                                <div class=\"card-body\">
+                                    <div><strong>Contact:</strong> ${staff.contact_number ?? ''}</div>
+                                    <div><strong>Username:</strong> ${staff.username ?? ''}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class=\"col-md-6\">
+                            <div class=\"card border-0 shadow-sm h-100\">
+                                <div class=\"card-header bg-light border-0\">
+                                    <h6 class=\"card-title mb-0 text-info\"><i class=\"fas fa-briefcase me-2\"></i>Work Information</h6>
+                                </div>
+                                <div class=\"card-body\">
+                                    <div><strong>Position:</strong> ${staff.position ?? ''}</div>
+                                    <div><strong>Role:</strong> ${staff.role_name ?? staff.role ?? ''}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('viewStaffContent').innerHTML = html;
+            // Show the modal (Bootstrap 5)
+            var modal = new bootstrap.Modal(document.getElementById('viewStaffModal'));
+            modal.show();
         }
 
         function closeViewModal() {
-            const modal = document.getElementById('viewStaffModal');
-            modal.classList.add('hidden');
+            // Use Bootstrap's API to hide the modal
+            var modalEl = document.getElementById('viewStaffModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) {
+                modal.hide();
+            } else {
+                // fallback for manual hide if modal instance not found
+                modalEl.classList.add('hidden');
+            }
         }
 
         function archiveStaff(staffId, staffName) {

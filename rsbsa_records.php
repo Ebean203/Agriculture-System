@@ -81,7 +81,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
                     <th>Full Name</th>
                     <th>Contact</th>
                     <th>Barangay</th>
-                    <th>Registration Date</th>
+                    <th>REGDATE</th>
                     <th>Commodities & Land Area</th>
                 </tr>
             </thead>
@@ -510,7 +510,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                     <i class="fas fa-seedling mr-1"></i>Commodities
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-calendar mr-1"></i>Registration Date
+                                    <i class="fas fa-calendar mr-1"></i>REGDATE
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                                     <i class="fas fa-certificate mr-1"></i>Status
@@ -546,7 +546,18 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
                                                 <i class="fas fa-leaf mr-1"></i>
-                                                <?php echo htmlspecialchars($farmer['commodities_info'] ?? 'N/A'); ?>
+                                                <?php 
+                                                    if (!empty($farmer['commodities_info'])) {
+                                                        $commodities = explode(', ', $farmer['commodities_info']);
+                                                        echo '<div class="flex flex-col gap-1">';
+                                                        foreach ($commodities as $commodity) {
+                                                            echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs">' . htmlspecialchars($commodity) . '</div>';
+                                                        }
+                                                        echo '</div>';
+                                                    } else {
+                                                        echo 'N/A';
+                                                    }
+                                                ?>
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
