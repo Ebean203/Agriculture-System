@@ -1189,421 +1189,288 @@ $saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_dat
 $saved_reports_result = $conn->query($saved_reports_sql);
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports System - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    
-    
-    <style>
-        .report-card {
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-        .report-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 25px rgba(22, 163, 74, 0.15);
-            border-color: #16a34a;
-        }
-        .btn-generate {
-            background: linear-gradient(135deg, #16a34a, #15803d);
-            transition: all 0.3s ease;
-        }
-        .btn-generate:hover {
-            background: linear-gradient(135deg, #15803d, #166534);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(22, 163, 74, 0.3);
-        }
-        .recent-report-item {
-            transition: all 0.2s ease;
-        }
-        .recent-report-item:hover {
-            background-color: #f0fdf4;
-            border-color: #16a34a;
-        }
-        .input-focus {
-            transition: all 0.2s ease;
-        }
-        .input-focus:focus {
-            border-color: #16a34a;
-            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <?php include 'nav.php'; ?>
-
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            
-            <!-- Header Section -->
-            <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
-                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                    <div class="flex-1">
-                        <h1 class="text-4xl font-bold text-gray-900 flex items-center mb-3">
-                            <div class="bg-gradient-to-r from-agri-green to-agri-dark p-3 rounded-xl mr-4">
-                                <i class="fas fa-chart-line text-white text-2xl"></i>
-                            </div>
-                            Reports System
-                        </h1>
-                        <p class="text-gray-600 text-lg">Generate comprehensive reports for agricultural management and analytics</p>
-                        <div class="flex items-center mt-4 text-sm text-gray-500">
-                            <i class="fas fa-user mr-2"></i>
-                            Logged in as: <span class="font-semibold ml-1"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
-                            <span class="mx-3">•</span>
-                            <i class="fas fa-clock mr-2"></i>
-                            <?php echo date('F d, Y h:i A'); ?>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-4">
-                        <!-- Page Navigation -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                            </button>
-                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-home text-blue-600 mr-3"></i>
-                                        Dashboard
-                                    </a>
-                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                        Analytics Dashboard
-                                    </a>
-                                </div>
-                                
-                                <!-- Inventory Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
-                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                        MAO Inventory
-                                    </a>
-                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                        Distribution Records
-                                    </a>
-                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-calendar-check text-green-600 mr-3"></i>
-                                        MAO Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Records Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-users text-green-600 mr-3"></i>
-                                        Farmers Registry
-                                    </a>
-                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                        RSBSA Records
-                                    </a>
-                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                        NCFRS Records
-                                    </a>
-                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                        FishR Records
-                                    </a>
-                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-ship text-indigo-600 mr-3"></i>
-                                        Boat Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Monitoring & Reports Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                        Yield Monitoring
-                                    </a>
-                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
-                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                        Reports
-                                    </a>
-                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-list text-gray-600 mr-3"></i>
-                                        All Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Settings Section -->
-                                <div>
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                        Staff Management
-                                    </a>
-                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                        System Settings
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
-                            <div class="text-3xl font-bold"><?php echo $saved_reports_result->num_rows; ?></div>
-                            <div class="text-sm opacity-90">Saved Reports</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <?php if (isset($success_message)): ?>
-                <div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 p-6 rounded-lg mb-8 shadow-md">
-                    <div class="flex items-center">
-                        <div class="bg-green-500 rounded-full p-2 mr-4">
-                            <i class="fas fa-check text-white"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-green-800 font-semibold">Success!</h4>
-                            <p class="text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+<?php $pageTitle = 'Reports System - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 
-                <!-- Report Generation Form -->
-                <div class="xl:col-span-2">
-                    <div class="bg-white rounded-xl shadow-lg p-8">
-                        <div class="border-b border-gray-200 pb-6 mb-8">
-                            <h3 class="text-2xl font-bold text-gray-900 flex items-center">
-                                <div class="bg-agri-green p-2 rounded-lg mr-3">
-                                    <i class="fas fa-file-alt text-white"></i>
+                <!-- Header Section -->
+                <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                        <div class="flex-1">
+                            <h1 class="text-4xl font-bold text-gray-900 flex items-center mb-3">
+                                <div class="bg-gradient-to-r from-agri-green to-agri-dark p-3 rounded-xl mr-4">
+                                    <i class="fas fa-chart-line text-white text-2xl"></i>
                                 </div>
-                                Generate New Report
-                            </h3>
-                            <p class="text-gray-600 mt-2">Select report type and date range to generate comprehensive analytics</p>
+                                Reports System
+                            </h1>
+                            <p class="text-gray-600 text-lg">Generate comprehensive reports for agricultural management and analytics</p>
+                            <div class="flex items-center mt-4 text-sm text-gray-500">
+                                <i class="fas fa-user mr-2"></i>
+                                Logged in as: <span class="font-semibold ml-1"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
+                                <span class="mx-3">•</span>
+                                <i class="fas fa-clock mr-2"></i>
+                                <?php echo date('F d, Y h:i A'); ?>
+                            </div>
                         </div>
-                        
-                        <form method="POST" target="_blank" class="space-y-8">
-                            <input type="hidden" name="action" value="generate_report">
-                            
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-3">
-                                    <i class="fas fa-list text-agri-green mr-2"></i>Report Type
-                                </label>
-                                <select name="report_type" required 
-                                        class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus text-gray-900 bg-white shadow-sm">
-                                    <option value="">Choose a report type...</option>
-                                    <option value="farmers_summary">👥 Farmers Summary Report</option>
-                                    <option value="input_distribution">📦 Input Distribution Report</option>
-                                    <option value="yield_monitoring">🌾 Yield Monitoring Report</option>
-                                    <option value="inventory_status">📋 Current Inventory Status</option>
-                                    <option value="barangay_analytics">🗺️ Barangay Analytics Report</option>
-                                    <option value="commodity_production">🌱 Commodity Production Report</option>
-                                    <option value="registration_analytics">📋 Registration Analytics Report</option>
-                                    <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
-                                </select>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
-                                        <i class="fas fa-calendar-alt text-agri-green mr-2"></i>Start Date
-                                    </label>
-                                    <input type="date" name="start_date" required 
-                                           value="<?php echo date('Y-m-01'); ?>"
-                                           class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
-                                        <i class="fas fa-calendar-check text-agri-green mr-2"></i>End Date
-                                    </label>
-                                    <input type="date" name="end_date" required 
-                                           value="<?php echo date('Y-m-d'); ?>"
-                                           class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
-                                </div>
-                            </div>
-                            
-                            <div class="bg-agri-light p-6 rounded-xl border border-agri-green/20">
-                                <div class="flex items-start">
-                                    <i class="fas fa-info-circle text-agri-green mr-3 mt-1"></i>
+                        <div class="flex flex-col gap-4">
+                            <!-- Page Navigation -->
+                            <div class="relative">
+                                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
+                                    <i class="fas fa-compass mr-2"></i>Go to Page
+                                    <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                                </button>
+                                <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
+                                    <!-- Dashboard Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
+                                        <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-home text-blue-600 mr-3"></i>
+                                            Dashboard
+                                        </a>
+                                        <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
+                                            Analytics Dashboard
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Inventory Management Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
+                                        <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-warehouse text-green-600 mr-3"></i>
+                                            MAO Inventory
+                                        </a>
+                                        <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                            Distribution Records
+                                        </a>
+                                        <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-calendar-check text-green-600 mr-3"></i>
+                                            MAO Activities
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Records Management Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                        <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-users text-green-600 mr-3"></i>
+                                            Farmers Registry
+                                        </a>
+                                        <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                            RSBSA Records
+                                        </a>
+                                        <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                            NCFRS Records
+                                        </a>
+                                        <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                            FishR Records
+                                        </a>
+                                        <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-ship text-indigo-600 mr-3"></i>
+                                            Boat Records
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Monitoring & Reports Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                        <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                            Yield Monitoring
+                                        </a>
+                                        <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
+                                            <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                            Reports
+                                        </a>
+                                        <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-list text-gray-600 mr-3"></i>
+                                            All Activities
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Settings Section -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">
-                                            <i class="fas fa-save text-agri-green mr-2"></i>Report Auto-Save Information
-                                        </label>
-                                        <p class="text-sm text-gray-600 mt-1">All generated reports are automatically saved to the database and reports folder for future reference and download</p>
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-user-tie text-gray-600 mr-3"></i>
+                                            Staff Management
+                                        </a>
+                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                            System Settings
+                                        </a>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="flex gap-4 pt-4">
-                                <button type="submit" 
-                                        class="btn-generate text-white px-8 py-4 rounded-xl font-semibold flex items-center text-lg shadow-lg">
-                                    <i class="fas fa-chart-bar mr-3"></i>Generate Report
-                                </button>
-                                <button type="reset" 
-                                        class="bg-gray-100 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center text-lg border border-gray-300">
-                                    <i class="fas fa-undo mr-3"></i>Reset Form
-                                </button>
+                            <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
+                                <div class="text-3xl font-bold"><?php echo $saved_reports_result->num_rows; ?></div>
+                                <div class="text-sm opacity-90">Saved Reports</div>
                             </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Report History (Compact) -->
-                <div>
-                    <div class="bg-white rounded-lg shadow-md p-4">
-                        <div class="border-b border-gray-200 pb-3 mb-3">
-                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                                <div class="bg-agri-green p-1.5 rounded mr-2">
-                                    <i class="fas fa-history text-white text-sm"></i>
-                                </div>
-                                Recent Reports
-                            </h3>
-                            <p class="text-gray-600 text-sm mt-1">Previously generated reports</p>
                         </div>
+                    </div>
+
+                    <?php if (isset($success_message)): ?>
+                        <div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 p-6 rounded-lg mb-8 shadow-md">
+                            <div class="flex items-center">
+                                <div class="bg-green-500 rounded-full p-2 mr-4">
+                                    <i class="fas fa-check text-white"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-green-800 font-semibold">Success!</h4>
+                                    <p class="text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
                         
-                        <?php if ($saved_reports_result->num_rows > 0): ?>
-                            <div class="space-y-2 max-h-72 overflow-y-auto">
-                                <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
-                                    <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
-                                        <div class="flex items-start justify-between">
-                                            <div class="flex-1">
-                                                <div class="font-medium text-gray-900 text-sm mb-1">
-                                                    <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
-                                                </div>
-                                                <div class="text-xs text-gray-600 mb-1">
-                                                    <i class="fas fa-calendar-alt mr-1"></i>
-                                                    <?php echo date('M j', strtotime($report['start_date'])); ?> - 
-                                                    <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
-                                                </div>
-                                                <div class="text-xs text-gray-500">
-                                                    <i class="fas fa-user mr-1"></i>
-                                                    <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
-                                                    <span class="mx-1">•</span>
-                                                    <i class="fas fa-clock mr-1"></i>
-                                                    <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
-                                                </div>
+                        <!-- Report Generation Form -->
+                        <div class="xl:col-span-2">
+                            <div class="bg-white rounded-xl shadow-lg p-8">
+                                <div class="border-b border-gray-200 pb-6 mb-8">
+                                    <h3 class="text-2xl font-bold text-gray-900 flex items-center">
+                                        <div class="bg-agri-green p-2 rounded-lg mr-3">
+                                            <i class="fas fa-file-alt text-white"></i>
+                                        </div>
+                                        Generate New Report
+                                    </h3>
+                                    <p class="text-gray-600 mt-2">Select report type and date range to generate comprehensive analytics</p>
+                                </div>
+                                
+                                <form method="POST" target="_blank" class="space-y-8">
+                                    <input type="hidden" name="action" value="generate_report">
+                                    
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-list text-agri-green mr-2"></i>Report Type
+                                        </label>
+                                        <select name="report_type" required 
+                                                class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus text-gray-900 bg-white shadow-sm">
+                                            <option value="">Choose a report type...</option>
+                                            <option value="farmers_summary">👥 Farmers Summary Report</option>
+                                            <option value="input_distribution">📦 Input Distribution Report</option>
+                                            <option value="yield_monitoring">🌾 Yield Monitoring Report</option>
+                                            <option value="inventory_status">📋 Current Inventory Status</option>
+                                            <option value="barangay_analytics">🗺️ Barangay Analytics Report</option>
+                                            <option value="commodity_production">🌱 Commodity Production Report</option>
+                                            <option value="registration_analytics">📋 Registration Analytics Report</option>
+                                            <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                                <i class="fas fa-calendar-alt text-agri-green mr-2"></i>Start Date
+                                            </label>
+                                            <input type="date" name="start_date" required 
+                                                   value="<?php echo date('Y-m-01'); ?>"
+                                                   class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                                <i class="fas fa-calendar-check text-agri-green mr-2"></i>End Date
+                                            </label>
+                                            <input type="date" name="end_date" required 
+                                                   value="<?php echo date('Y-m-d'); ?>"
+                                                   class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-agri-light p-6 rounded-xl border border-agri-green/20">
+                                        <div class="flex items-start">
+                                            <i class="fas fa-info-circle text-agri-green mr-3 mt-1"></i>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">
+                                                    <i class="fas fa-save text-agri-green mr-2"></i>Report Auto-Save Information
+                                                </label>
+                                                <p class="text-sm text-gray-600 mt-1">All generated reports are automatically saved to the database and reports folder for future reference and download</p>
                                             </div>
                                         </div>
-                                        <div class="mt-2 pt-2 border-t border-gray-100">
-                                            <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
-                                               target="_blank"
-                                               class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
-                                                <i class="fas fa-external-link-alt mr-1"></i>View Report
-                                            </a>
-                                        </div>
                                     </div>
-                                <?php endwhile; ?>
+                                    
+                                    <div class="flex gap-4 pt-4">
+                                        <button type="submit" 
+                                                class="btn-generate text-white px-8 py-4 rounded-xl font-semibold flex items-center text-lg shadow-lg">
+                                            <i class="fas fa-chart-bar mr-3"></i>Generate Report
+                                        </button>
+                                        <button type="reset" 
+                                                class="bg-gray-100 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center text-lg border border-gray-300">
+                                            <i class="fas fa-undo mr-3"></i>Reset Form
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                            
-                            <div class="mt-3 pt-3 border-t border-gray-200">
-                                <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
-                                    <i class="fas fa-archive mr-1"></i>View All Reports
-                                </a>
-                            </div>
-                        <?php else: ?>
-                            <div class="text-center py-8">
-                                <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                                    <i class="fas fa-file-alt text-xl text-gray-400"></i>
+                        </div>
+
+                        <!-- Report History (Compact) -->
+                        <div>
+                            <div class="bg-white rounded-lg shadow-md p-4">
+                                <div class="border-b border-gray-200 pb-3 mb-3">
+                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        <div class="bg-agri-green p-1.5 rounded mr-2">
+                                            <i class="fas fa-history text-white text-sm"></i>
+                                        </div>
+                                        Recent Reports
+                                    </h3>
+                                    <p class="text-gray-600 text-sm mt-1">Previously generated reports</p>
                                 </div>
-                                <h4 class="text-gray-900 font-medium mb-1 text-sm">No reports yet</h4>
-                                <p class="text-gray-500 text-xs">Generate your first report to see it here</p>
+                                
+                                <?php if ($saved_reports_result->num_rows > 0): ?>
+                                    <div class="space-y-2 max-h-72 overflow-y-auto">
+                                        <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
+                                            <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
+                                                <div class="flex items-start justify-between">
+                                                    <div class="flex-1">
+                                                        <div class="font-medium text-gray-900 text-sm mb-1">
+                                                            <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
+                                                        </div>
+                                                        <div class="text-xs text-gray-600 mb-1">
+                                                            <i class="fas fa-calendar-alt mr-1"></i>
+                                                            <?php echo date('M j', strtotime($report['start_date'])); ?> - 
+                                                            <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
+                                                        </div>
+                                                        <div class="text-xs text-gray-500">
+                                                            <i class="fas fa-user mr-1"></i>
+                                                            <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
+                                                            <span class="mx-1">•</span>
+                                                            <i class="fas fa-clock mr-1"></i>
+                                                            <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2 pt-2 border-t border-gray-100">
+                                                    <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
+                                                       target="_blank"
+                                                       class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
+                                                        <i class="fas fa-external-link-alt mr-1"></i>View Report
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        <?php endwhile; ?>
+                                    </div>
+                                    
+                                    <div class="mt-3 pt-3 border-t border-gray-200">
+                                        <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
+                                            <i class="fas fa-archive mr-1"></i>View All Reports
+                                        </a>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="text-center py-8">
+                                        <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                                            <i class="fas fa-file-alt text-xl text-gray-400"></i>
+                                        </div>
+                                        <h4 class="text-gray-900 font-medium mb-1 text-sm">No reports yet</h4>
+                                        <p class="text-gray-500 text-xs">Generate your first report to see it here</p>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <script>
-        // Navigation dropdown functionality
-        function toggleNavigationDropdown() {
-            const dropdown = document.getElementById("navigationDropdown");
-            const arrow = document.getElementById("navigationArrow");
-            
-            if (dropdown.classList.contains("hidden")) {
-                dropdown.classList.remove("hidden");
-                arrow.style.transform = "rotate(180deg)";
-            } else {
-                dropdown.classList.add("hidden");
-                arrow.style.transform = "rotate(0deg)";
-            }
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener("click", function(event) {
-            const dropdown = document.getElementById("navigationDropdown");
-            const button = event.target.closest("button");
-            
-            if (!dropdown.contains(event.target) && (!button || !button.getAttribute("onclick")?.includes("toggleNavigationDropdown"))) {
-                dropdown.classList.add("hidden");
-                document.getElementById("navigationArrow").style.transform = "rotate(0deg)";
-            }
-        });
-
-        // Set maximum date to today and add form enhancements
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            const endDateInput = document.querySelector('input[name="end_date"]');
-            const startDateInput = document.querySelector('input[name="start_date"]');
-            
-            endDateInput.setAttribute('max', today);
-            startDateInput.setAttribute('max', today);
-            
-            // Auto-adjust end date when start date changes
-            startDateInput.addEventListener('change', function() {
-                const startDate = new Date(this.value);
-                const endDate = new Date(endDateInput.value);
-                
-                if (startDate > endDate) {
-                    endDateInput.value = this.value;
-                }
-                endDateInput.setAttribute('min', this.value);
-            });
-            
-            // Form validation
-            const form = document.querySelector('form');
-            form.addEventListener('submit', function(e) {
-                const reportType = document.querySelector('select[name="report_type"]').value;
-                const startDate = startDateInput.value;
-                const endDate = endDateInput.value;
-                
-                if (!reportType) {
-                    e.preventDefault();
-                    alert('Please select a report type.');
-                    return;
-                }
-                
-                if (new Date(startDate) > new Date(endDate)) {
-                    e.preventDefault();
-                    alert('Start date cannot be later than end date.');
-                    return;
-                }
-                
-                // Show loading state
-                const submitBtn = this.querySelector('button[type="submit"]');
-                const originalText = submitBtn.innerHTML;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Generating...';
-                submitBtn.disabled = true;
-                
-                // Re-enable after a delay (in case user comes back)
-                setTimeout(() => {
-                    submitBtn.innerHTML = originalText;
-                    submitBtn.disabled = false;
-                }, 5000);
-            });
-        });
-    </script>
-    
-    <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

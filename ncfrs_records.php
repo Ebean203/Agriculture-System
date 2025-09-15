@@ -281,25 +281,8 @@ function buildUrlParams($page, $search = '', $barangay = '') {
     return $params;
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCFRS Records - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    
-    
-    
-</head>
-<body class="bg-gray-50">
-    <?php include 'nav.php'; ?>
-
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+<?php $pageTitle = 'NCFRS Records - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             
             <!-- Header Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -518,7 +501,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                     <i class="fas fa-seedling mr-1"></i>Commodities
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-calendar mr-1"></i>Registration Date
+                                    <i class="fas fa-calendar mr-1"></i>REGDATE
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                                     <i class="fas fa-certificate mr-1"></i>Status
@@ -552,10 +535,18 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                             <?php echo htmlspecialchars($farmer['barangay_name']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                                                <i class="fas fa-leaf mr-1"></i>
-                                                <?php echo htmlspecialchars($farmer['commodities_info'] ?? 'N/A'); ?>
-                                            </span>
+                                            <?php 
+                                                if (!empty($farmer['commodities_info'])) {
+                                                    $commodities = explode(', ', $farmer['commodities_info']);
+                                                    echo '<div class="flex flex-col gap-1">';
+                                                    foreach ($commodities as $commodity) {
+                                                        echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs">' . htmlspecialchars($commodity) . '</div>';
+                                                    }
+                                                    echo '</div>';
+                                                } else {
+                                                    echo '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-agri-light text-agri-dark">N/A</span>';
+                                                }
+                                            ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo date('M d, Y', strtotime($farmer['ncfrs_registration_date'])); ?>
@@ -755,5 +746,4 @@ function buildUrlParams($page, $search = '', $barangay = '') {
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

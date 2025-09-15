@@ -43,6 +43,17 @@
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
 
+/* Modern card and button refresh */
+.card-shadow { box-shadow: 0 10px 25px -10px rgba(0,0,0,.15) !important; }
+.rounded-xl { border-radius: 14px !important; }
+.btn-soft { background: #16a34a12; color: #15803d; border: 1px solid #16a34a33; }
+.btn-soft:hover { background: #16a34a1f; }
+.heading-xl { font-size: 1.75rem; font-weight: 800; letter-spacing: .2px; }
+.muted { color: #6b7280 !important; }
+
+/* Topbar menus layering helpers */
+.z-top { z-index: 1000; }
+
 /* Ensure icons work properly */
 .fas, .far, .fab {
   font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands";

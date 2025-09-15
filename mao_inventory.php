@@ -3,7 +3,7 @@ session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
 
-$pageTitle = 'Manage Inventory';
+$pageTitle = 'Manage Inventory - Lagonglong FARMS';
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
@@ -112,683 +112,416 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    
-    
-    
-    <style>
-        /* Custom dropdown styles */
-        #dropdownMenu {
-            display: none;
-            z-index: 50;
-            transition: all 0.2s ease-in-out;
-            transform-origin: top right;
-        }
-
-        #dropdownMenu.show {
-            display: block !important;
-            z-index: 999999 !important;
-            position: absolute !important;
-            top: 100% !important;
-            right: 0 !important;
-            margin-top: 0.5rem !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
-            border: 1px solid rgba(0, 0, 0, 0.1) !important;
-        }
-
-        #dropdownArrow.rotate {
-            transform: rotate(180deg);
-        }
-
-        /* Ensure dropdown is above other content */
-        .relative {
-            z-index: 40;
-        }
-        
-        .inventory-card {
-            transition: all 0.3s ease;
-        }
-        .inventory-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        .low-stock {
-            border-left: 4px solid #dc2626;
-        }
-        .medium-stock {
-            border-left: 4px solid #d97706;
-        }
-        .high-stock {
-            border-left: 4px solid #16a34a;
-        }
-        .out-of-stock {
-            border-left: 4px solid #6b7280;
-            background-color: #f9fafb;
-        }
-        
-        /* Farmer suggestions styling */
-        #farmer_suggestions {
-            z-index: 1000;
-        }
-        
-        .suggestion-item:last-child {
-            border-bottom: none;
-        }
-        
-        .suggestion-item:hover {
-            background-color: #f3f4f6 !important;
-        }
-        
-        /* Modal enhancements for better layout */
-        .distribute-modal-xl {
-            max-width: 80rem; /* Even larger for visitation content */
-        }
-        
-        .modal-content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-        
-        @media (max-width: 768px) {
-            .modal-content-grid {
-                grid-template-columns: 1fr;
-            }
-            .distribute-modal-xl {
-                max-width: 95%;
-            }
-        }
-    </style>
-    <script>
-        // Function to handle dropdown toggle
-        function toggleDropdown() {
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            const dropdownArrow = document.getElementById('dropdownArrow');
-            dropdownMenu.classList.toggle('show');
-            dropdownArrow.classList.toggle('rotate');
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const userMenu = document.getElementById('userMenu');
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            const dropdownArrow = document.getElementById('dropdownArrow');
-            
-            if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
-                dropdownMenu.classList.remove('show');
-                dropdownArrow.classList.remove('rotate');
-            }
-        });
-    </script>
-</head>
-<body class="bg-gray-50">
-    <?php include 'nav.php'; ?>
-    
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <!-- Header Section -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                            <i class="fas fa-warehouse text-agri-green mr-3"></i>
-                            Manage Inventory
-                        </h1>
-                        <p class="text-gray-600 mt-2">Monitor and manage agricultural inputs available for distribution</p>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <!-- Add Input (Left) -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleAddInputDropdown()">
-                                <i class="fas fa-plus mr-2"></i>Add Input
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="addInputArrow"></i>
-                            </button>
-                            <div id="addInputDropdown" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
-                                <button onclick="openAddNewInputTypeModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-                                    <i class="fas fa-plus-circle text-green-600 mr-2"></i>
-                                    New Input Type
-                                </button>
-                                <button onclick="openAddToExistingModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-                                    <i class="fas fa-layer-group text-blue-600 mr-2"></i>
-                                    Add to Existing
-                                </button>
-                            </div>
+<?php include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <!-- Header Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                                <i class="fas fa-warehouse text-agri-green mr-3"></i>
+                                Manage Inventory
+                            </h1>
+                            <p class="text-gray-600 mt-2">Monitor and manage agricultural inputs available for distribution</p>
                         </div>
-                        
-                        <!-- Page Navigation (Right) -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                            </button>
-                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-home text-blue-600 mr-3"></i>
-                                        Dashboard
-                                    </a>
-                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                        Analytics Dashboard
-                                    </a>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <!-- Add Input (Left) -->
+                            <div class="relative">
+                                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleAddInputDropdown()">
+                                    <i class="fas fa-plus mr-2"></i>Add Input
+                                    <i class="fas fa-chevron-down ml-2 transition-transform" id="addInputArrow"></i>
+                                </button>
+                                <div id="addInputDropdown" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
+                                    <button onclick="openAddNewInputTypeModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                                        <i class="fas fa-plus-circle text-green-600 mr-2"></i>
+                                        New Input Type
+                                    </button>
+                                    <button onclick="openAddToExistingModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                                        <i class="fas fa-layer-group text-blue-600 mr-2"></i>
+                                        Add to Existing
+                                    </button>
                                 </div>
-                                
-                                <!-- MAO Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">MAO Management</div>
-                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                        MAO Inventory
-                                    </a>
-                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-tasks text-orange-600 mr-3"></i>
-                                        MAO Activities
-                                    </a>
-                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                        Distribution Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Records Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-users text-green-600 mr-3"></i>
-                                        Farmers Registry
-                                    </a>
-                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                        RSBSA Records
-                                    </a>
-                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                        NCFRS Records
-                                    </a>
-                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                        FishR Records
-                                    </a>
-                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-ship text-navy-600 mr-3"></i>
-                                        Boat Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Monitoring & Reports Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                        Yield Monitoring
-                                    </a>
-                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                        Reports
-                                    </a>
-                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-list text-gray-600 mr-3"></i>
-                                        All Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Settings Section -->
-                                <div>
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-user-tie text-purple-600 mr-3"></i>
-                                        Staff Management
-                                    </a>
-                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                        Settings
-                                    </a>
+                            </div>
+                            
+                            <!-- Page Navigation (Right) -->
+                            <div class="relative">
+                                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
+                                    <i class="fas fa-compass mr-2"></i>Go to Page
+                                    <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                                </button>
+                                <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
+                                    <!-- Dashboard Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
+                                        <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-home text-blue-600 mr-3"></i>
+                                            Dashboard
+                                        </a>
+                                        <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
+                                            Analytics Dashboard
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- MAO Management Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">MAO Management</div>
+                                        <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-warehouse text-green-600 mr-3"></i>
+                                            MAO Inventory
+                                        </a>
+                                        <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-tasks text-orange-600 mr-3"></i>
+                                            MAO Activities
+                                        </a>
+                                        <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                            Distribution Records
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Records Management Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                        <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-users text-green-600 mr-3"></i>
+                                            Farmers Registry
+                                        </a>
+                                        <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                            RSBSA Records
+                                        </a>
+                                        <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                            NCFRS Records
+                                        </a>
+                                        <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                            FishR Records
+                                        </a>
+                                        <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-ship text-navy-600 mr-3"></i>
+                                            Boat Records
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Monitoring & Reports Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                        <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                            Yield Monitoring
+                                        </a>
+                                        <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                            Reports
+                                        </a>
+                                        <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-list text-gray-600 mr-3"></i>
+                                            All Activities
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Settings Section -->
+                                    <div>
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-user-tie text-purple-600 mr-3"></i>
+                                            Staff Management
+                                        </a>
+                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                            Settings
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Success and Error Messages -->
-            <div id="messageContainer" class="mb-6" style="display: none;">
-                <div id="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center" style="display: none;">
-                    <i class="fas fa-check-circle mr-3 text-green-600"></i>
-                    <div>
-                        <strong>Success!</strong>
-                        <span id="successText"></span>
-                    </div>
-                    <button onclick="closeMessage('successMessage')" class="ml-auto text-green-700 hover:text-green-900">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center" style="display: none;">
-                    <i class="fas fa-exclamation-circle mr-3 text-red-600"></i>
-                    <div>
-                        <strong>Error!</strong>
-                        <span id="errorText"></span>
-                    </div>
-                    <button onclick="closeMessage('errorMessage')" class="ml-auto text-red-700 hover:text-red-900">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Inventory Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <?php
-                // Calculate summary statistics (safe handling after truncation)
-                $total_items = 0;
-                $out_of_stock = 0;
-                $low_stock = 0;
-                
-                if ($row_count > 0) {
-                    mysqli_data_seek($result, 0);
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $total_items++;
-                        $current_quantity = intval($row['quantity_on_hand']); // Ensure integer
-                        if ($current_quantity == 0) {
-                            $out_of_stock++;
-                        } elseif ($current_quantity <= 10) {
-                            $low_stock++;
-                        }
-                    }
-                }
-                ?>
-                
-                <!-- Total Items -->
-                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-boxes text-blue-600 text-xl"></i>
-                        </div>
+                <!-- Success and Error Messages -->
+                <div id="messageContainer" class="mb-6" style="display: none;">
+                    <div id="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center" style="display: none;">
+                        <i class="fas fa-check-circle mr-3 text-green-600"></i>
                         <div>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo $total_items; ?></h3>
-                            <p class="text-gray-600">Total Input Types</p>
+                            <strong>Success!</strong>
+                            <span id="successText"></span>
                         </div>
+                        <button onclick="closeMessage('successMessage')" class="ml-auto text-green-700 hover:text-green-900">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-                </div>
-
-                <!-- Out of Stock -->
-                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo $out_of_stock; ?></h3>
-                            <p class="text-gray-600">Out of Stock</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Low Stock -->
-                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-chart-line text-yellow-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo $low_stock; ?></h3>
-                            <p class="text-gray-600">Low Stock Items</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Last Updated -->
-                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-calendar-day text-green-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900"><?php echo date('M d, Y'); ?></h3>
-                            <p class="text-gray-600">Last Updated</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <?php
-            // Categorize items based on notification status (using already loaded notifications)
-            $critical_items = [];
-            $warning_items = [];
-            $normal_items = [];
-            
-            // Get all inventory items
-            mysqli_data_seek($result, 0);
-            $all_items = [];
-            while ($row = mysqli_fetch_assoc($result)) {
-                $all_items[$row['input_id']] = $row;
-            }
-            
-            // Categorize based on notifications
-            foreach ($notifications as $notification) {
-                if ($notification['category'] === 'inventory' && isset($notification['data']['input_id'])) {
-                    $input_id = $notification['data']['input_id'];
-                    if (isset($all_items[$input_id])) {
-                        if ($notification['type'] === 'urgent') {
-                            $critical_items[] = $all_items[$input_id];
-                        } elseif ($notification['type'] === 'warning') {
-                            $warning_items[] = $all_items[$input_id];
-                        }
-                        // Remove from all_items to avoid duplication
-                        unset($all_items[$input_id]);
-                    }
-                }
-            }
-            
-            // Remaining items are normal
-            $normal_items = array_values($all_items);
-            ?>
-
-            <!-- Reset result pointer for main inventory grid -->
-            <?php mysqli_data_seek($result, 0); ?>
-
-            <!-- Segregated Inventory Sections -->
-            <?php if (count($critical_items) > 0): ?>
-            <div class="mb-8">
-                <div class="bg-red-50 rounded-xl p-6 border-2 border-red-200">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-red-800 flex items-center">
-                            <i class="fas fa-fire text-red-600 mr-3 animate-pulse"></i>
-                            🚨 CRITICAL ITEMS - Immediate Action Required
-                        </h3>
-                        <span class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold">
-                            <?php echo count($critical_items); ?> Items
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <?php 
-                        foreach ($critical_items as $row) {
-                            renderInventoryCard($row, $distributions, 'urgent', $notification_lookup);
-                        }
-                        ?>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <?php if (count($warning_items) > 0): ?>
-            <div class="mb-8">
-                <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-yellow-800 flex items-center">
-                            <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
-                            ⚠️ WARNING ITEMS - Restock Soon
-                        </h3>
-                        <span class="bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold">
-                            <?php echo count($warning_items); ?> Items
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <?php 
-                        foreach ($warning_items as $row) {
-                            renderInventoryCard($row, $distributions, 'warning', $notification_lookup);
-                        }
-                        ?>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <div class="mb-8">
-                <div class="bg-green-50 rounded-xl p-6 border-2 border-green-200">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-green-800 flex items-center">
-                            <i class="fas fa-check-circle text-green-600 mr-3"></i>
-                            ✅ NORMAL STOCK ITEMS
-                        </h3>
-                        <span class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">
-                            <?php echo count($normal_items); ?> Items
-                        </span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <?php 
-                        foreach ($normal_items as $row) {
-                            renderInventoryCard($row, $distributions, 'normal', $notification_lookup);
-                        }
-                        ?>
-                    </div>
-                </div>
-            </div>
-
-            <?php
-            // Function to render inventory cards with status-specific styling
-            function renderInventoryCard($row, $distributions, $status, $notification_lookup) {
-                $quantity = intval($row['quantity_on_hand']);
-                $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
-                
-                // Ensure we have valid values
-                if ($quantity < 0) $quantity = 0;
-                if ($distributed < 0) $distributed = 0;
-                
-                // Determine stock status and styling based on segregation
-                $status_classes = [
-                    'urgent' => 'border-red-500 bg-red-50 shadow-red-200',
-                    'warning' => 'border-yellow-500 bg-yellow-50 shadow-yellow-200',
-                    'normal' => 'border-green-500 bg-white shadow-gray-200'
-                ];
-                
-                $badge_classes = [
-                    'urgent' => 'bg-red-600 text-white',
-                    'warning' => 'bg-yellow-600 text-white',
-                    'normal' => 'bg-green-600 text-white'
-                ];
-                
-                $status_text = [
-                    'urgent' => 'CRITICAL',
-                    'warning' => 'LOW STOCK',
-                    'normal' => 'NORMAL'
-                ];
-                
-                $card_class = $status_classes[$status];
-                $badge_class = $badge_classes[$status];
-                $status_display = $status_text[$status];
-                
-                // Define required variables for data attributes
-                $input_id = $row['input_id'];
-                $input_name_original = $row['input_name'];
-                $quantity_safe = $quantity;
-                
-                // Determine category icon
-                $input_name_lower = strtolower($row['input_name']);
-                $icon_bg = 'bg-gray-500';
-                $icon = 'fas fa-box';
-                
-                if (strpos($input_name_lower, 'seed') !== false) {
-                    $icon_bg = 'bg-green-500';
-                    $icon = 'fas fa-seedling';
-                } elseif (strpos($input_name_lower, 'fertilizer') !== false) {
-                    $icon_bg = 'bg-blue-500';
-                    $icon = 'fas fa-leaf';
-                } elseif (strpos($input_name_lower, 'pesticide') !== false || strpos($input_name_lower, 'herbicide') !== false) {
-                    $icon_bg = 'bg-yellow-500';
-                    $icon = 'fas fa-flask';
-                } elseif (strpos($input_name_lower, 'goat') !== false || strpos($input_name_lower, 'chicken') !== false) {
-                    $icon_bg = 'bg-orange-500';
-                    $icon = 'fas fa-paw';
-                } elseif (strpos($input_name_lower, 'tractor') !== false || strpos($input_name_lower, 'shovel') !== false || strpos($input_name_lower, 'sprayer') !== false || strpos($input_name_lower, 'pump') !== false) {
-                    $icon_bg = 'bg-purple-500';
-                    $icon = 'fas fa-tools';
-                }
-                
-                // Get notification message if exists
-                $notification_message = '';
-                if (isset($notification_lookup[$input_id])) {
-                    $notification_message = $notification_lookup[$input_id]['message'];
-                }
-                ?>
-                
-                <div class="inventory-card rounded-lg shadow-lg border-2 <?php echo $card_class; ?> h-full relative overflow-hidden">
-                    <?php if ($status == 'urgent'): ?>
-                        <div class="absolute top-0 right-0 bg-red-600 text-white px-3 py-1 text-xs font-bold transform rotate-12 translate-x-3 -translate-y-2">
-                            URGENT!
-                        </div>
-                    <?php elseif ($status == 'warning'): ?>
-                        <div class="absolute top-0 right-0 bg-yellow-600 text-white px-3 py-1 text-xs font-bold transform rotate-12 translate-x-3 -translate-y-2">
-                            LOW!
-                        </div>
-                    <?php endif; ?>
                     
-                    <div class="p-6">
-                        <!-- Header -->
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex items-center">
-                                <div class="w-12 h-12 <?php echo $icon_bg; ?> rounded-lg flex items-center justify-center mr-4">
-                                    <i class="<?php echo $icon; ?> text-white text-lg"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-gray-900"><?php echo htmlspecialchars($row['input_name']); ?></h3>
-                                    <p class="text-sm text-gray-600">Unit: <?php echo htmlspecialchars($row['unit']); ?></p>
-                                </div>
+                    <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center" style="display: none;">
+                        <i class="fas fa-exclamation-circle mr-3 text-red-600"></i>
+                        <div>
+                            <strong>Error!</strong>
+                            <span id="errorText"></span>
+                        </div>
+                        <button onclick="closeMessage('errorMessage')" class="ml-auto text-red-700 hover:text-red-900">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Inventory Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <?php
+                    // Calculate summary statistics (safe handling after truncation)
+                    $total_items = 0;
+                    $out_of_stock = 0;
+                    $low_stock = 0;
+                    
+                    if ($row_count > 0) {
+                        mysqli_data_seek($result, 0);
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            $total_items++;
+                            $current_quantity = intval($row['quantity_on_hand']); // Ensure integer
+                            if ($current_quantity == 0) {
+                                $out_of_stock++;
+                            } elseif ($current_quantity <= 10) {
+                                $low_stock++;
+                            }
+                        }
+                    }
+                    ?>
+                    
+                    <!-- Total Items -->
+                    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-boxes text-blue-600 text-xl"></i>
                             </div>
-                            <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $badge_class; ?>">
-                                <?php echo $status_display; ?>
+                            <div>
+                                <h3 class="text-2xl font-bold text-gray-900"><?php echo $total_items; ?></h3>
+                                <p class="text-gray-600">Total Input Types</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Out of Stock -->
+                    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-gray-900"><?php echo $out_of_stock; ?></h3>
+                                <p class="text-gray-600">Out of Stock</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Low Stock -->
+                    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-chart-line text-yellow-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-gray-900"><?php echo $low_stock; ?></h3>
+                                <p class="text-gray-600">Low Stock Items</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Last Updated -->
+                    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                                <i class="fas fa-calendar-day text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900"><?php echo date('M d, Y'); ?></h3>
+                                <p class="text-gray-600">Last Updated</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <?php
+                // Categorize items based on notification status (using already loaded notifications)
+                $critical_items = [];
+                $warning_items = [];
+                $normal_items = [];
+                
+                // Get all inventory items
+                mysqli_data_seek($result, 0);
+                $all_items = [];
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $all_items[$row['input_id']] = $row;
+                }
+                
+                // Categorize based on notifications
+                foreach ($notifications as $notification) {
+                    if ($notification['category'] === 'inventory' && isset($notification['data']['input_id'])) {
+                        $input_id = $notification['data']['input_id'];
+                        if (isset($all_items[$input_id])) {
+                            if ($notification['type'] === 'urgent') {
+                                $critical_items[] = $all_items[$input_id];
+                            } elseif ($notification['type'] === 'warning') {
+                                $warning_items[] = $all_items[$input_id];
+                            }
+                            // Remove from all_items to avoid duplication
+                            unset($all_items[$input_id]);
+                        }
+                    }
+                }
+                
+                // Remaining items are normal
+                $normal_items = array_values($all_items);
+                ?>
+
+                <!-- Reset result pointer for main inventory grid -->
+                <?php mysqli_data_seek($result, 0); ?>
+
+                <!-- Segregated Inventory Sections -->
+                <?php if (count($critical_items) > 0): ?>
+                <div class="mb-8">
+                    <div class="bg-red-50 rounded-xl p-6 border-2 border-red-200">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-red-800 flex items-center">
+                                <i class="fas fa-fire text-red-600 mr-3 animate-pulse"></i>
+                                🚨 CRITICAL ITEMS - Immediate Action Required
+                            </h3>
+                            <span class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold">
+                                <?php echo count($critical_items); ?> Items
                             </span>
                         </div>
-                        
-                        <!-- Notification Alert -->
-                        <?php if ($notification_message): ?>
-                        <div class="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-                            <p class="text-sm font-medium text-red-800">
-                                <i class="fas fa-bell mr-2"></i><?php echo htmlspecialchars($notification_message); ?>
-                            </p>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <!-- Statistics -->
-                        <div class="grid grid-cols-3 gap-4 mb-4">
-                            <div class="text-center border-r border-gray-200">
-                                <div class="text-2xl font-bold <?php echo $status == 'urgent' ? 'text-red-600' : ($status == 'warning' ? 'text-yellow-600' : 'text-green-600'); ?>">
-                                    <?php echo number_format($quantity); ?>
-                                </div>
-                                <div class="text-xs text-gray-600">Available</div>
-                            </div>
-                            <div class="text-center border-r border-gray-200">
-                                <div class="text-2xl font-bold text-blue-600"><?php echo number_format($distributed); ?></div>
-                                <div class="text-xs text-gray-600">Distributed</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-purple-600"><?php echo number_format($quantity + $distributed); ?></div>
-                                <div class="text-xs text-gray-600">Total</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Last Updated -->
-                        <?php if ($row['last_updated']): ?>
-                        <div class="mb-4 pt-4 border-t border-gray-200">
-                            <p class="text-sm text-gray-600">
-                                <i class="fas fa-clock mr-1"></i> 
-                                Updated: <?php echo date('M d, Y g:i A', strtotime($row['last_updated'])); ?>
-                            </p>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <!-- Action Buttons -->
-                        <div class="flex space-x-2">
-                            <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
-                                    data-input-id="<?php echo htmlspecialchars($input_id); ?>"
-                                    data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
-                                    data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
-                                <i class="fas fa-edit mr-1"></i> Update
-                            </button>
-                            <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
-                                    data-input-id="<?php echo htmlspecialchars($input_id); ?>"
-                                    data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
-                                    data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
-                                <i class="fas fa-share mr-1"></i> Distribute
-                            </button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <?php 
+                            foreach ($critical_items as $row) {
+                                renderInventoryCard($row, $distributions, 'urgent', $notification_lookup);
+                            }
+                            ?>
                         </div>
                     </div>
                 </div>
-                <?php
-            }
-            ?>
+                <?php endif; ?>
 
-            <!-- Old Inventory Items Grid (keeping as fallback) -->
-            <div class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="fallback-grid">
-                <?php
-                if ($row_count == 0): ?>
-                    <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
-                        <div class="text-gray-500">
-                            <i class="fas fa-box-open text-6xl mb-4"></i>
-                            <h3 class="text-xl font-semibold mb-2">No Input Categories Found</h3>
-                            <p class="text-gray-600 mb-4">There are no input categories in the database yet.</p>
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors" onclick="openModal('addStockModal')">
-                                <i class="fas fa-plus mr-2"></i>Add First Input
-                            </button>
+                <?php if (count($warning_items) > 0): ?>
+                <div class="mb-8">
+                    <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-yellow-800 flex items-center">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
+                                ⚠️ WARNING ITEMS - Restock Soon
+                            </h3>
+                            <span class="bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold">
+                                <?php echo count($warning_items); ?> Items
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <?php 
+                            foreach ($warning_items as $row) {
+                                renderInventoryCard($row, $distributions, 'warning', $notification_lookup);
+                            }
+                            ?>
                         </div>
                     </div>
-                <?php else:
-                    mysqli_data_seek($result, 0);
-                    while ($row = mysqli_fetch_assoc($result)):
-                        $quantity = intval($row['quantity_on_hand']); // Ensure it's always an integer
-                        $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
-                        
-                        // Ensure we have valid values
-                        if ($quantity < 0) $quantity = 0;
-                        if ($distributed < 0) $distributed = 0;
-                        
-                        // Determine stock status
-                        $stock_class = 'high-stock';
-                        $stock_text = 'In Stock';
-                        $stock_color = 'green';
-                        
-                        if ($quantity == 0) {
-                            $stock_class = 'out-of-stock';
-                            $stock_text = 'Out of Stock';
-                            $stock_color = 'gray';
-                        } elseif ($quantity <= 5) {
-                            $stock_class = 'low-stock';
-                            $stock_text = 'Low Stock';
-                            $stock_color = 'red';
-                        } elseif ($quantity <= 20) {
-                            $stock_class = 'medium-stock';
-                            $stock_text = 'Medium Stock';
-                            $stock_color = 'yellow';
-                        }
-                        
-                        // Define required variables for data attributes
-                        $input_id = $row['input_id'];
-                        $input_name_original = $row['input_name'];
-                        $quantity_safe = $quantity; // Safe version for HTML attributes
-                        
-                        // Determine category icon
-                        $input_name_lower = strtolower($row['input_name']);
-                        $icon_bg = 'bg-gray-500';
-                        $icon = 'fas fa-box';
-                        
-                        if (strpos($input_name_lower, 'seed') !== false) {
-                            $icon_bg = 'bg-green-500';
-                            $icon = 'fas fa-seedling';
-                        } elseif (strpos($input_name_lower, 'fertilizer') !== false) {
-                            $icon_bg = 'bg-blue-500';
-                            $icon = 'fas fa-leaf';
-                        } elseif (strpos($input_name_lower, 'pesticide') !== false || strpos($input_name_lower, 'herbicide') !== false) {
-                            $icon_bg = 'bg-yellow-500';
-                            $icon = 'fas fa-flask';
-                        } elseif (strpos($input_name_lower, 'goat') !== false || strpos($input_name_lower, 'chicken') !== false) {
-                            $icon_bg = 'bg-orange-500';
-                            $icon = 'fas fa-paw';
-                        } elseif (strpos($input_name_lower, 'tractor') !== false || strpos($input_name_lower, 'shovel') !== false || strpos($input_name_lower, 'sprayer') !== false || strpos($input_name_lower, 'pump') !== false) {
-                            $icon_bg = 'bg-purple-500';
-                            $icon = 'fas fa-tools';
-                        }
+                </div>
+                <?php endif; ?>
+
+                <div class="mb-8">
+                    <div class="bg-green-50 rounded-xl p-6 border-2 border-green-200">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-green-800 flex items-center">
+                                <i class="fas fa-check-circle text-green-600 mr-3"></i>
+                                ✅ NORMAL STOCK ITEMS
+                            </h3>
+                            <span class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">
+                                <?php echo count($normal_items); ?> Items
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <?php 
+                            foreach ($normal_items as $row) {
+                                renderInventoryCard($row, $distributions, 'normal', $notification_lookup);
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+
+                <?php
+                // Function to render inventory cards with status-specific styling
+                function renderInventoryCard($row, $distributions, $status, $notification_lookup) {
+                    $quantity = intval($row['quantity_on_hand']);
+                    $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
+                    
+                    // Ensure we have valid values
+                    if ($quantity < 0) $quantity = 0;
+                    if ($distributed < 0) $distributed = 0;
+                    
+                    // Determine stock status and styling based on segregation
+                    $status_classes = [
+                        'urgent' => 'border-red-500 bg-red-50 shadow-red-200',
+                        'warning' => 'border-yellow-500 bg-yellow-50 shadow-yellow-200',
+                        'normal' => 'border-green-500 bg-white shadow-gray-200'
+                    ];
+                    
+                    $badge_classes = [
+                        'urgent' => 'bg-red-600 text-white',
+                        'warning' => 'bg-yellow-600 text-white',
+                        'normal' => 'bg-green-600 text-white'
+                    ];
+                    
+                    $status_text = [
+                        'urgent' => 'CRITICAL',
+                        'warning' => 'LOW STOCK',
+                        'normal' => 'NORMAL'
+                    ];
+                    
+                    $card_class = $status_classes[$status];
+                    $badge_class = $badge_classes[$status];
+                    $status_display = $status_text[$status];
+                    
+                    // Define required variables for data attributes
+                    $input_id = $row['input_id'];
+                    $input_name_original = $row['input_name'];
+                    $quantity_safe = $quantity;
+                    
+                    // Determine category icon
+                    $input_name_lower = strtolower($row['input_name']);
+                    $icon_bg = 'bg-gray-500';
+                    $icon = 'fas fa-box';
+                    
+                    if (strpos($input_name_lower, 'seed') !== false) {
+                        $icon_bg = 'bg-green-500';
+                        $icon = 'fas fa-seedling';
+                    } elseif (strpos($input_name_lower, 'fertilizer') !== false) {
+                        $icon_bg = 'bg-blue-500';
+                        $icon = 'fas fa-leaf';
+                    } elseif (strpos($input_name_lower, 'pesticide') !== false || strpos($input_name_lower, 'herbicide') !== false) {
+                        $icon_bg = 'bg-yellow-500';
+                        $icon = 'fas fa-flask';
+                    } elseif (strpos($input_name_lower, 'goat') !== false || strpos($input_name_lower, 'chicken') !== false) {
+                        $icon_bg = 'bg-orange-500';
+                        $icon = 'fas fa-paw';
+                    } elseif (strpos($input_name_lower, 'tractor') !== false || strpos($input_name_lower, 'shovel') !== false || strpos($input_name_lower, 'sprayer') !== false || strpos($input_name_lower, 'pump') !== false) {
+                        $icon_bg = 'bg-purple-500';
+                        $icon = 'fas fa-tools';
+                    }
+                    
+                    // Get notification message if exists
+                    $notification_message = '';
+                    if (isset($notification_lookup[$input_id])) {
+                        $notification_message = $notification_lookup[$input_id]['message'];
+                    }
                     ?>
-                    <div class="inventory-card bg-white rounded-lg shadow-md <?php echo $stock_class; ?> h-full">
+                    
+                    <div class="inventory-card rounded-lg shadow-lg border-2 <?php echo $card_class; ?> h-full relative overflow-hidden">
+                        <?php if ($status == 'urgent'): ?>
+                            <div class="absolute top-0 right-0 bg-red-600 text-white px-3 py-1 text-xs font-bold transform rotate-12 translate-x-3 -translate-y-2">
+                                URGENT!
+                            </div>
+                        <?php elseif ($status == 'warning'): ?>
+                            <div class="absolute top-0 right-0 bg-yellow-600 text-white px-3 py-1 text-xs font-bold transform rotate-12 translate-x-3 -translate-y-2">
+                                LOW!
+                            </div>
+                        <?php endif; ?>
+                        
                         <div class="p-6">
                             <!-- Header -->
                             <div class="flex items-start justify-between mb-4">
@@ -801,15 +534,26 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         <p class="text-sm text-gray-600">Unit: <?php echo htmlspecialchars($row['unit']); ?></p>
                                     </div>
                                 </div>
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-<?php echo $stock_color; ?>-100 text-<?php echo $stock_color; ?>-800">
-                                    <?php echo $stock_text; ?>
+                                <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $badge_class; ?>">
+                                    <?php echo $status_display; ?>
                                 </span>
                             </div>
+                            
+                            <!-- Notification Alert -->
+                            <?php if ($notification_message): ?>
+                            <div class="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+                                <p class="text-sm font-medium text-red-800">
+                                    <i class="fas fa-bell mr-2"></i><?php echo htmlspecialchars($notification_message); ?>
+                                </p>
+                            </div>
+                            <?php endif; ?>
                             
                             <!-- Statistics -->
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <div class="text-center border-r border-gray-200">
-                                    <div class="text-2xl font-bold text-green-600"><?php echo number_format($quantity); ?></div>
+                                    <div class="text-2xl font-bold <?php echo $status == 'urgent' ? 'text-red-600' : ($status == 'warning' ? 'text-yellow-600' : 'text-green-600'); ?>">
+                                        <?php echo number_format($quantity); ?>
+                                    </div>
                                     <div class="text-xs text-gray-600">Available</div>
                                 </div>
                                 <div class="text-center border-r border-gray-200">
@@ -834,7 +578,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                             
                             <!-- Action Buttons -->
                             <div class="flex space-x-2">
-                                
                                 <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
                                         data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
@@ -850,8 +593,145 @@ while ($row = mysqli_fetch_assoc($result)) {
                             </div>
                         </div>
                     </div>
-                    <?php endwhile; 
-                endif; ?>
+                    <?php
+                }
+                ?>
+
+                <!-- Old Inventory Items Grid (keeping as fallback) -->
+                <div class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="fallback-grid">
+                    <?php
+                    if ($row_count == 0): ?>
+                        <div class="col-span-full bg-white rounded-lg shadow-md p-8 text-center">
+                            <div class="text-gray-500">
+                                <i class="fas fa-box-open text-6xl mb-4"></i>
+                                <h3 class="text-xl font-semibold mb-2">No Input Categories Found</h3>
+                                <p class="text-gray-600 mb-4">There are no input categories in the database yet.</p>
+                                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors" onclick="openModal('addStockModal')">
+                                    <i class="fas fa-plus mr-2"></i>Add First Input
+                                </button>
+                            </div>
+                        </div>
+                    <?php else:
+                        mysqli_data_seek($result, 0);
+                        while ($row = mysqli_fetch_assoc($result)):
+                            $quantity = intval($row['quantity_on_hand']); // Ensure it's always an integer
+                            $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
+                            
+                            // Ensure we have valid values
+                            if ($quantity < 0) $quantity = 0;
+                            if ($distributed < 0) $distributed = 0;
+                            
+                            // Determine stock status
+                            $stock_class = 'high-stock';
+                            $stock_text = 'In Stock';
+                            $stock_color = 'green';
+                            
+                            if ($quantity == 0) {
+                                $stock_class = 'out-of-stock';
+                                $stock_text = 'Out of Stock';
+                                $stock_color = 'gray';
+                            } elseif ($quantity <= 5) {
+                                $stock_class = 'low-stock';
+                                $stock_text = 'Low Stock';
+                                $stock_color = 'red';
+                            } elseif ($quantity <= 20) {
+                                $stock_class = 'medium-stock';
+                                $stock_text = 'Medium Stock';
+                                $stock_color = 'yellow';
+                            }
+                            
+                            // Define required variables for data attributes
+                            $input_id = $row['input_id'];
+                            $input_name_original = $row['input_name'];
+                            $quantity_safe = $quantity; // Safe version for HTML attributes
+                            
+                            // Determine category icon
+                            $input_name_lower = strtolower($row['input_name']);
+                            $icon_bg = 'bg-gray-500';
+                            $icon = 'fas fa-box';
+                            
+                            if (strpos($input_name_lower, 'seed') !== false) {
+                                $icon_bg = 'bg-green-500';
+                                $icon = 'fas fa-seedling';
+                            } elseif (strpos($input_name_lower, 'fertilizer') !== false) {
+                                $icon_bg = 'bg-blue-500';
+                                $icon = 'fas fa-leaf';
+                            } elseif (strpos($input_name_lower, 'pesticide') !== false || strpos($input_name_lower, 'herbicide') !== false) {
+                                $icon_bg = 'bg-yellow-500';
+                                $icon = 'fas fa-flask';
+                            } elseif (strpos($input_name_lower, 'goat') !== false || strpos($input_name_lower, 'chicken') !== false) {
+                                $icon_bg = 'bg-orange-500';
+                                $icon = 'fas fa-paw';
+                            } elseif (strpos($input_name_lower, 'tractor') !== false || strpos($input_name_lower, 'shovel') !== false || strpos($input_name_lower, 'sprayer') !== false || strpos($input_name_lower, 'pump') !== false) {
+                                $icon_bg = 'bg-purple-500';
+                                $icon = 'fas fa-tools';
+                            }
+                        ?>
+                        <div class="inventory-card bg-white rounded-lg shadow-md <?php echo $stock_class; ?> h-full">
+                            <div class="p-6">
+                                <!-- Header -->
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="flex items-center">
+                                        <div class="w-12 h-12 <?php echo $icon_bg; ?> rounded-lg flex items-center justify-center mr-4">
+                                            <i class="<?php echo $icon; ?> text-white text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-900"><?php echo htmlspecialchars($row['input_name']); ?></h3>
+                                            <p class="text-sm text-gray-600">Unit: <?php echo htmlspecialchars($row['unit']); ?></p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-<?php echo $stock_color; ?>-100 text-<?php echo $stock_color; ?>-800">
+                                        <?php echo $stock_text; ?>
+                                    </span>
+                                </div>
+                                
+                                <!-- Statistics -->
+                                <div class="grid grid-cols-3 gap-4 mb-4">
+                                    <div class="text-center border-r border-gray-200">
+                                        <div class="text-2xl font-bold text-green-600"><?php echo number_format($quantity); ?></div>
+                                        <div class="text-xs text-gray-600">Available</div>
+                                    </div>
+                                    <div class="text-center border-r border-gray-200">
+                                        <div class="text-2xl font-bold text-blue-600"><?php echo number_format($distributed); ?></div>
+                                        <div class="text-xs text-gray-600">Distributed</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-purple-600"><?php echo number_format($quantity + $distributed); ?></div>
+                                        <div class="text-xs text-gray-600">Total</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Last Updated -->
+                                <?php if ($row['last_updated']): ?>
+                                <div class="mb-4 pt-4 border-t border-gray-200">
+                                    <p class="text-sm text-gray-600">
+                                        <i class="fas fa-clock mr-1"></i> 
+                                        Updated: <?php echo date('M d, Y g:i A', strtotime($row['last_updated'])); ?>
+                                    </p>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <!-- Action Buttons -->
+                                <div class="flex space-x-2">
+                                    
+                                    <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
+                                            data-input-id="<?php echo htmlspecialchars($input_id); ?>"
+                                            data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
+                                            data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
+                                        <i class="fas fa-edit mr-1"></i> Update
+                                    </button>
+                                    <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
+                                            data-input-id="<?php echo htmlspecialchars($input_id); ?>"
+                                            data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
+                                            data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
+                                        <i class="fas fa-share mr-1"></i> Distribute
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endwhile; 
+                    endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -1820,5 +1700,4 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     <!-- Include Notification System -->
     <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

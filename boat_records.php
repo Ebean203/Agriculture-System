@@ -282,25 +282,8 @@ function buildUrlParams($page, $search = '', $barangay = '') {
     return $params;
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boat Records - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    
-    
-    
-</head>
-<body class="bg-gray-50">
-    <?php include 'nav.php'; ?>
-
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+<?php $pageTitle = 'Boat Records - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             
             <!-- Header Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -755,5 +738,4 @@ function buildUrlParams($page, $search = '', $barangay = '') {
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

@@ -15,245 +15,206 @@ $staff_query = "SELECT s.*, r.role as role_name
                 ORDER BY s.role_id ASC, s.position ASC, s.last_name ASC";
 $staff_result = mysqli_query($conn, $staff_query);
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MAO Staff Directory - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    
-    
-    <style>
-        .staff-card {
-            transition: all 0.3s ease;
-            background: linear-gradient(145deg, #ffffff, #f8fafc);
-        }
-        .staff-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .role-badge-admin {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-        }
-        .role-badge-staff {
-            background: linear-gradient(135deg, #16a34a, #15803d);
-        }
-        .position-head {
-            background: linear-gradient(135deg, #7c3aed, #6d28d9);
-        }
-        .stats-card {
-            background: linear-gradient(145deg, #ffffff, #f1f5f9);
-            border: 1px solid #e2e8f0;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <?php include 'nav.php'; ?>
-
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <!-- Page Header (uniform white card like MAO Inventory) -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                    <div class="flex items-start">
-                        <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center mr-3">
-                            <i class="fas fa-users-cog text-agri-green text-xl"></i>
+<?php $pageTitle = 'MAO Staff Directory - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <!-- Page Header (uniform white card like MAO Inventory) -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                        <div class="flex items-start">
+                            <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center mr-3">
+                                <i class="fas fa-users-cog text-agri-green text-xl"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-900">Manage Staff</h1>
+                                <p class="text-gray-600">Manage Municipal Agriculture Office personnel</p>
+                            </div>
                         </div>
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900">Manage Staff</h1>
-                            <p class="text-gray-600">Manage Municipal Agriculture Office personnel</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <!-- Go to Page (rightmost) -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center font-medium" onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                            </button>
-                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-home text-blue-600 mr-3"></i>
-                                        Dashboard
-                                    </a>
-                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                        Analytics Dashboard
-                                    </a>
-                                </div>
-                                
-                                <!-- Inventory Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
-                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                        MAO Inventory
-                                    </a>
-                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                        Distribution Records
-                                    </a>
-                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-calendar-check text-green-600 mr-3"></i>
-                                        MAO Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Records Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-users text-green-600 mr-3"></i>
-                                        Farmers Registry
-                                    </a>
-                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                        RSBSA Records
-                                    </a>
-                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                        NCFRS Records
-                                    </a>
-                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                        FishR Records
-                                    </a>
-                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-ship text-indigo-600 mr-3"></i>
-                                        Boat Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Monitoring & Reports Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                        Yield Monitoring
-                                    </a>
-                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                        Reports
-                                    </a>
-                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-list text-gray-600 mr-3"></i>
-                                        All Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Settings Section -->
-                                <div>
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
-                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                        Staff Management
-                                    </a>
-                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                        System Settings
-                                    </a>
+                        <div class="flex items-center gap-3">
+                            <!-- Go to Page (rightmost) -->
+                            <div class="relative">
+                                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center font-medium" onclick="toggleNavigationDropdown()">
+                                    <i class="fas fa-compass mr-2"></i>Go to Page
+                                    <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                                </button>
+                                <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
+                                    <!-- Dashboard Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
+                                        <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-home text-blue-600 mr-3"></i>
+                                            Dashboard
+                                        </a>
+                                        <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
+                                            Analytics Dashboard
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Inventory Management Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
+                                        <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-warehouse text-green-600 mr-3"></i>
+                                            MAO Inventory
+                                        </a>
+                                        <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                            Distribution Records
+                                        </a>
+                                        <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-calendar-check text-green-600 mr-3"></i>
+                                            MAO Activities
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Records Management Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                        <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-users text-green-600 mr-3"></i>
+                                            Farmers Registry
+                                        </a>
+                                        <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                            RSBSA Records
+                                        </a>
+                                        <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                            NCFRS Records
+                                        </a>
+                                        <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                            FishR Records
+                                        </a>
+                                        <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-ship text-indigo-600 mr-3"></i>
+                                            Boat Records
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Monitoring & Reports Section -->
+                                    <div class="border-b border-gray-200">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                        <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                            Yield Monitoring
+                                        </a>
+                                        <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                            Reports
+                                        </a>
+                                        <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-list text-gray-600 mr-3"></i>
+                                            All Activities
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Settings Section -->
+                                    <div>
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
+                                            <i class="fas fa-user-tie text-gray-600 mr-3"></i>
+                                            Staff Management
+                                        </a>
+                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                            System Settings
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Staff Data Table -->
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full divide-y divide-gray-200">
-                        <thead class="bg-agri-green text-white">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-user mr-1"></i>Name
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-briefcase mr-1"></i>Position
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-phone mr-1"></i>Contact Number
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-user-tag mr-1"></i>Role
-                                </th>
-                                <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-cogs mr-1"></i>Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php if ($staff_result && mysqli_num_rows($staff_result) > 0): ?>
-                                <?php while ($staff = mysqli_fetch_assoc($staff_result)): 
-                                    $is_head = stripos($staff['position'], 'head') !== false || 
-                                              stripos($staff['position'], 'officer') !== false ||
-                                              stripos($staff['position'], 'chief') !== false ||
-                                              stripos($staff['position'], 'director') !== false ||
-                                              stripos($staff['position'], 'manager') !== false;
-                                ?>
-                                <tr class="hover:bg-agri-light transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10">
-                                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                                                    <i class="fas fa-user text-gray-600"></i>
-                                                </div>
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    <?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>
-                                                    <?php if ($is_head): ?>
-                                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                            <i class="fas fa-crown mr-1"></i>Head
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($staff['position']); ?></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><?php echo htmlspecialchars($staff['contact_number']); ?></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white <?php echo $staff['role_id'] == 1 ? 'bg-red-600' : 'bg-green-600'; ?>">
-                                            <i class="fas <?php echo $staff['role_id'] == 1 ? 'fa-user-shield' : 'fa-user'; ?> mr-1"></i>
-                                            <?php echo htmlspecialchars(ucfirst($staff['role_name'])); ?>
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                        <button onclick="viewStaff(<?php echo htmlspecialchars(json_encode($staff)); ?>)" 
-                                                class="text-blue-600 hover:text-blue-900 mr-3 transition-colors duration-200">
-                                            <i class="fas fa-eye text-lg"></i>
-                                        </button>
-                                        <button onclick="archiveStaff(<?php echo $staff['staff_id']; ?>, '<?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>')" 
-                                                class="text-orange-600 hover:text-orange-900 transition-colors duration-200">
-                                            <i class="fas fa-archive text-lg"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
+                <!-- Staff Data Table -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full divide-y divide-gray-200">
+                            <thead class="bg-agri-green text-white">
                                 <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center">
-                                        <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
-                                        <h3 class="text-lg font-medium text-gray-900 mb-2">No Staff Members Found</h3>
-                                        <p class="text-gray-600">There are currently no staff members in the system.</p>
-                                    </td>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-user mr-1"></i>Name
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-briefcase mr-1"></i>Position
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-phone mr-1"></i>Contact Number
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-user-tag mr-1"></i>Role
+                                    </th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-cogs mr-1"></i>Actions
+                                    </th>
                                 </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <?php if ($staff_result && mysqli_num_rows($staff_result) > 0): ?>
+                                    <?php while ($staff = mysqli_fetch_assoc($staff_result)): 
+                                        $is_head = stripos($staff['position'], 'head') !== false || 
+                                                  stripos($staff['position'], 'officer') !== false ||
+                                                  stripos($staff['position'], 'chief') !== false ||
+                                                  stripos($staff['position'], 'director') !== false ||
+                                                  stripos($staff['position'], 'manager') !== false;
+                                    ?>
+                                    <tr class="hover:bg-agri-light transition-colors">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-10 w-10">
+                                                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                                        <i class="fas fa-user text-gray-600"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>
+                                                        <?php if ($is_head): ?>
+                                                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                <i class="fas fa-crown mr-1"></i>Head
+                                                            </span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><?php echo htmlspecialchars($staff['position']); ?></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><?php echo htmlspecialchars($staff['contact_number']); ?></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white <?php echo $staff['role_id'] == 1 ? 'bg-red-600' : 'bg-green-600'; ?>">
+                                                <i class="fas <?php echo $staff['role_id'] == 1 ? 'fa-user-shield' : 'fa-user'; ?> mr-1"></i>
+                                                <?php echo htmlspecialchars(ucfirst($staff['role_name'])); ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                            <button onclick="viewStaff(<?php echo htmlspecialchars(json_encode($staff)); ?>)" 
+                                                    class="text-blue-600 hover:text-blue-900 mr-3 transition-colors duration-200">
+                                                <i class="fas fa-eye text-lg"></i>
+                                            </button>
+                                            <button onclick="archiveStaff(<?php echo $staff['staff_id']; ?>, '<?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>')" 
+                                                    class="text-orange-600 hover:text-orange-900 transition-colors duration-200">
+                                                <i class="fas fa-archive text-lg"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-12 text-center">
+                                            <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
+                                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Staff Members Found</h3>
+                                            <p class="text-gray-600">There are currently no staff members in the system.</p>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -437,5 +398,4 @@ $staff_result = mysqli_query($conn, $staff_query);
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

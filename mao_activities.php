@@ -4,7 +4,7 @@ require_once 'check_session.php';
 require_once 'conn.php';
 require_once 'includes/activity_logger.php';
 
-$pageTitle = 'MAO Activities Management';
+$pageTitle = 'MAO Activities Management - Lagonglong FARMS';
 
 // Handle form submissions
 if ($_POST) {
@@ -155,82 +155,8 @@ $staff_result = mysqli_query($conn, $staff_query);
 $types_query = "SELECT DISTINCT activity_type FROM mao_activities ORDER BY activity_type";
 $types_result = mysqli_query($conn, $types_query);
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    <style>
-        .activity-card {
-            transition: all 0.3s ease;
-            border-left: 4px solid #16a34a;
-        }
-        
-        .activity-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-        
-        .activity-type-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .activity-type-training {
-            background-color: #dbeafe;
-            color: #1e40af;
-        }
-        
-        .activity-type-meeting {
-            background-color: #fef3c7;
-            color: #d97706;
-        }
-        
-        .activity-type-inspection {
-            background-color: #dcfce7;
-            color: #16a34a;
-        }
-        
-        .activity-type-seminar {
-            background-color: #fce7f3;
-            color: #be185d;
-        }
-        
-        .activity-type-default {
-            background-color: #f3f4f6;
-            color: #374151;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <?php include 'nav.php'; ?>
-    
-    <!-- Success/Error Messages -->
-    <?php if (!empty($success_message)): ?>
-        <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if (!empty($error_message)): ?>
-        <div class="alert alert-danger alert-dismissible fade show m-4" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <!-- Main Content -->
-    <div class="min-h-screen">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+<?php $pageTitle = 'MAO Activities Management - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                 <div class="flex flex-col lg:flex-row lg:items-center gap-6">
@@ -523,5 +449,4 @@ $types_result = mysqli_query($conn, $types_query);
             }
         });
     </script>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

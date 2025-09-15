@@ -723,13 +723,7 @@ $commodities_result = $conn->query("SELECT * FROM commodities ORDER BY commodity
 $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name");
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?></title>
-    <?php include 'includes/assets.php'; ?>
+<?php include 'includes/layout_start.php'; ?>
     <style>
         /* Custom dropdown styles */
         #dropdownMenu {
@@ -825,9 +819,6 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         });
     </script>
 </head>
-<body class="bg-gray-50">
-    <?php include 'nav.php'; ?>
-
     <!-- Alert Messages -->
     <?php if (isset($success_message)): ?>
         <div class="alert alert-success alert-dismissible fade show mx-6 mt-4" role="alert">
@@ -845,8 +836,6 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         </div>
     <?php endif; ?>
 
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Header Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -869,101 +858,6 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                 class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
                             <i class="fas fa-plus mr-2"></i>Add New Farmer
                         </button>
-                        
-                        <!-- Page Navigation -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" 
-                                    onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                            </button>
-                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-home text-blue-600 mr-3"></i>
-                                        Dashboard
-                                    </a>
-                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                        Analytics Dashboard
-                                    </a>
-                                </div>
-                                
-                                <!-- Inventory Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
-                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-boxes text-orange-600 mr-3"></i>
-                                        MAO Inventory
-                                    </a>
-                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                        Distribution Records
-                                    </a>
-                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-calendar-check text-green-600 mr-3"></i>
-                                        MAO Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Records Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
-                                        <i class="fas fa-users text-green-600 mr-3"></i>
-                                        Farmers Registry
-                                    </a>
-                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                        RSBSA Records
-                                    </a>
-                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                        NCFRS Records
-                                    </a>
-                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                        FishR Records
-                                    </a>
-                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-ship text-indigo-600 mr-3"></i>
-                                        Boat Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Monitoring & Reports Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                        Yield Monitoring
-                                    </a>
-                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                        Reports
-                                    </a>
-                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-list text-gray-600 mr-3"></i>
-                                        All Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Settings Section -->
-                                <div>
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                        Staff Management
-                                    </a>
-                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                        System Settings
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
                         </div>
                     </div>
                 </div>
@@ -1209,8 +1103,6 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                 <?php endif; ?>
             </div>
         </div>
-    </div>
-
     <!-- View Farmer Modal -->
     <div class="modal fade" id="viewFarmerModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
@@ -1256,22 +1148,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         </div>
     </div>
 
-    <!-- Footer Section -->
-    <footer class="mt-12 bg-white shadow-md p-6 w-full">
-        <div class="text-center text-gray-600">
-            <div class="flex items-center justify-center mb-2">
-                <i class="fas fa-seedling text-agri-green mr-2"></i>
-                <span class="font-semibold">Lagonglong FARMS</span>
-            </div>
-            <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
-        </div>
-    </footer>
-
-    <?php if ($offline_mode): ?>
-    <script src="assets/js/bootstrap.bundle.min.js"></script>
-    <?php else: ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <?php endif; ?>
+    
     <script>
         // Function to view farmer details
         function viewFarmer(farmerId) {
@@ -1414,8 +1291,4 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
     
     <!-- Include Farmer Edit Modal -->
     <?php include 'farmer_editmodal.php'; ?>
-    
-    <!-- Include Notification System -->
-    <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

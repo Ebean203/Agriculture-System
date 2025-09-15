@@ -88,151 +88,7 @@ if ($result) {
     }
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lagonglong FARMS - Dashboard</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    
-    <style>
-        /* Remove underlines from links and set text color to black */
-        .grid a {
-            text-decoration: none !important;
-            color: #111827 !important;
-        }
-        .grid a:hover {
-            text-decoration: none !important;
-        }
-
-        /* Dropdown menu styles */
-        #dropdownMenu {
-            z-index: 50;
-            transition: all 0.2s ease-in-out;
-            transform-origin: top right;
-        }
-
-        #dropdownMenu.show {
-            display: block !important;
-            z-index: 999999 !important;
-            position: absolute !important;
-            top: 100% !important;
-            right: 0 !important;
-            margin-top: 0.5rem !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
-            border: 1px solid rgba(0, 0, 0, 0.1) !important;
-        }
-
-        #dropdownArrow.rotate {
-            transform: rotate(180deg);
-        }
-
-        /* Ensure dropdown is above other content */
-        .relative {
-            z-index: 40;
-        }
-
-        /* Ensure navigation has higher z-index than content */
-        nav {
-            position: relative;
-            z-index: 1000;
-        }
-
-        /* User menu container needs highest z-index */
-        #userMenu {
-            position: relative;
-            z-index: 1001;
-        }
-    </style>
-    <script>
-        // Function to handle dropdown toggle
-        function toggleDropdown() {
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            const dropdownArrow = document.getElementById('dropdownArrow');
-            dropdownMenu.classList.toggle('show');
-            dropdownArrow.classList.toggle('rotate');
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const userMenu = document.getElementById('userMenu');
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            const dropdownArrow = document.getElementById('dropdownArrow');
-            
-            if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
-                dropdownMenu.classList.remove('show');
-                dropdownArrow.classList.remove('rotate');
-            }
-        });
-    </script>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-agri-green shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <i class="fas fa-seedling text-white text-2xl mr-3"></i>
-                    <h1 class="text-white text-xl font-bold">Lagonglong FARMS</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <!-- Notification Bell -->
-                    <div class="relative">
-                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-agri-light transition-colors relative">
-                            <i class="fas fa-bell text-lg"></i>
-                            <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
-                        </button>
-                        
-                        <!-- Notification Dropdown positioned to occupy bottom part -->
-                        <div id="notificationDropdown" class="hidden fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-hidden" style="top: 70px; right: 20px; bottom: 20px; width: 400px;">
-                            <div class="p-4 border-b border-gray-200">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="text-lg font-semibold text-gray-900">
-                                        Notifications
-                                    </h3>
-                                    <span id="notificationCount" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">0</span>
-                                </div>
-                            </div>
-                            
-                            <div id="notificationList" style="height: calc(100% - 80px); overflow-y: auto;">
-                                <!-- Notifications will be loaded here -->
-                                <div class="p-4 text-center text-gray-500">
-                                    <i class="fas fa-spinner fa-spin mb-2"></i>
-                                    <p class="text-sm">Loading notifications...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center text-white relative" id="userMenu">
-                        <button class="flex items-center focus:outline-none" onclick="toggleDropdown()" type="button">
-                            <i class="fas fa-user-circle text-lg mr-2"></i>
-                            <span><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
-                            <i class="fas fa-chevron-down ml-2 text-xs transition-transform duration-200" id="dropdownArrow"></i>
-                        </button>
-                        <!-- Dropdown Menu -->
-                        <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden" id="dropdownMenu">
-                            <div class="px-4 py-2 text-sm text-gray-700 border-b">
-                                <div class="font-medium"><?php echo htmlspecialchars($_SESSION['full_name']); ?></div>
-                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($_SESSION['role']); ?></div>
-                            </div>
-                            <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                                <i class="fas fa-sign-out-alt mr-2"></i>
-                                Logout
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
+<?php $pageTitle = 'Lagonglong FARMS - Dashboard'; include 'includes/layout_start.php'; ?>
     <!-- Success/Error Messages -->
     <?php if (!empty($success_message)): ?>
         <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
@@ -248,18 +104,16 @@ if ($result) {
         </div>
     <?php endif; ?>
 
-    <!-- Main Content -->
-    <div class="min-h-screen bg-gray-50">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto py-2">
             <!-- Welcome Section -->
-            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-lg shadow-md p-6 mb-6 text-white relative overflow-hidden">
+            <div class="bg-gradient-to-r from-agri-green to-agri-dark rounded-xl card-shadow p-6 mb-6 text-white relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
                 <div class="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
                 <div class="relative">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="text-3xl font-bold mb-2">Welcome to Lagonglong FARMS</h2>
-                            <p class="text-lg text-green-100 mb-3">Empowering the agriculture office of Lagonglong to better serve its farmers through comprehensive agricultural services and resources</p>
+                            <h2 class="heading-xl mb-2">Welcome to Lagonglong FARMS</h2>
+                            <p class="text-base text-green-100 mb-3">Empowering the agriculture office of Lagonglong to better serve its farmers through comprehensive agricultural services and resources</p>
                             <div class="flex items-center text-green-200">
                                 <i class="fas fa-calendar-alt mr-2"></i>
                                 <span><?php echo date('l, F j, Y'); ?></span>
@@ -273,9 +127,9 @@ if ($result) {
             </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             <!-- Total Farmers -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Total Farmers</p>
@@ -288,7 +142,7 @@ if ($result) {
             </div>
 
             <!-- RSBSA Registered -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">RSBSA Registered</p>
@@ -301,7 +155,7 @@ if ($result) {
             </div>
 
             <!-- NCFRS Registered -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">NCFRS Registered</p>
@@ -314,7 +168,7 @@ if ($result) {
             </div>
 
             <!-- FishR Registered -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">FishR Registered</p>
@@ -330,7 +184,7 @@ if ($result) {
         <!-- Second Row Statistics -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <!-- Boats Registered -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Boats Registered</p>
@@ -343,7 +197,7 @@ if ($result) {
             </div>
 
             <!-- Commodities -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Commodities</p>
@@ -374,7 +228,7 @@ if ($result) {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Quick Actions -->
             <div class="lg:col-span-1">
-                <div class="bg-white rounded-lg shadow-md p-6 h-full">
+                <div class="bg-white rounded-xl card-shadow p-6 h-full">
                     <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center">
                         <i class="fas fa-bolt text-agri-green mr-3"></i>Quick Actions
                     </h3>
@@ -428,7 +282,7 @@ if ($result) {
                     <h3 class="text-lg font-bold text-gray-900 mb-4">
                         <i class="fas fa-th-large text-agri-green mr-2"></i>System Modules
                     </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 h-full pb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full pb-2">
                         <a href="farmers.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
                             <i class="fas fa-users text-blue-600 text-2xl mr-3 flex-shrink-0"></i>
                             <span class="font-medium text-base leading-tight">Farmers Management</span>
@@ -492,18 +346,6 @@ if ($result) {
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Footer Section -->
-    <footer class="mt-12 bg-white shadow-md p-6 w-full">
-        <div class="text-center text-gray-600">
-            <div class="flex items-center justify-center mb-2">
-                <i class="fas fa-seedling text-agri-green mr-2"></i>
-                <span class="font-semibold">Lagonglong FARMS</span>
-            </div>
-            <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
-        </div>
-    </footer>
 
     <!-- Include the farmer registration modal -->
     <?php include 'farmer_regmodal.php'; ?>
@@ -667,8 +509,4 @@ if ($result) {
             });
         });
     </script>
-    
-    <!-- Include Notification System -->
-    <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>

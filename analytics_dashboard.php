@@ -206,18 +206,11 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
 // Get barangays for dropdown
 $barangays = getBarangays($conn);
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Analytics Dashboard - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    <!-- Local Chart.js files for offline use -->
-    <script src="assets/js/chart.min.js"></script>
-    <script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
+<?php $pageTitle = 'Visual Analytics Dashboard - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <!-- Local Chart.js files for offline use -->
+                <script src="assets/js/chart.min.js"></script>
+                <script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
     
     <style>
         /* Custom dropdown styles for user menu */
@@ -618,7 +611,7 @@ r        .gradient-bg {
                 dropdownMenu.classList.remove('show');
                 dropdownArrow.classList.remove('rotate');
             }
-            // ...existing code for navigation dropdown...
+            
         });
         // Chart instance
         let analyticsChart = null;
@@ -1017,5 +1010,4 @@ r        .gradient-bg {
     </style>
 
     <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/layout_end.php'; ?>
