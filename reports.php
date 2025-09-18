@@ -1473,4 +1473,4 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                     </div>
                 </div>
             </div>
-<?php include 'includes/layout_end.php'; ?>
+

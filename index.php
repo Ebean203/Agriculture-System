@@ -509,4 +509,3 @@ if ($result) {
             });
         });
     </script>
-<?php include 'includes/layout_end.php'; ?>

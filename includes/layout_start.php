@@ -13,7 +13,7 @@ require_once __DIR__ . '/../check_session.php';
 <body class="bg-gray-50">
     <style>
         :root { --sb-width: 260px; --sb-collapsed: 74px; }
-        .sidebar { width: 100%; min-height: 100vh; display: flex; flex-direction: column; padding: 12px 10px; position: sticky; top: 0; }
+    .sidebar { width: 100%; min-height: 100vh; display: flex; flex-direction: column; padding: 12px 10px; position: sticky; top: 0; transition: width 0.8s ease; }
         .sidebar__brand { display: flex; align-items: center; gap: 10px; margin: 6px 6px 14px; }
         .sidebar__toggle { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .sidebar__logo { font-size: 22px; margin-left: 2px; }
@@ -25,8 +25,8 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__link:hover { background: rgba(255,255,255,0.12); opacity: 1; }
         .sidebar__link.is-active { background: #ffffff; color: #16a34a; }
         .sidebar__link.is-active i { color: #16a34a; }
-        .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sb-width) 1fr; }
-        .app-sidebar-col { width: var(--sb-width); }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sb-width) 1fr; transition: grid-template-columns 0.8s ease; }
+    .app-sidebar-col { width: var(--sb-width); transition: width 0.8s ease; }
         .app-main { display: flex; flex-direction: column; min-width: 0; }
         .app-topbar { background: #ffffff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: flex-end; padding: 10px 16px; position: sticky; top: 0; z-index: 40; }
         .app-content { padding: 20px; }
@@ -70,10 +70,12 @@ require_once __DIR__ . '/../check_session.php';
             <?php include __DIR__ . '/sidebar.php'; ?>
         </div>
         <div class="app-main">
-            <div class="app-topbar">
-                <button id="topbarSidebarToggle" class="sidebar__toggle" aria-label="Toggle sidebar" style="margin-right:auto;">
+            <div class="app-topbar" style="display: flex; align-items: center;">
+                <button id="topbarSidebarToggle" class="sidebar__toggle" aria-label="Toggle sidebar" style="margin-right: 16px;">
                     <i class="fas fa-bars"></i>
                 </button>
+                <!-- Removed duplicate Lagonglong FARMS logo and text from topbar -->
+                <div style="flex: 1;"></div>
                 <?php include __DIR__ . '/../nav.php'; ?>
             </div>
             <main class="app-content">

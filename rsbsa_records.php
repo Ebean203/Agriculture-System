@@ -528,13 +528,12 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                                                    <i class="fas fa-leaf mr-1"></i>
                                                     <?php 
                                                         if (!empty($farmer['commodities_info'])) {
                                                             $commodities = explode(', ', $farmer['commodities_info']);
                                                             echo '<div class="flex flex-col gap-1">';
                                                             foreach ($commodities as $commodity) {
-                                                                echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs">' . htmlspecialchars($commodity) . '</div>';
+                                                                echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs flex items-center"><i class="fas fa-leaf mr-1"></i>' . htmlspecialchars($commodity) . '</div>';
                                                             }
                                                             echo '</div>';
                                                         } else {
@@ -612,17 +611,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             </div>
         </div>
 
-        <!-- Footer Section -->
-        <footer class="mt-12 bg-white shadow-md p-6 w-full">
-            <div class="text-center text-gray-600">
-                <div class="flex items-center justify-center mb-2">
-                    <i class="fas fa-seedling text-agri-green mr-2"></i>
-                    <span class="font-semibold">Lagonglong FARMS</span>
-                </div>
-                <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
-            </div>
-        </footer>
-
+       
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
         <script>
             // Function to export RSBSA records to PDF
@@ -763,4 +752,3 @@ function buildUrlParams($page, $search = '', $barangay = '') {
         </script>
         
         <?php include 'includes/notification_complete.php'; ?>
-<?php include 'includes/layout_end.php'; ?>

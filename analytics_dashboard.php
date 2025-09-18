@@ -207,7 +207,7 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
 $barangays = getBarangays($conn);
 ?>
 <?php $pageTitle = 'Visual Analytics Dashboard - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
-            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto py-0 px-4 sm:px-6 lg:px-8" style="margin-top:-32px;padding-top:0;">
                 <!-- Local Chart.js files for offline use -->
                 <script src="assets/js/chart.min.js"></script>
                 <script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
@@ -256,65 +256,9 @@ r        .gradient-bg {
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-agri-green shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="index.php" class="flex items-center">
-                        <i class="fas fa-seedling text-white text-2xl mr-3"></i>
-                        <h1 class="text-white text-xl font-bold">Lagonglong FARMS</h1>
-                    </a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <!-- Notification Bell -->
-                    <div class="relative">
-                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-agri-light transition-colors relative">
-                            <i class="fas fa-bell text-lg"></i>
-                            <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
-                        </button>
-                        <!-- Notification Dropdown -->
-                        <div id="notificationDropdown" class="hidden fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-hidden" style="top: 70px; right: 20px; bottom: 20px; width: 400px;">
-                            <div class="p-4 border-b border-gray-200">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="text-lg font-semibold text-gray-900">Notifications</h3>
-                                    <span id="notificationCount" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">0</span>
-                                </div>
-                            </div>
-                            <div id="notificationList" style="height: calc(100% - 80px); overflow-y: auto;">
-                                <!-- Notifications will be loaded here -->
-                                <div class="p-4 text-center text-gray-500">
-                                    <i class="fas fa-spinner fa-spin mb-2"></i>
-                                    <p class="text-sm">Loading notifications...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- User Dropdown (Farmers.php style) -->
-                    <div class="relative" id="userMenu">
-                        <button onclick="toggleDropdown()" class="flex items-center text-white hover:text-agri-light transition-colors font-medium focus:outline-none">
-                            <i class="fas fa-user-circle text-lg mr-2"></i>
-                            <span><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
-                            <i class="fas fa-chevron-down ml-2" id="dropdownArrow"></i>
-                        </button>
-                        <!-- Dropdown Menu (uniform with index.php) -->
-                        <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-1 hidden" id="dropdownMenu">
-                            <div class="px-4 py-2 text-sm text-gray-700 border-b">
-                                <div class="font-medium"><?php echo htmlspecialchars($_SESSION['full_name']); ?></div>
-                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($_SESSION['role']); ?></div>
-                            </div>
-                            <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                                <i class="fas fa-sign-out-alt mr-2"></i>
-                                Logout
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
+    
 
-    <div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Header Section (Uniform White Card Design) -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
@@ -1010,4 +954,4 @@ r        .gradient-bg {
     </style>
 
     <?php include 'includes/notification_complete.php'; ?>
-<?php include 'includes/layout_end.php'; ?>
+

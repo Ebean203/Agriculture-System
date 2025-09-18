@@ -449,4 +449,4 @@ $types_result = mysqli_query($conn, $types_query);
             }
         });
     </script>
-<?php include 'includes/layout_end.php'; ?>
+

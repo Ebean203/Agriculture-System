@@ -398,4 +398,4 @@ $staff_result = mysqli_query($conn, $staff_query);
     </script>
     
     <?php include 'includes/notification_complete.php'; ?>
-<?php include 'includes/layout_end.php'; ?>
+

@@ -624,4 +624,3 @@ if (!empty($search_params)) {
             </script>
             
             <?php include 'includes/notification_complete.php'; ?>
-<?php include 'includes/layout_end.php'; ?>
