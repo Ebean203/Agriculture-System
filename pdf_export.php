@@ -166,13 +166,30 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : '';
         $search_condition = 'WHERE f.archived = 0';
         $search_params = [];
-        
+
+        // If is_rsbsa=1 is set, filter only RSBSA-registered farmers
+        if (isset($_GET['is_rsbsa']) && $_GET['is_rsbsa'] == '1') {
+            $search_condition .= ' AND f.is_rsbsa = 1';
+        }
+        // If is_ncfrs=1 is set, filter only NCFRS-registered farmers
+        if (isset($_GET['is_ncfrs']) && $_GET['is_ncfrs'] == '1') {
+            $search_condition .= ' AND f.is_ncfrs = 1';
+        }
+        // If is_fishr=1 is set, filter only FishR-registered farmers
+        if (isset($_GET['is_fishr']) && $_GET['is_fishr'] == '1') {
+            $search_condition .= ' AND f.is_fisherfolk = 1';
+        }
+        // If is_boat=1 is set, filter only boat-registered farmers
+        if (isset($_GET['is_boat']) && $_GET['is_boat'] == '1') {
+            $search_condition .= ' AND f.is_boat = 1';
+        }
+
         if (!empty($search)) {
             $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
             $search_term = "%$search%";
             $search_params = [$search_term, $search_term, $search_term];
         }
-        
+
         if (!empty($barangay_filter)) {
             $search_condition .= " AND f.barangay_id = ?";
             $search_params[] = $barangay_filter;

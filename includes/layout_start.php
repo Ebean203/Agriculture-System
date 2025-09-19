@@ -18,7 +18,8 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__toggle { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .sidebar__logo { font-size: 22px; margin-left: 2px; }
         .sidebar__title { font-weight: 700; font-size: 16px; letter-spacing: .3px; white-space: nowrap; }
-        .sidebar__nav { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar__nav { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-collapsed .sidebar__nav { padding-top: 48px !important; margin-top: 0 !important; }
         .sidebar__section { color: rgba(255,255,255,0.7); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 10px 12px 6px; }
         .sidebar__link { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 10px 12px; border-radius: 10px; opacity: 0.95; transition: background .2s, opacity .2s, color .2s; }
         .sidebar__link i { width: 18px; text-align: center; font-size: 14px; }

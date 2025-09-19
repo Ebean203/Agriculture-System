@@ -25,153 +25,7 @@ function formatFarmerName($first_name, $middle_name, $last_name, $suffix) {
 }
 
 // Handle PDF export
-if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
-    // Build search condition for export
-    $search = isset($_POST['search']) ? trim($_POST['search']) : '';
-    $barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
-    $search_condition = 'WHERE f.archived = 0 AND f.is_rsbsa = 1';
-    $search_params = [];
-    
-    if (!empty($search)) {
-        $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
-        $search_term = "%$search%";
-        $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
-    }
-    
-    if (!empty($barangay_filter)) {
-        $search_condition .= " AND f.barangay_id = ?";
-        $search_params[] = $barangay_filter;
-    }
-    
-    // Get RSBSA records for PDF export
-    $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-                   f.contact_number, f.address_details,
-                   GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
-                   b.barangay_name, f.registration_date as rsbsa_registration_date
-                   FROM farmers f
-                   LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                   LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
-                   LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
-                   $search_condition
-                   GROUP BY f.farmer_id
-                   ORDER BY f.registration_date DESC";
-    
-    if (!empty($search_params)) {
-        $stmt = $conn->prepare($export_sql);
-        $stmt->bind_param(str_repeat('s', count($search_params)), ...$search_params);
-        $stmt->execute();
-        $export_result = $stmt->get_result();
-    } else {
-        $export_result = $conn->query($export_sql);
-    }
-    
-    // Create PDF content
-    $html = '<div class="header">
-        <div class="title">RSBSA Records Report</div>
-        <div class="subtitle">Registry System for Basic Sectors in Agriculture</div>
-        <div class="subtitle">Generated on: ' . date('F d, Y h:i A') . '</div>
-        <div class="subtitle">Total Records: ' . $export_result->num_rows . '</div>
-    </div>';
-    
-    if ($export_result->num_rows > 0) {
-        $html .= '<table>
-            <thead>
-                <tr>
-                    <th>Farmer ID</th>
-                    <th>Full Name</th>
-                    <th>Contact</th>
-                    <th>Barangay</th>
-                    <th>REGDATE</th>
-                    <th>Commodities & Land Area</th>
-                </tr>
-            </thead>
-            <tbody>';
-        
-        while ($row = $export_result->fetch_assoc()) {
-            $full_name = formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $row['suffix']);
-            $html .= '<tr>
-                <td>' . htmlspecialchars($row['farmer_id']) . '</td>
-                <td>' . htmlspecialchars($full_name) . '</td>
-                <td>' . htmlspecialchars($row['contact_number']) . '</td>
-                <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars(date('M d, Y', strtotime($row['rsbsa_registration_date']))) . '</td>
-                <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
-            </tr>';
-        }
-        
-        $html .= '</tbody></table>';
-    } else {
-        $html .= '<div style="text-align: center; padding: 50px;">
-            <h3>No RSBSA Records Found</h3>
-            <p>No farmers are currently registered in RSBSA.</p>
-        </div>';
-    }
-    
-    // Output PDF-ready HTML
-    echo '<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>RSBSA Records Report</title>';
-    include 'includes/assets.php';
-    echo '<style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            font-size: 12px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #16a34a;
-            padding-bottom: 10px;
-        }
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #16a34a;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            font-size: 14px;
-            color: #22c55e;
-            margin-bottom: 5px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 10px;
-        }
-        th {
-            background-color: #16a34a;
-            color: white;
-            padding: 8px 4px;
-            text-align: left;
-            border: 1px solid #ddd;
-            font-weight: bold;
-            font-size: 9px;
-        }
-        td {
-            padding: 6px 4px;
-            border: 1px solid #ddd;
-            vertical-align: top;
-            word-wrap: break-word;
-            max-width: 80px;
-        }
-        tr:nth-child(even) {
-            background-color: #dcfce7;
-        }
-        @page {
-            size: A4 landscape;
-            margin: 0.5in;
-        }
-    </style>
-</head>
-<body>' . $html . '</body>
-</html>';
-    exit;
-}
+
 
 // Pagination settings
 $records_per_page = 15;
@@ -615,21 +469,17 @@ function buildUrlParams($page, $search = '', $barangay = '') {
             // Function to export RSBSA records to PDF
             function exportToPDF() {
                 const search = new URLSearchParams(window.location.search).get('search') || '';
-                // Remove JavaScript that looks for URL parameters since we're using POST now
-                
-                let exportUrl = 'rsbsa_records.php?action=export_pdf';
+                const barangay = new URLSearchParams(window.location.search).get('barangay') || '';
+                let exportUrl = 'pdf_export.php?action=export_pdf&is_rsbsa=1';
                 if (search) exportUrl += `&search=${encodeURIComponent(search)}`;
                 if (barangay) exportUrl += `&barangay=${encodeURIComponent(barangay)}`;
-                
                 // Show loading indicator
                 const exportBtn = document.querySelector('button[onclick="exportToPDF()"]');
                 const originalText = exportBtn.innerHTML;
                 exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating PDF...';
                 exportBtn.disabled = true;
-                
                 // Open in new window for PDF download
                 window.open(exportUrl, '_blank');
-                
                 // Reset button after delay
                 setTimeout(() => {
                     exportBtn.innerHTML = originalText;
