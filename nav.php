@@ -35,15 +35,23 @@ if (!isset($pageTitle)) {
         <div class="flex items-center text-agri-green relative z-[1001]" id="userMenu">
             <button class="flex items-center focus:outline-none" onclick="toggleDropdown()" type="button">
                 <i class="fas fa-user-circle text-lg mr-2"></i>
-                <span><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
+                <span><?php echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : 'User'; ?></span>
                 <i class="fas fa-chevron-down ml-2 text-xs transition-transform duration-200" id="dropdownArrow"></i>
             </button>
             <!-- Dropdown Menu -->
             <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-xl py-1 hidden" id="dropdownMenu" style="z-index: 999999;">
                 <div class="px-4 py-2 text-sm text-gray-700 border-b">
-                    <div class="font-medium"><?php echo htmlspecialchars($_SESSION['full_name']); ?></div>
-                    <div class="text-xs text-gray-500"><?php echo htmlspecialchars($_SESSION['role']); ?></div>
+                    <div class="font-medium"><?php echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : 'User'; ?></div>
+                    <div class="text-xs text-gray-500"><?php echo isset($_SESSION['role']) ? htmlspecialchars($_SESSION['role']) : 'User'; ?></div>
                 </div>
+                <?php if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin'): ?>
+                    <a href="staff.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-user-tie mr-2"></i>Staff
+                    </a>
+                    <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </a>
+                <?php endif; ?>
                 <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                     <i class="fas fa-sign-out-alt mr-2"></i>Logout
                 </a>
@@ -57,7 +65,6 @@ if (!isset($pageTitle)) {
 function toggleDropdown() {
     const dropdownMenu = document.getElementById('dropdownMenu');
     const dropdownArrow = document.getElementById('dropdownArrow');
-    
     if (dropdownMenu.classList.contains('hidden')) {
         dropdownMenu.classList.remove('hidden');
         dropdownMenu.classList.add('show');
@@ -69,16 +76,36 @@ function toggleDropdown() {
     }
 }
 
-// Close dropdown when clicking outside
+// Function to handle notification dropdown toggle
+function toggleNotificationDropdown() {
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    if (notificationDropdown.classList.contains('hidden')) {
+        notificationDropdown.classList.remove('hidden');
+        notificationDropdown.classList.add('show');
+    } else {
+        notificationDropdown.classList.add('hidden');
+        notificationDropdown.classList.remove('show');
+    }
+}
+
+// Close dropdowns when clicking outside
 document.addEventListener('click', function(event) {
     const userMenu = document.getElementById('userMenu');
     const dropdownMenu = document.getElementById('dropdownMenu');
     const dropdownArrow = document.getElementById('dropdownArrow');
-    
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationBell = document.querySelector('button[onclick="toggleNotificationDropdown()"]');
+
+    // User menu dropdown
     if (!userMenu.contains(event.target) && !dropdownMenu.classList.contains('hidden')) {
         dropdownMenu.classList.add('hidden');
         dropdownMenu.classList.remove('show');
         dropdownArrow.classList.remove('rotate');
+    }
+    // Notification dropdown
+    if (notificationDropdown && !notificationDropdown.classList.contains('hidden') && (!notificationBell.contains(event.target) && !notificationDropdown.contains(event.target))) {
+        notificationDropdown.classList.add('hidden');
+        notificationDropdown.classList.remove('show');
     }
 });
 </script>
@@ -87,7 +114,7 @@ document.addEventListener('click', function(event) {
 /* Custom dropdown styles */
 #dropdownMenu {
     z-index: 999999;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.5s ease-in-out;
     transform-origin: top right;
 }
 
