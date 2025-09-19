@@ -1000,7 +1000,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                                     $commodities = explode(', ', $farmer['commodities_info']);
                                                     echo '<div class="flex flex-col gap-1">';
                                                     foreach ($commodities as $commodity) {
-                                                        echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs">' . htmlspecialchars($commodity) . '</div>';
+                                                        echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs flex items-center"><i class="fas fa-leaf mr-1"></i>' . htmlspecialchars($commodity) . '</div>';
                                                     }
                                                     echo '</div>';
                                                 } else {
@@ -1291,4 +1291,4 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
     
     <!-- Include Farmer Edit Modal -->
     <?php include 'farmer_editmodal.php'; ?>
-
+<?php include 'includes/notification_complete.php'; ?>
