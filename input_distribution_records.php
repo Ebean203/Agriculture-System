@@ -588,3 +588,4 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                     <?php endif; ?>
                 </div>
             </div>
+<?php include 'includes/notification_complete.php'; ?>

@@ -424,10 +424,19 @@ if (!empty($search_params)) {
                                                     Fisherfolk Registration
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    <?php echo htmlspecialchars($row['commodities_info'] ?: 'Not specified'); ?>
-                                                </span>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <?php 
+                                                    if (!empty($row['commodities_info'])) {
+                                                        $commodities = explode(', ', $row['commodities_info']);
+                                                        echo '<div class="flex flex-col gap-1">';
+                                                        foreach ($commodities as $commodity) {
+                                                            echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs flex items-center"><i class="fas fa-leaf mr-1"></i>' . htmlspecialchars($commodity) . '</div>';
+                                                        }
+                                                        echo '</div>';
+                                                    } else {
+                                                        echo 'N/A';
+                                                    }
+                                                ?>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

@@ -536,10 +536,18 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                             <?php echo htmlspecialchars($farmer['barangay_name']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                                                <i class="fas fa-leaf mr-1"></i>
-                                                <?php echo htmlspecialchars($farmer['commodities_info'] ?? 'N/A'); ?>
-                                            </span>
+                                            <?php 
+                                                if (!empty($farmer['commodities_info'])) {
+                                                    $commodities = explode(', ', $farmer['commodities_info']);
+                                                    echo '<div class="flex flex-col gap-1">';
+                                                    foreach ($commodities as $commodity) {
+                                                        echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs flex items-center"><i class="fas fa-leaf mr-1"></i>' . htmlspecialchars($commodity) . '</div>';
+                                                    }
+                                                    echo '</div>';
+                                                } else {
+                                                    echo 'N/A';
+                                                }
+                                            ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo date('M d, Y', strtotime($farmer['boat_registration_date'])); ?>

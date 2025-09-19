@@ -3,10 +3,7 @@ $current = basename($_SERVER['PHP_SELF']);
 ?>
 <aside id="appSidebar" class="sidebar bg-agri-green text-white shadow-lg">
     <div class="sidebar__brand">
-        <button id="sidebarToggle" class="sidebar__toggle" aria-label="Toggle sidebar">
-            <i class="fas fa-bars"></i>
-        </button>
-        <i class="fas fa-seedling sidebar__logo"></i>
+        <i id="sidebarLeaf" class="fas fa-seedling sidebar__logo" style="cursor:pointer;"></i>
         <span class="sidebar__title">Lagonglong FARMS</span>
     </div>
     <nav class="sidebar__nav">
@@ -24,9 +21,7 @@ $current = basename($_SERVER['PHP_SELF']);
         <a href="input_distribution_records.php" class="sidebar__link <?php echo $current === 'input_distribution_records.php' ? 'is-active' : ''; ?>"><i class="fas fa-share-square"></i><span>Distributions</span></a>
         <a href="mao_activities.php" class="sidebar__link <?php echo $current === 'mao_activities.php' ? 'is-active' : ''; ?>"><i class="fas fa-calendar-check"></i><span>Activities</span></a>
         <a href="reports.php" class="sidebar__link <?php echo $current === 'reports.php' ? 'is-active' : ''; ?>"><i class="fas fa-file-alt"></i><span>Reports</span></a>
-        <div class="sidebar__section">Admin</div>
-        <a href="staff.php" class="sidebar__link <?php echo $current === 'staff.php' ? 'is-active' : ''; ?>"><i class="fas fa-user-tie"></i><span>Staff</span></a>
-        <a href="settings.php" class="sidebar__link <?php echo $current === 'settings.php' ? 'is-active' : ''; ?>"><i class="fas fa-cog"></i><span>Settings</span></a>
+    <!-- Admin section removed -->
     </nav>
 </aside>
 <script>
@@ -46,14 +41,35 @@ $current = basename($_SERVER['PHP_SELF']);
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved === '1') setCollapsed(true);
         } catch(e) {}
+        function updateBurgerVisibility() {
+            // Show burger only if sidebar is expanded (full sidebar)
+            if (!toggleBtn) return;
+            if (!document.documentElement.classList.contains('sidebar-collapsed')) {
+                toggleBtn.style.display = 'inline-flex';
+            } else {
+                toggleBtn.style.display = 'none';
+            }
+        }
         if (toggleBtn) {
             toggleBtn.addEventListener('click', function() {
                 setCollapsed(!document.documentElement.classList.contains('sidebar-collapsed'));
+                updateBurgerVisibility();
             });
         }
+        // Make leaf icon toggle sidebar
+        const leafIcon = document.getElementById('sidebarLeaf');
+        if (leafIcon) {
+            leafIcon.addEventListener('click', function() {
+                setCollapsed(!document.documentElement.classList.contains('sidebar-collapsed'));
+                updateBurgerVisibility();
+            });
+        }
+        // Initial burger visibility
+        updateBurgerVisibility();
         // Expose a global toggle so topbar button can trigger it
         window.toggleSidebar = function() {
             setCollapsed(!document.documentElement.classList.contains('sidebar-collapsed'));
+            updateBurgerVisibility();
         };
         // Wire up topbar hamburger if present
         const topbarBtn = document.getElementById('topbarSidebarToggle');

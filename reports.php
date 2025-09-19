@@ -1395,7 +1395,7 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                     
                                     <div class="flex gap-4 pt-4">
                                         <button type="submit" 
-                                                class="btn-generate text-white px-8 py-4 rounded-xl font-semibold flex items-center text-lg shadow-lg">
+                                                class="btn-generate text-white px-8 py-4 rounded-xl font-semibold flex items-center text-lg shadow-lg bg-agri-green hover:bg-agri-dark transition-colors">
                                             <i class="fas fa-chart-bar mr-3"></i>Generate Report
                                         </button>
                                         <button type="reset" 
@@ -1473,4 +1473,4 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                     </div>
                 </div>
             </div>
-
+<?php include 'includes/notification_complete.php'; ?>

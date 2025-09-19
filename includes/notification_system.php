@@ -30,8 +30,8 @@ function getVisitationNotifications($conn, $today) {
     
     // Calculate the date 5 days from now
     $reminder_date = date('Y-m-d', strtotime($today . ' + 5 days'));
-    
-    // Query for upcoming visitations from mao_distribution_log table
+
+    // Query for upcoming and overdue visitations from mao_distribution_log table
     $query = "
         SELECT 
             CONCAT(
@@ -59,8 +59,8 @@ function getVisitationNotifications($conn, $today) {
         JOIN farmers f ON mdl.farmer_id = f.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN input_categories ic ON mdl.input_id = ic.input_id
-        WHERE mdl.visitation_date BETWEEN '$today' AND '$reminder_date'
-        AND mdl.visitation_date IS NOT NULL
+        WHERE mdl.visitation_date IS NOT NULL
+        AND mdl.visitation_date <= '$reminder_date'
         ORDER BY mdl.visitation_date ASC
     ";
     
@@ -70,10 +70,14 @@ function getVisitationNotifications($conn, $today) {
         while ($row = mysqli_fetch_assoc($result)) {
             $days_until = $row['days_until_visit'];
             $formatted_date = date('M j, Y', strtotime($row['visitation_date']));
-            
-            if ($days_until == 0) {
+
+            if ($days_until < 0) {
+                $message = "OVERDUE Visitation (was " . $formatted_date . ") for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
+                $priority = 0; // Highest priority
+                $type = 'urgent';
+            } elseif ($days_until == 0) {
                 $message = "Visitation TODAY (" . $formatted_date . ") for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
-                $priority = 1; // Highest priority
+                $priority = 1;
                 $type = 'urgent';
             } elseif ($days_until == 1) {
                 $message = "Visitation TOMORROW (" . $formatted_date . ") for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
@@ -84,12 +88,12 @@ function getVisitationNotifications($conn, $today) {
                 $priority = 3;
                 $type = 'info';
             }
-            
+
             $notifications[] = [
                 'id' => 'visit_' . $row['log_id'],
                 'type' => $type,
                 'category' => 'visitation',
-                'title' => 'Upcoming Visitation',
+                'title' => ($days_until < 0 ? 'Overdue Visitation' : 'Upcoming Visitation'),
                 'message' => $message,
                 'date' => $row['visitation_date'],
                 'priority' => $priority,

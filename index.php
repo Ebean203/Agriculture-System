@@ -509,3 +509,4 @@ if ($result) {
             });
         });
     </script>
+<?php include 'includes/notification_complete.php'; ?>
