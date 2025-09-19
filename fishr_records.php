@@ -525,9 +525,23 @@ if (!empty($search_params)) {
 
             <script>
                 function exportToPDF() {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    urlParams.set('action', 'export_pdf');
-                    window.open('fishr_records.php?' + urlParams.toString(), '_blank');
+                    const search = new URLSearchParams(window.location.search).get('search') || '';
+                    const barangay = new URLSearchParams(window.location.search).get('barangay') || '';
+                    let exportUrl = 'pdf_export.php?action=export_pdf&is_fishr=1';
+                    if (search) exportUrl += `&search=${encodeURIComponent(search)}`;
+                    if (barangay) exportUrl += `&barangay=${encodeURIComponent(barangay)}`;
+                    // Show loading indicator
+                    const exportBtn = document.querySelector('button[onclick="exportToPDF()"]');
+                    const originalText = exportBtn.innerHTML;
+                    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating PDF...';
+                    exportBtn.disabled = true;
+                    // Open in new window for PDF download
+                    window.open(exportUrl, '_blank');
+                    // Reset button after delay
+                    setTimeout(() => {
+                        exportBtn.innerHTML = originalText;
+                        exportBtn.disabled = false;
+                    }, 2000);
                 }
 
                 // Auto-suggest functionality for fisher search

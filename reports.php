@@ -1184,8 +1184,7 @@ $saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_dat
                       s.first_name, s.last_name
                       FROM generated_reports r
                       INNER JOIN mao_staff s ON r.staff_id = s.staff_id
-                      ORDER BY r.timestamp DESC
-                      LIMIT 10";
+                      ORDER BY r.timestamp DESC";
 $saved_reports_result = $conn->query($saved_reports_sql);
 ?>
 
@@ -1306,7 +1305,7 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                 </div>
                             </div>
                             <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
-                                <div class="text-3xl font-bold"><?php echo $saved_reports_result->num_rows; ?></div>
+                                <div class="text-3xl font-bold"><span id="savedReportsCount"><?php echo $saved_reports_result->num_rows; ?></span></div>
                                 <div class="text-sm opacity-90">Saved Reports</div>
                             </div>
                         </div>
@@ -1420,57 +1419,75 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                     <p class="text-gray-600 text-sm mt-1">Previously generated reports</p>
                                 </div>
                                 
-                                <?php if ($saved_reports_result->num_rows > 0): ?>
-                                    <div class="space-y-2 max-h-72 overflow-y-auto">
-                                        <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
-                                            <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
-                                                <div class="flex items-start justify-between">
-                                                    <div class="flex-1">
-                                                        <div class="font-medium text-gray-900 text-sm mb-1">
-                                                            <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
-                                                        </div>
-                                                        <div class="text-xs text-gray-600 mb-1">
-                                                            <i class="fas fa-calendar-alt mr-1"></i>
-                                                            <?php echo date('M j', strtotime($report['start_date'])); ?> - 
-                                                            <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
-                                                        </div>
-                                                        <div class="text-xs text-gray-500">
-                                                            <i class="fas fa-user mr-1"></i>
-                                                            <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
-                                                            <span class="mx-1">•</span>
-                                                            <i class="fas fa-clock mr-1"></i>
-                                                            <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
+                                <div id="recentReportsContainer">
+                                    <?php if ($saved_reports_result->num_rows > 0): ?>
+                                        <div class="space-y-2 max-h-72 overflow-y-auto">
+                                            <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
+                                                <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
+                                                    <div class="flex items-start justify-between">
+                                                        <div class="flex-1">
+                                                            <div class="font-medium text-gray-900 text-sm mb-1">
+                                                                <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
+                                                            </div>
+                                                            <div class="text-xs text-gray-600 mb-1">
+                                                                <i class="fas fa-calendar-alt mr-1"></i>
+                                                                <?php echo date('M j', strtotime($report['start_date'])); ?> - 
+                                                                <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
+                                                            </div>
+                                                            <div class="text-xs text-gray-500">
+                                                                <i class="fas fa-user mr-1"></i>
+                                                                <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
+                                                                <span class="mx-1">•</span>
+                                                                <i class="fas fa-clock mr-1"></i>
+                                                                <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    <div class="mt-2 pt-2 border-t border-gray-100">
+                                                        <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
+                                                           target="_blank"
+                                                           class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
+                                                            <i class="fas fa-external-link-alt mr-1"></i>View Report
+                                                        </a>
+                                                    </div>
                                                 </div>
-                                                <div class="mt-2 pt-2 border-t border-gray-100">
-                                                    <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
-                                                       target="_blank"
-                                                       class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
-                                                        <i class="fas fa-external-link-alt mr-1"></i>View Report
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        <?php endwhile; ?>
-                                    </div>
-                                    
-                                    <div class="mt-3 pt-3 border-t border-gray-200">
-                                        <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
-                                            <i class="fas fa-archive mr-1"></i>View All Reports
-                                        </a>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="text-center py-8">
-                                        <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                                            <i class="fas fa-file-alt text-xl text-gray-400"></i>
+                                            <?php endwhile; ?>
                                         </div>
-                                        <h4 class="text-gray-900 font-medium mb-1 text-sm">No reports yet</h4>
-                                        <p class="text-gray-500 text-xs">Generate your first report to see it here</p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-<?php include 'includes/notification_complete.php'; ?>
+                                        <div class="mt-3 pt-3 border-t border-gray-200">
+                                            <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
+                                                <i class="fas fa-archive mr-1"></i>View All Reports
+                                            </a>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-gray-500 text-sm">No reports found.</div>
+                                    <?php endif; ?>
+                                </div>
+                                <script>
+                                function refreshRecentReports() {
+                                    $.ajax({
+                                        url: 'get_saved_reports.php',
+                                        method: 'GET',
+                                        success: function(data) {
+                                            $('#recentReportsContainer').html(data);
+                                            refreshSavedReportsCount();
+                                        },
+                                        error: function() {
+                                            $('#recentReportsContainer').html('<div class="text-red-500 text-sm">Failed to load reports.</div>');
+                                        }
+                                    });
+                                }
+                                function refreshSavedReportsCount() {
+                                    $.ajax({
+                                        url: 'get_saved_reports_count.php',
+                                        method: 'GET',
+                                        dataType: 'json',
+                                        success: function(data) {
+                                            if (typeof data.count !== 'undefined') {
+                                                $('#savedReportsCount').text(data.count);
+                                            }
+                                        }
+                                    });
+                                }
+                                window.refreshRecentReports = refreshRecentReports;
+                                window.refreshSavedReportsCount = refreshSavedReportsCount;
+                                </script>
