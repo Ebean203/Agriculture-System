@@ -1,27 +1,29 @@
 <?php
 $current = basename($_SERVER['PHP_SELF']);
 ?>
-<aside id="appSidebar" class="sidebar bg-agri-green text-white shadow-lg">
+<aside id="appSidebar" class="sidebar bg-agri-green text-white shadow-lg" style="height:100vh;overflow:hidden;">
     <div class="sidebar__brand">
         <i id="sidebarLeaf" class="fas fa-seedling sidebar__logo" style="cursor:pointer;"></i>
         <span class="sidebar__title">Lagonglong FARMS</span>
     </div>
-    <nav class="sidebar__nav">
-        <div class="sidebar__section">Main</div>
-        <a href="index.php" class="sidebar__link <?php echo $current === 'index.php' ? 'is-active' : ''; ?>"><i class="fas fa-home"></i><span>Dashboard</span></a>
-        <a href="analytics_dashboard.php" class="sidebar__link <?php echo $current === 'analytics_dashboard.php' ? 'is-active' : ''; ?>"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
-        <div class="sidebar__section">Records</div>
-        <a href="farmers.php" class="sidebar__link <?php echo $current === 'farmers.php' ? 'is-active' : ''; ?>"><i class="fas fa-users"></i><span>Farmers</span></a>
-        <a href="rsbsa_records.php" class="sidebar__link <?php echo $current === 'rsbsa_records.php' ? 'is-active' : ''; ?>"><i class="fas fa-certificate"></i><span>RSBSA</span></a>
-        <a href="ncfrs_records.php" class="sidebar__link <?php echo $current === 'ncfrs_records.php' ? 'is-active' : ''; ?>"><i class="fas fa-fish"></i><span>NCFRS</span></a>
-        <a href="fishr_records.php" class="sidebar__link <?php echo $current === 'fishr_records.php' ? 'is-active' : ''; ?>"><i class="fas fa-water"></i><span>FISHR</span></a>
-        <a href="boat_records.php" class="sidebar__link <?php echo $current === 'boat_records.php' ? 'is-active' : ''; ?>"><i class="fas fa-ship"></i><span>Boats</span></a>
-        <div class="sidebar__section">Operations</div>
-        <a href="mao_inventory.php" class="sidebar__link <?php echo $current === 'mao_inventory.php' ? 'is-active' : ''; ?>"><i class="fas fa-warehouse"></i><span>Inventory</span></a>
-        <a href="input_distribution_records.php" class="sidebar__link <?php echo $current === 'input_distribution_records.php' ? 'is-active' : ''; ?>"><i class="fas fa-share-square"></i><span>Distributions</span></a>
-        <a href="mao_activities.php" class="sidebar__link <?php echo $current === 'mao_activities.php' ? 'is-active' : ''; ?>"><i class="fas fa-calendar-check"></i><span>Activities</span></a>
-        <a href="reports.php" class="sidebar__link <?php echo $current === 'reports.php' ? 'is-active' : ''; ?>"><i class="fas fa-file-alt"></i><span>Reports</span></a>
+    <nav class="sidebar__nav pb-8" style="overflow-y:hidden;max-height:calc(100vh - 32px);">
+    <div class="sidebar__section" style="font-size:11.5px;padding:8px 12px 5px;">Main</div>
+    <a href="index.php" class="sidebar__link <?php echo $current === 'index.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-home"></i><span>Dashboard</span></a>
+    <a href="analytics_dashboard.php" class="sidebar__link <?php echo $current === 'analytics_dashboard.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
+    <div class="sidebar__section" style="font-size:11.5px;padding:8px 12px 5px;">Records</div>
+    <a href="farmers.php" class="sidebar__link <?php echo $current === 'farmers.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-users"></i><span>Farmers</span></a>
+    <a href="rsbsa_records.php" class="sidebar__link <?php echo $current === 'rsbsa_records.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-certificate"></i><span>RSBSA</span></a>
+    <a href="ncfrs_records.php" class="sidebar__link <?php echo $current === 'ncfrs_records.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-fish"></i><span>NCFRS</span></a>
+    <a href="fishr_records.php" class="sidebar__link <?php echo $current === 'fishr_records.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-water"></i><span>FISHR</span></a>
+    <a href="boat_records.php" class="sidebar__link <?php echo $current === 'boat_records.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-ship"></i><span>Boats</span></a>
+    <div class="sidebar__section" style="font-size:11.5px;padding:8px 12px 5px;">Operations</div>
+    <a href="mao_inventory.php" class="sidebar__link <?php echo $current === 'mao_inventory.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-warehouse"></i><span>Inventory</span></a>
+    <a href="input_distribution_records.php" class="sidebar__link <?php echo $current === 'input_distribution_records.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-share-square"></i><span>Distributions</span></a>
+    <a href="mao_activities.php" class="sidebar__link <?php echo $current === 'mao_activities.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-calendar-check"></i><span>Activities</span></a>
+    <a href="yield_monitoring.php" class="sidebar__link <?php echo $current === 'yield_monitoring.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-chart-line"></i><span>Yield Monitoring</span></a>
+    <a href="reports.php" class="sidebar__link <?php echo $current === 'reports.php' ? 'is-active' : ''; ?>" style="padding:9px 13px;font-size:16px;"><i class="fas fa-file-alt"></i><span>Reports</span></a>
     <!-- Admin section removed -->
+        <div class="mt-auto"></div>
     </nav>
 </aside>
 <script>

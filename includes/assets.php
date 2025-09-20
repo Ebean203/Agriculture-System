@@ -46,13 +46,15 @@ if ($offline_mode) {
 
 <?php
 // Chart.js Assets - Include this function in pages that need charts
-function includeChartAssets($offline_mode = true) {
-    if ($offline_mode) {
-        echo '<script src="assets/js/chart.min.js"></script>';
-        echo '<script src="assets/js/chartjs-plugin-datalabels.min.js"></script>';
-    } else {
-        echo '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>';
-        echo '<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>';
+if (!function_exists('includeChartAssets')) {
+    function includeChartAssets($offline_mode = true) {
+        if ($offline_mode) {
+            echo '<script src="assets/js/chart.min.js"></script>';
+            echo '<script src="assets/js/chartjs-plugin-datalabels.min.js"></script>';
+        } else {
+            echo '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>';
+            echo '<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>';
+        }
     }
 }
 ?>
