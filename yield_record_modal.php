@@ -1,137 +1,150 @@
-<!-- Record Yield Modal -->
-<div id="addVisitModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-y-auto">
-        <div class="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-            <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-                <i class="fas fa-clipboard-check text-agri-green mr-3"></i>Record Yield Visit
-            </h3>
-            <p class="text-sm text-gray-600 mt-1">Document yield results and farmer progress</p>
-        </div>
-        <form method="POST" action="record_yield.php">
-            <div class="px-6 py-6">
-                <!-- Visit Information Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label for="farmer_name_yield" class="block text-sm font-medium text-gray-700 mb-2">Select Farmer</label>
-                        <div class="relative">
-                            <input type="text" 
-                                   class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" 
-                                   id="farmer_name_yield" 
-                                   placeholder="Type farmer name..."
-                                   autocomplete="off"
-                                   required
-                                   onkeyup="searchFarmersYield(this.value)"
-                                   onfocus="showSuggestionsYield()"
-                                   onblur="hideSuggestionsYield()">
-                            <input type="hidden" name="farmer_id" id="selected_farmer_id_yield" required>
-                            
-                            <!-- Suggestions dropdown -->
-                            <div id="farmer_suggestions_yield" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
-                                <!-- Suggestions will be populated here -->
+<!-- Yield Monitoring Modal -->
+<div class="modal fade" id="addVisitModal" tabindex="-1" aria-labelledby="addVisitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addVisitModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Record Yield Visit
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="yieldVisitForm" method="POST" action="yield_monitoring.php">
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="record_visit">
+                    
+                    <!-- Yield Information Section -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-seedling me-2"></i>Yield Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="farmer_search" class="form-label">Select Farmer <span class="text-danger">*</span></label>
+                                    <div class="relative">
+                                        <input type="text" id="farmer_search" class="form-control" placeholder="Type farmer name..." autocomplete="off" required>
+                                        <input type="hidden" id="farmer_id" name="farmer_id" required>
+                                        <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="commodity_id" class="form-label">Commodity <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="commodity_id" name="commodity_id" required>
+                                        <option value="">Select Commodity</option>
+                                        <?php foreach ($commodities as $commodity): ?>
+                                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>">
+                                                <?php echo htmlspecialchars($commodity['commodity_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="season" class="form-label">Season <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="season" name="season" required>
+                                        <option value="">Select Season</option>
+                                        <option value="Dry Season">Dry Season</option>
+                                        <option value="Wet Season">Wet Season</option>
+                                        <option value="First Cropping">First Cropping</option>
+                                        <option value="Second Cropping">Second Cropping</option>
+                                        <option value="Third Cropping">Third Cropping</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="yield_amount" class="form-label">Yield Amount <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="yield_amount" name="yield_amount" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="distributed_input" class="form-label">Distributed Input</label>
+                                    <select class="form-select" id="distributed_input" name="distributed_input">
+                                        <option value="">Select input type...</option>
+                                        <option value="Urea">Urea</option>
+                                        <option value="Complete">Complete</option>
+                                        <option value="Ammonium Sulfate">Ammonium Sulfate</option>
+                                        <option value="Organic Fertilizer">Organic Fertilizer</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="visit_date" class="form-label">Visit Date</label>
+                                    <input type="date" class="form-control" id="visit_date" name="visit_date">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="unit" class="form-label">Unit</label>
+                                    <select class="form-select" id="unit" name="unit">
+                                        <option value="">Select unit...</option>
+                                        <option value="kg">Kilograms</option>
+                                        <option value="bags">Bags</option>
+                                        <option value="sacks">Sacks</option>
+                                        <option value="tons">Tons</option>
+                                        <option value="pieces">Pieces</option>
+                                        <option value="heads">Heads</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="quality_grade" class="form-label">Quality Grade</label>
+                                    <select class="form-select" id="quality_grade" name="quality_grade">
+                                        <option value="">Select grade...</option>
+                                        <option value="Grade A">Grade A - Excellent</option>
+                                        <option value="Grade B">Grade B - Good</option>
+                                        <option value="Grade C">Grade C - Fair</option>
+                                        <option value="Grade D">Grade D - Poor</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="growth_stage" class="form-label">Growth Stage</label>
+                                    <select class="form-select" id="growth_stage" name="growth_stage">
+                                        <option value="">Select stage...</option>
+                                        <option value="Seedling">Seedling</option>
+                                        <option value="Vegetative">Vegetative</option>
+                                        <option value="Flowering">Flowering</option>
+                                        <option value="Fruiting">Fruiting</option>
+                                        <option value="Mature">Mature</option>
+                                        <option value="Harvested">Harvested</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="field_conditions" class="form-label">Field Conditions</label>
+                                    <select class="form-select" id="field_conditions" name="field_conditions">
+                                        <option value="">Select condition...</option>
+                                        <option value="Good Weather">Good Weather</option>
+                                        <option value="Adequate Water">Adequate Water</option>
+                                        <option value="Pest Issues">Pest Issues</option>
+                                        <option value="Disease Present">Disease Present</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label for="visit_notes" class="form-label">Visit Notes</label>
+                                    <textarea class="form-control" id="visit_notes" name="visit_notes" rows="2" placeholder="Additional notes..."></textarea>
+                                </div>
                             </div>
                         </div>
-                        <p class="text-sm text-gray-600 mt-1">Start typing to search for farmers</p>
                     </div>
-                    <div>
-                        <label for="input_select" class="block text-sm font-medium text-gray-700 mb-2">Distributed Input</label>
-                        <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="input_id" required>
-                            <option value="">Select input type...</option>
-                            <!-- Options will be populated based on farmer selection -->
-                        </select>
+
+                    <div class="alert alert-info">
+                        <small><i class="fas fa-info-circle me-1"></i>Fields marked with <span class="text-danger">*</span> are required.</small>
                     </div>
                 </div>
-                
-                <!-- Visit Details -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div>
-                        <label for="visit_date" class="block text-sm font-medium text-gray-700 mb-2">Visit Date</label>
-                        <input type="date" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="visit_date" value="<?php echo date('Y-m-d'); ?>" required>
-                    </div>
-                    <div>
-                        <label for="yield_amount" class="block text-sm font-medium text-gray-700 mb-2">Yield Amount</label>
-                        <input type="number" step="0.1" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="yield_amount" placeholder="0.0" required>
-                    </div>
-                    <div>
-                        <label for="yield_unit" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
-                        <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="yield_unit" required>
-                            <option value="">Select unit...</option>
-                            <option value="sacks">Sacks</option>
-                            <option value="kilograms">Kilograms</option>
-                            <option value="tons">Tons</option>
-                            <option value="pieces">Pieces</option>
-                            <option value="heads">Heads</option>
-                        </select>
-                    </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Record Visit
+                    </button>
                 </div>
-                
-                <!-- Quality and Assessment -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label for="quality_grade" class="block text-sm font-medium text-gray-700 mb-2">Quality Grade</label>
-                        <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="quality_grade" required>
-                            <option value="">Select grade...</option>
-                            <option value="Grade A">Grade A - Excellent</option>
-                            <option value="Grade B">Grade B - Good</option>
-                            <option value="Grade C">Grade C - Fair</option>
-                            <option value="Grade D">Grade D - Poor</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="growth_stage" class="block text-sm font-medium text-gray-700 mb-2">Growth Stage</label>
-                        <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="growth_stage">
-                            <option value="">Select stage...</option>
-                            <option value="Seedling">Seedling</option>
-                            <option value="Vegetative">Vegetative</option>
-                            <option value="Flowering">Flowering</option>
-                            <option value="Fruiting">Fruiting</option>
-                            <option value="Mature">Mature</option>
-                            <option value="Harvested">Harvested</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Conditions and Notes -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Field Conditions</label>
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <label class="flex items-center">
-                            <input type="checkbox" name="conditions[]" value="good_weather" class="mr-2">
-                            <span class="text-sm">Good Weather</span>
-                        </label>
-                        <label class="flex items-center">
-                            <input type="checkbox" name="conditions[]" value="adequate_water" class="mr-2">
-                            <span class="text-sm">Adequate Water</span>
-                        </label>
-                        <label class="flex items-center">
-                            <input type="checkbox" name="conditions[]" value="pest_issues" class="mr-2">
-                            <span class="text-sm">Pest Issues</span>
-                        </label>
-                        <label class="flex items-center">
-                            <input type="checkbox" name="conditions[]" value="disease_present" class="mr-2">
-                            <span class="text-sm">Disease Present</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="visit_notes" class="block text-sm font-medium text-gray-700 mb-2">Visit Notes</label>
-                    <textarea class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="visit_notes" rows="4" placeholder="Record observations, recommendations, and any issues noted during the visit..."></textarea>
-                </div>
-                
-                <!-- Recommendations -->
-                <div class="mb-6">
-                    <label for="recommendations" class="block text-sm font-medium text-gray-700 mb-2">Recommendations</label>
-                    <textarea class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="recommendations" rows="3" placeholder="Provide recommendations for improvement or next steps..."></textarea>
-                </div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-4 rounded-b-lg sticky bottom-0 border-t border-gray-200 z-10">
-                <button type="button" class="px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium" onclick="closeYieldModal()">
-                    <i class="fas fa-times mr-2"></i>Cancel
-                </button>
-                <button type="submit" class="px-6 py-3 bg-agri-green text-white rounded-lg hover:bg-agri-dark transition-colors font-medium">
-                    <i class="fas fa-save mr-2"></i>Record Visit
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>

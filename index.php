@@ -116,7 +116,23 @@ function getBarangays($conn) {
     }
     return $data;
 }
+// Get barangays for filter dropdown
 $barangays = getBarangays($conn);
+
+// Get number of yield_monitoring records per barangay
+$yield_records_per_barangay = [];
+$query = "SELECT b.barangay_name, COUNT(ym.yield_id) AS record_count
+          FROM yield_monitoring ym
+          JOIN farmers f ON ym.farmer_id = f.farmer_id
+          JOIN barangays b ON f.barangay_id = b.barangay_id
+          GROUP BY b.barangay_name
+          ORDER BY b.barangay_name ASC";
+$result = mysqli_query($conn, $query);
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $yield_records_per_barangay[] = $row;
+    }
+}
 ?>
 <?php $pageTitle = 'Lagonglong FARMS - Dashboard'; include 'includes/layout_start.php'; ?>
     <!-- Success/Error Messages -->
@@ -234,79 +250,16 @@ $barangays = getBarangays($conn);
                         <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
                             <i class="fas fa-chart-line text-agri-green mr-2"></i><span id="chartTitle">Yield Monitoring</span>
                         </h3>
-                        <div class="flex flex-col md:flex-row md:items-end md:gap-6 mb-4">
-                            <div class="flex flex-col w-full md:flex-row md:items-end md:gap-6 mb-4">
-                                <!-- Filters and chart type buttons removed to match dashboard card style -->
-                        <div class="flex flex-row flex-wrap gap-4 items-end w-full mb-4">
-                            <div class="flex flex-row items-end gap-2 w-full">
-                                <div id="monthPickerDiv" style="width: 120px;">
-                                    <label for="monthPicker" class="block text-xs font-medium text-gray-600 mb-1">Month</label>
-                                    <input type="month" id="monthPicker" class="border border-gray-300 rounded px-1 py-1 text-sm h-8 w-full" value="<?php echo date('Y-m'); ?>">
-                                </div>
-                                <div style="width: 110px;">
-                                    <label for="barangayFilter" class="block text-xs font-medium text-gray-600 mb-1">Barangay</label>
-                                    <select id="barangayFilter" class="border border-gray-300 rounded px-1 py-1 text-sm h-8 w-full">
-                                        <option value="">All</option>
-                                        <?php foreach ($barangays as $b): ?>
-                                            <option value="<?php echo htmlspecialchars($b['barangay_name']); ?>"><?php echo htmlspecialchars($b['barangay_name']); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="flex bg-gray-100 rounded-lg p-1 space-x-1 ml-2">
-                                    <button onclick="switchChartType('line')" id="btn-line" type="button" class="chart-type-btn px-3 py-2 rounded-md transition-colors flex items-center bg-agri-green text-white text-sm"><i class="fas fa-chart-line mr-2"></i>Line</button>
-                                    <button onclick="switchChartType('bar')" id="btn-bar" type="button" class="chart-type-btn px-3 py-2 rounded-md transition-colors flex items-center text-gray-600 hover:bg-gray-200 text-sm"><i class="fas fa-chart-bar mr-2"></i>Bar</button>
-                                    <button onclick="switchChartType('pie')" id="btn-pie" type="button" class="chart-type-btn px-3 py-2 rounded-md transition-colors flex items-center text-gray-600 hover:bg-gray-200 text-sm"><i class="fas fa-chart-pie mr-2"></i>Pie</button>
-                                    <button onclick="switchChartType('doughnut')" id="btn-doughnut" type="button" class="chart-type-btn px-3 py-2 rounded-md transition-colors flex items-center text-gray-600 hover:bg-gray-200 text-sm"><i class="fas fa-dot-circle mr-2"></i>Doughnut</button>
-                                </div>
-                            </div>
-                        </div>
-                            </div>
-                        </div>
                         <canvas id="yieldChart" height="120"></canvas>
                         <script>
-                        // Chart title and data update logic
-                        // Only Yield chart will display
-                        let currentChartType = 'line';
+                        // Show yearly yield per barangay using a line graph
                         document.addEventListener('DOMContentLoaded', function() {
-                            // Set month picker to current month if not already
-                            const monthPicker = document.getElementById('monthPicker');
-                            if (monthPicker) {
-                                const now = new Date();
-                                const monthStr = now.toISOString().slice(0,7);
-                                monthPicker.value = monthStr;
-                            }
-                            // Set default chart type to line and highlight button
-                            currentChartType = 'line';
-                            document.querySelectorAll('.chart-type-btn').forEach(btn => {
-                                btn.classList.remove('bg-agri-green', 'text-white');
-                                btn.classList.add('text-gray-600', 'hover:bg-gray-200');
-                            });
-                            document.getElementById('btn-line').classList.remove('text-gray-600', 'hover:bg-gray-200');
-                            document.getElementById('btn-line').classList.add('bg-agri-green', 'text-white');
-                            fetchChartData();
-                        });
-
-                        function switchChartType(newType) {
-                            currentChartType = newType;
-                            document.querySelectorAll('.chart-type-btn').forEach(btn => {
-                                btn.classList.remove('bg-agri-green', 'text-white');
-                                btn.classList.add('text-gray-600', 'hover:bg-gray-200');
-                            });
-                            document.getElementById('btn-' + newType).classList.remove('text-gray-600', 'hover:bg-gray-200');
-                            document.getElementById('btn-' + newType).classList.add('bg-agri-green', 'text-white');
-                            fetchChartData();
-                        }
-
-                        function fetchChartData() {
-                            let month = document.getElementById('monthPicker').value;
-                            let barangay = document.getElementById('barangayFilter').value;
-                            let params = new URLSearchParams({ type: 'yield_per_barangay', chartType: currentChartType, barangay: barangay, month: month });
-                            fetch('get_report_data.php?' + params.toString())
+                            fetch('get_report_data.php?type=yield_per_barangay')
                                 .then(res => res.json())
                                 .then(data => {
                                     updateYieldChart(data.labels, data.data);
                                 });
-                        }
+                        });
 
                         let yieldChartInstance = null;
                         function updateYieldChart(labels, chartData) {
@@ -314,22 +267,20 @@ $barangays = getBarangays($conn);
                             if (yieldChartInstance) {
                                 yieldChartInstance.destroy();
                             }
-                            let chartLabel = 'Yield Monitoring (per Barangay)';
+                            let chartLabel = 'Yearly Yield per Barangay';
                             yieldChartInstance = new Chart(ctx, {
-                                type: currentChartType,
+                                type: 'line',
                                 data: {
                                     labels: labels,
                                     datasets: [{
                                         label: chartLabel,
                                         data: chartData,
-                                        backgroundColor: currentChartType === 'line' ? 'rgba(16,185,129,0.15)' : [
-                                            '#10b981', '#3B82F6', '#F59E0B', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316', '#EF4444', '#A21CAF', '#FACC15'
-                                        ],
+                                        backgroundColor: 'rgba(16,185,129,0.15)',
                                         borderColor: '#10b981',
                                         borderWidth: 2,
                                         pointBackgroundColor: '#10b981',
                                         pointBorderColor: '#10b981',
-                                        fill: currentChartType === 'line',
+                                        fill: true,
                                         tension: 0.3
                                     }]
                                 },
@@ -338,7 +289,7 @@ $barangays = getBarangays($conn);
                                     plugins: {
                                         legend: { display: false },
                                     },
-                                    scales: currentChartType === 'pie' || currentChartType === 'doughnut' ? {} : {
+                                    scales: {
                                         y: {
                                             beginAtZero: true,
                                             ticks: { stepSize: 1 }
@@ -347,9 +298,6 @@ $barangays = getBarangays($conn);
                                 }
                             });
                         }
-
-                        document.getElementById('monthPicker').addEventListener('change', fetchChartData);
-                        document.getElementById('barangayFilter').addEventListener('change', fetchChartData);
                         </script>
                     </div>
                 </div>
@@ -436,10 +384,57 @@ $barangays = getBarangays($conn);
                         </h3>
                         <canvas id="farmersPieChart" width="180" height="180"></canvas>
                         <div class="flex justify-center mt-4 space-x-4">
-                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-600 mr-2"></span>RSBSA</div>
-                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-purple-600 mr-2"></span>NCFRS</div>
-                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-600 mr-2"></span>FISH-R</div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-600 mr-2"></span>RSBSA <span class="ml-1 font-bold text-blue-600"><?php echo number_format($rsbsa_registered); ?></span></div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-purple-600 mr-2"></span>NCFRS <span class="ml-1 font-bold text-purple-600"><?php echo number_format($ncfrs_registered); ?></span></div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-600 mr-2"></span>FISH-R <span class="ml-1 font-bold text-cyan-600"><?php echo number_format($fisherfolk_registered); ?></span></div>
                         </div>
+                        <div class="w-full mt-6">
+                            <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Yield Records per Barangay</h4>
+                            <ul class="text-sm text-gray-600 divide-y divide-gray-100">
+                                <?php if (!empty($yield_records_per_barangay)): ?>
+                                    <?php foreach ($yield_records_per_barangay as $row): ?>
+                                        <li class="flex justify-between py-1 px-2">
+                                            <span><?php echo htmlspecialchars($row['barangay_name']); ?></span>
+                                            <span class="font-bold text-agri-green"><?php echo number_format($row['record_count']); ?></span>
+                                        </li>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <li class="py-1 px-2 text-gray-400">No yield records found.</li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var ctx = document.getElementById('farmersPieChart').getContext('2d');
+                            var farmersPieChart = new Chart(ctx, {
+                                type: 'pie',
+                                data: {
+                                    labels: ['RSBSA', 'NCFRS', 'FISH-R'],
+                                    datasets: [{
+                                        data: [
+                                            <?php echo isset($rsbsa_registered) ? $rsbsa_registered : 0; ?>,
+                                            <?php echo isset($ncfrs_registered) ? $ncfrs_registered : 0; ?>,
+                                            <?php echo isset($fisherfolk_registered) ? $fisherfolk_registered : 0; ?>
+                                        ],
+                                        backgroundColor: [
+                                            '#3B82F6', // RSBSA (blue)
+                                            '#8B5CF6', // NCFRS (purple)
+                                            '#06B6D4'  // FISH-R (cyan)
+                                        ],
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: false,
+                                    plugins: {
+                                        legend: {
+                                            display: false
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                        </script>
                     </div>
                 </div>
             </div>
@@ -462,19 +457,24 @@ $barangays = getBarangays($conn);
 
         // Yield Modal Functions
         function openYieldModal() {
-            document.getElementById('addVisitModal').classList.remove('hidden');
-            document.getElementById('addVisitModal').classList.add('flex');
+            const modal = new bootstrap.Modal(document.getElementById('addVisitModal'));
+            modal.show();
             // Load farmers when modal opens
             loadFarmersYield();
         }
 
         function closeYieldModal() {
-            document.getElementById('addVisitModal').classList.add('hidden');
-            document.getElementById('addVisitModal').classList.remove('flex');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addVisitModal'));
+            if (modal) modal.hide();
             // Reset form
-            document.querySelector('#addVisitModal form').reset();
-            document.getElementById('selected_farmer_id_yield').value = '';
-            document.getElementById('farmer_suggestions_yield').classList.add('hidden');
+            const form = document.querySelector('#addVisitModal form');
+            if (form) form.reset();
+            const farmerIdField = document.getElementById('selected_farmer_id_yield');
+            if (farmerIdField) farmerIdField.value = '';
+            const farmerSuggestions = document.getElementById('farmer_suggestions_yield');
+            if (farmerSuggestions) farmerSuggestions.classList.add('hidden');
+            const farmerNameField = document.getElementById('farmer_name_yield');
+            if (farmerNameField) farmerNameField.value = '';
         }
 
         // Farmer auto-suggestion functionality for yield modal

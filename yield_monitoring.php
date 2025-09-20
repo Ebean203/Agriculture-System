@@ -26,26 +26,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $commodity_id = $_POST['commodity_id'] ?? '';
     $season = $_POST['season'] ?? '';
     $yield_amount = $_POST['yield_amount'] ?? '';
-    
     // Validate required fields
     $errors = [];
     if (empty($farmer_id)) $errors[] = 'Farmer selection is required';
     if (empty($commodity_id)) $errors[] = 'Commodity selection is required';
     if (empty($season)) $errors[] = 'Season is required';
     if (empty($yield_amount)) $errors[] = 'Yield amount is required';
-    
+
     if (empty($errors)) {
-        // Insert into database using existing yield_monitoring table structure
+        // Insert into database using original yield_monitoring table structure
         $sql = "INSERT INTO yield_monitoring (
             farmer_id, commodity_id, season, yield_amount, record_date, recorded_by_staff_id
         ) VALUES (?, ?, ?, ?, NOW(), ?)";
-        
+
         $stmt = mysqli_prepare($conn, $sql);
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sisii", 
+            mysqli_stmt_bind_param($stmt, "sisii",
                 $farmer_id, $commodity_id, $season, $yield_amount, $_SESSION['user_id']
             );
-            
+
             if (mysqli_stmt_execute($stmt)) {
                 $_SESSION['success_message'] = "Yield record added successfully!";
                 // Redirect to prevent form resubmission on refresh
@@ -366,84 +365,8 @@ include 'includes/layout_start.php';
     </div>
     </main>
 
-<!-- Yield Monitoring Modal -->
-<div class="modal fade" id="addVisitModal" tabindex="-1" aria-labelledby="addVisitModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="addVisitModalLabel">
-                    <i class="fas fa-plus-circle me-2"></i>Record Yield Visit
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="yieldVisitForm" method="POST" action="yield_monitoring.php">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="record_visit">
-                    
-                    <!-- Yield Information Section -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="fas fa-seedling me-2"></i>Yield Information</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="farmer_search" class="form-label">Select Farmer <span class="text-danger">*</span></label>
-                                    <div class="relative">
-                                        <input type="text" id="farmer_search" class="form-control" placeholder="Type farmer name..." autocomplete="off" required>
-                                        <input type="hidden" id="farmer_id" name="farmer_id" required>
-                                        <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="commodity_id" class="form-label">Commodity <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="commodity_id" name="commodity_id" required>
-                                        <option value="">Select Commodity</option>
-                                        <?php foreach ($commodities as $commodity): ?>
-                                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>">
-                                                <?php echo htmlspecialchars($commodity['commodity_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="season" class="form-label">Season <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="season" name="season" required>
-                                        <option value="">Select Season</option>
-                                        <option value="Dry Season">Dry Season</option>
-                                        <option value="Wet Season">Wet Season</option>
-                                        <option value="First Cropping">First Cropping</option>
-                                        <option value="Second Cropping">Second Cropping</option>
-                                        <option value="Third Cropping">Third Cropping</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="yield_amount" class="form-label">Yield Amount <span class="text-danger">*</span></label>
-                                    <input type="number" step="0.01" min="0" class="form-control" id="yield_amount" name="yield_amount" placeholder="0.00" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="alert alert-info">
-                        <small><i class="fas fa-info-circle me-1"></i>Fields marked with <span class="text-danger">*</span> are required.</small>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save me-1"></i>Record Visit
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<?php include 'yield_record_modal.php'; ?>
 
 <script>
 // Modal Functions

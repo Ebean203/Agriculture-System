@@ -26,15 +26,21 @@ switch ($type) {
         }
         break;
     case 'yield':
-        $query = "SELECT record_date, SUM(yield_kg) as total_yield FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id WHERE 1";
-    if ($month) $query .= " AND MONTH(record_date) = '" . mysqli_real_escape_string($conn, $month) . "'";
-    if ($year) $query .= " AND YEAR(record_date) = '" . mysqli_real_escape_string($conn, $year) . "'";
-        if ($barangay) $query .= " AND f.barangay = '" . mysqli_real_escape_string($conn, $barangay) . "'";
+        $query = "SELECT record_date, SUM(yield_amount) as total_yield FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id WHERE 1";
         $query .= " GROUP BY record_date ORDER BY record_date ASC";
         $result = mysqli_query($conn, $query);
         if (!$result) throw new Exception(mysqli_error($conn));
         while ($row = mysqli_fetch_assoc($result)) {
             $labels[] = $row['record_date'];
+            $data[] = (float)$row['total_yield'];
+        }
+        break;
+    case 'yield_per_barangay':
+        $query = "SELECT b.barangay_name, SUM(ym.yield_amount) AS total_yield FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id JOIN barangays b ON f.barangay_id = b.barangay_id GROUP BY b.barangay_name ORDER BY b.barangay_name ASC";
+        $result = mysqli_query($conn, $query);
+        if (!$result) throw new Exception(mysqli_error($conn));
+        while ($row = mysqli_fetch_assoc($result)) {
+            $labels[] = $row['barangay_name'];
             $data[] = (float)$row['total_yield'];
         }
         break;
