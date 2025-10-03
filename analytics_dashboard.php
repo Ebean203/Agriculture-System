@@ -92,6 +92,7 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
     $rsbsa_count = 0;
     $ncfrs_count = 0;
     $fisherfolk_count = 0;
+    $registered_count = 0;
     
     // Get total farmers in date range
     $query = "SELECT COUNT(*) as count FROM farmers f WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
@@ -134,11 +135,26 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
         $fisherfolk_count = $row['count'] ?? 0;
     }
     
+    // Get count of farmers registered in at least one category (to avoid negative values)
+    $query = "
+        SELECT COUNT(*) as count 
+        FROM farmers f 
+        WHERE (f.is_rsbsa = 1 OR f.is_ncfrs = 1 OR f.is_fisherfolk = 1) 
+        AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
+    ";
+    $result = mysqli_query($conn, $query);
+    if ($result && $row = mysqli_fetch_assoc($result)) {
+        $registered_count = $row['count'];
+    }
+    
+    // Calculate not registered (ensure it's not negative)
+    $not_registered_count = max(0, $total_farmers - $registered_count);
+    
     return [
         ['status' => 'RSBSA Registered', 'count' => $rsbsa_count],
         ['status' => 'NCFRS Registered', 'count' => $ncfrs_count],
         ['status' => 'Fisherfolk Registered', 'count' => $fisherfolk_count],
-        ['status' => 'Not Registered', 'count' => $total_farmers - $rsbsa_count - $ncfrs_count - $fisherfolk_count]
+        ['status' => 'Not Registered', 'count' => $not_registered_count]
     ];
 }
 
@@ -744,6 +760,11 @@ r        .gradient-bg {
                                 // Calculate percentage using the raw value
                                 const numValue = Number(value);
                                 const percentage = total > 0 ? ((numValue / total) * 100).toFixed(1) : 0;
+                                
+                                // Only hide labels for 0% (but show all others)
+                                if (parseFloat(percentage) === 0) {
+                                    return null;
+                                }
                                 
                                 return percentage + '%';
                             },
