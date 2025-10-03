@@ -21,6 +21,7 @@ if ($offline_mode) {
         }
     </script>';
     echo '<link href="assets/css/custom.css" rel="stylesheet">';
+    echo '<script src="assets/js/jquery.min.js"></script>';
     echo '<script src="assets/js/bootstrap.bundle.min.js"></script>';
 } else {
     // CDN assets (for when you have internet)
@@ -40,19 +41,22 @@ if ($offline_mode) {
             }
         }
     </script>';
+    echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>';
     echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>';
 }
 ?>
 
 <?php
 // Chart.js Assets - Include this function in pages that need charts
-function includeChartAssets($offline_mode = true) {
-    if ($offline_mode) {
-        echo '<script src="assets/js/chart.min.js"></script>';
-        echo '<script src="assets/js/chartjs-plugin-datalabels.min.js"></script>';
-    } else {
-        echo '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>';
-        echo '<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>';
+if (!function_exists('includeChartAssets')) {
+    function includeChartAssets($offline_mode = true) {
+        if ($offline_mode) {
+            echo '<script src="assets/js/chart.min.js"></script>';
+            echo '<script src="assets/js/chartjs-plugin-datalabels.min.js"></script>';
+        } else {
+            echo '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>';
+            echo '<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>';
+        }
     }
 }
 ?>

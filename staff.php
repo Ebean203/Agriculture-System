@@ -30,6 +30,10 @@ $staff_result = mysqli_query($conn, $staff_query);
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
+                            <!-- Add Staff Button -->
+                            <button onclick="openAddStaffModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center font-medium">
+                                <i class="fas fa-user-plus mr-2"></i>Add Staff
+                            </button>
                             <!-- Go to Page (rightmost) -->
                             <div class="relative">
                                 <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center font-medium" onclick="toggleNavigationDropdown()">
@@ -126,6 +130,23 @@ $staff_result = mysqli_query($conn, $staff_query);
                         </div>
                     </div>
                 </div>
+
+                <!-- Success/Error Messages -->
+                <?php if (isset($_SESSION['success'])): ?>
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <?php echo htmlspecialchars($_SESSION['success']); ?>
+                    </div>
+                    <?php unset($_SESSION['success']); ?>
+                <?php endif; ?>
+
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <?php echo htmlspecialchars($_SESSION['error']); ?>
+                    </div>
+                    <?php unset($_SESSION['error']); ?>
+                <?php endif; ?>
 
                 <!-- Staff Data Table -->
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
@@ -261,6 +282,83 @@ $staff_result = mysqli_query($conn, $staff_query);
         </div>
     </div>
 
+    <!-- Add Staff Modal -->
+    <div class="modal fade" id="addStaffModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title text-primary">
+                        <i class="fas fa-user-plus me-2"></i>Add New Staff Member
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addStaffForm" action="staff_actions.php" method="POST">
+                        <input type="hidden" name="action" value="add_staff">
+                
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" id="first_name" name="first_name" required class="form-control" placeholder="Enter first name">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" id="last_name" name="last_name" required class="form-control" placeholder="Enter last name">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="position" class="form-label">Position <span class="text-danger">*</span></label>
+                            <input type="text" id="position" name="position" required class="form-control" placeholder="e.g., Agricultural Officer, MAO Head">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="contact_number" class="form-label">Contact Number <span class="text-danger">*</span></label>
+                            <input type="tel" id="contact_number" name="contact_number" required class="form-control" placeholder="09xxxxxxxxx">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="role_id" class="form-label">Role <span class="text-danger">*</span></label>
+                            <select id="role_id" name="role_id" required class="form-select">
+                                <option value="">Select Role</option>
+                                <?php
+                                // Fetch roles
+                                $roles_query = "SELECT role_id, role FROM roles ORDER BY role";
+                                $roles_result = mysqli_query($conn, $roles_query);
+                                if ($roles_result) {
+                                    while ($role = mysqli_fetch_assoc($roles_result)) {
+                                        echo "<option value='{$role['role_id']}'>{$role['role']}</option>";
+                                    }
+                                }
+                                ?>
+                            </select>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" id="username" name="username" required class="form-control" placeholder="Enter username">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <input type="password" id="password" name="password" required class="form-control" placeholder="Enter password">
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" form="addStaffForm" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-2"></i>Add Staff Member
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Navigation dropdown functionality
         function toggleNavigationDropdown() {
@@ -290,9 +388,11 @@ $staff_result = mysqli_query($conn, $staff_query);
         let staffToArchive = null;
 
         function openAddStaffModal() {
-            // Placeholder function for Add Staff functionality
-            alert('Add Staff functionality will be implemented here.');
-            // This can be expanded to open a modal for adding new staff members
+            new bootstrap.Modal(document.getElementById('addStaffModal')).show();
+        }
+
+        function closeAddStaffModal() {
+            bootstrap.Modal.getInstance(document.getElementById('addStaffModal'))?.hide();
         }
 
         function viewStaff(staff) {

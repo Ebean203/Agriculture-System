@@ -1,650 +1,1063 @@
+
 <?php
 session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
+$pageTitle = 'Yield Monitoring - Lagonglong FARMS';
 
-$pageTitle = 'Yield Monitoring';
-
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Check database connection
-if (!$conn) {
-    die('Database connection failed: ' . mysqli_connect_error());
+// Check if yield_monitoring table exists
+$table_check = mysqli_query($conn, "SHOW TABLES LIKE 'yield_monitoring'");
+if (mysqli_num_rows($table_check) == 0) {
+    die("Error: yield_monitoring table does not exist. Please import the yield_monitoring.sql file first.");
 }
 
-// Future database queries will go here
-// Example queries (commented out for now):
-// $visits_query = "SELECT * FROM yield_visits ORDER BY visit_date DESC";
-// $stats_query = "SELECT COUNT(*) as total_visits, SUM(yield_amount) as total_yield FROM yield_visits";
+// Get commodity categories for filter dropdown
+$commodity_categories = [];
+$categories_query = mysqli_query($conn, "SELECT category_id, category_name FROM commodity_categories ORDER BY category_name");
+if ($categories_query) {
+    while ($row = mysqli_fetch_assoc($categories_query)) {
+        $commodity_categories[] = $row;
+    }
+}
 
+// Get commodities with their categories for dropdown
+$commodities = [];
+$commodities_query = mysqli_query($conn, "SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name 
+                                          FROM commodities c 
+                                          LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id 
+                                          ORDER BY cc.category_name, c.commodity_name");
+if ($commodities_query) {
+    while ($row = mysqli_fetch_assoc($commodities_query)) {
+        $commodities[] = $row;
+    }
+}
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'record_visit') {
+    $farmer_id = $_POST['farmer_id'] ?? '';
+    $commodity_id = $_POST['commodity_id'] ?? '';
+    $season = $_POST['season'] ?? '';
+    $yield_amount = $_POST['yield_amount'] ?? '';
+    // Validate required fields
+    $errors = [];
+    if (empty($farmer_id)) $errors[] = 'Farmer selection is required';
+    if (empty($commodity_id)) $errors[] = 'Commodity selection is required';
+    if (empty($season)) $errors[] = 'Season is required';
+    if (empty($yield_amount)) $errors[] = 'Yield amount is required';
+
+    if (empty($errors)) {
+        // Insert into database using original yield_monitoring table structure
+        $sql = "INSERT INTO yield_monitoring (
+            farmer_id, commodity_id, season, yield_amount, record_date, recorded_by_staff_id
+        ) VALUES (?, ?, ?, ?, NOW(), ?)";
+
+        $stmt = mysqli_prepare($conn, $sql);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "sisii",
+                $farmer_id, $commodity_id, $season, $yield_amount, $_SESSION['user_id']
+            );
+
+            if (mysqli_stmt_execute($stmt)) {
+                $_SESSION['success_message'] = "Yield record added successfully!";
+                // Redirect to prevent form resubmission on refresh
+                header("Location: yield_monitoring.php");
+                exit();
+            } else {
+                $errors[] = "Error recording yield: " . mysqli_error($conn);
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            $errors[] = "Database error: " . mysqli_error($conn);
+        }
+    }
+}
+
+// Get messages from session and clear them
+$success_message = $_SESSION['success_message'] ?? null;
+$error_message = $_SESSION['error_message'] ?? null;
+unset($_SESSION['success_message'], $_SESSION['error_message']);
+
+// Get filter parameters from GET
+$farmer_filter = isset($_GET['farmer']) ? trim($_GET['farmer']) : '';
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
+$farmer_search = isset($_GET['farmer_search']) ? trim($_GET['farmer_search']) : '';
+$category_filter = isset($_GET['category_filter']) ? trim($_GET['category_filter']) : '';
+$commodity_filter = isset($_GET['commodity_filter']) ? trim($_GET['commodity_filter']) : '';
+$date_filter = isset($_GET['date_filter']) ? trim($_GET['date_filter']) : '';
+
+// Fetch yield records from database
+$yield_records = [];
+$total_records = 0;
+
+try {
+    // Check if yield_monitoring table exists
+    $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'yield_monitoring'");
+    if (mysqli_num_rows($table_check) == 0) {
+        die("Error: yield_monitoring table does not exist. Please create the table first.");
+    }
+    
+    // Build query with filters
+    $where_clause = "WHERE 1=1";
+    $params = [];
+    $types = "";
+    
+    // Farmer ID filter (for notification redirects)
+    if (!empty($farmer_id_filter)) {
+        // Exact match by farmer ID
+        $where_clause .= " AND f.farmer_id = ?";
+        $params[] = $farmer_id_filter;
+        $types .= "s";
+    } elseif (!empty($farmer_filter)) {
+        // Search by farmer name
+        $where_clause .= " AND (
+            f.first_name LIKE ? OR 
+            f.last_name LIKE ? OR 
+            CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(
+                f.first_name, 
+                CASE 
+                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.middle_name) 
+                    ELSE '' 
+                END,
+                ' ', f.last_name,
+                CASE 
+                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.suffix) 
+                    ELSE '' 
+                END
+            ) LIKE ?
+        )";
+        $search_term = "%$farmer_filter%";
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $types .= "ssss";
+    }
+    
+    // Farmer search filter (from new form)
+    if (!empty($farmer_search)) {
+        $where_clause .= " AND (
+            f.first_name LIKE ? OR 
+            f.last_name LIKE ? OR 
+            CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(
+                f.first_name, 
+                CASE 
+                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.middle_name) 
+                    ELSE '' 
+                END,
+                ' ', f.last_name,
+                CASE 
+                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.suffix) 
+                    ELSE '' 
+                END
+            ) LIKE ?
+        )";
+        $search_term = "%$farmer_search%";
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $types .= "ssss";
+    }
+    
+    // Category filter
+    if (!empty($category_filter)) {
+        $where_clause .= " AND cc.category_id = ?";
+        $params[] = $category_filter;
+        $types .= "i";
+    }
+    
+    // Commodity filter
+    if (!empty($commodity_filter)) {
+        $where_clause .= " AND c.commodity_id = ?";
+        $params[] = $commodity_filter;
+        $types .= "i";
+    }
+    
+    // Date filter
+    if (!empty($date_filter)) {
+        $where_clause .= " AND DATE(ym.record_date) = ?";
+        $params[] = $date_filter;
+        $types .= "s";
+    }
+    
+    // Fetch yield records with farmer and commodity information
+    $query = "SELECT ym.*, f.first_name, f.last_name, f.middle_name, f.suffix, f.contact_number, 
+                     b.barangay_name, c.commodity_name, cc.category_id, cc.category_name
+              FROM yield_monitoring ym
+              LEFT JOIN farmers f ON ym.farmer_id = f.farmer_id
+              LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
+              LEFT JOIN commodities c ON ym.commodity_id = c.commodity_id
+              LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id
+              $where_clause
+              ORDER BY ym.record_date DESC";
+    
+    if (!empty($params)) {
+        $stmt = mysqli_prepare($conn, $query);
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $yield_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        mysqli_stmt_close($stmt);
+    } else {
+        $result = mysqli_query($conn, $query);
+        if ($result) {
+            $yield_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        }
+    }
+    
+    $total_records = count($yield_records);
+} catch (Exception $e) {
+    $errors[] = "Error fetching yield records: " . $e->getMessage();
+}
+
+include 'includes/layout_start.php';
 ?>
-<?php $pageTitle = 'Yield Monitoring - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
-            <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                <!-- Header Section -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                                <i class="fas fa-chart-line text-agri-green mr-3"></i>
-                                Yield Monitoring
-                            </h1>
-                            <p class="text-gray-600 mt-2">Track and monitor agricultural yield from distributed inputs</p>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="openModal('addVisitModal')">
-                                <i class="fas fa-plus mr-2"></i>Record Visit
-                            </button>
-                            
-                            <!-- Page Navigation -->
-                            <div class="relative">
-                                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
-                                    <i class="fas fa-compass mr-2"></i>Go to Page
-                                    <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                                </button>
-                                <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                    <!-- Dashboard Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                        <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-home text-blue-600 mr-3"></i>
-                                            Dashboard
-                                        </a>
-                                        <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                            Analytics Dashboard
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Inventory Management Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
-                                        <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                            MAO Inventory
-                                        </a>
-                                        <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                            Distribution Records
-                                        </a>
-                                        <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-calendar-check text-green-600 mr-3"></i>
-                                            MAO Activities
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Records Management Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                        <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-users text-green-600 mr-3"></i>
-                                            Farmers Registry
-                                        </a>
-                                        <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                            RSBSA Records
-                                        </a>
-                                        <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                            NCFRS Records
-                                        </a>
-                                        <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                            FishR Records
-                                        </a>
-                                        <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-ship text-indigo-600 mr-3"></i>
-                                            Boat Records
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Monitoring & Reports Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                        <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
-                                            <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                            Yield Monitoring
-                                        </a>
-                                        <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                            Reports
-                                        </a>
-                                        <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-list text-gray-600 mr-3"></i>
-                                            All Activities
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Settings Section -->
-                                    <div>
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                            Staff Management
-                                        </a>
-                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                            System Settings
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
+<main class="app-content">
+    <!-- Success/Error Messages -->
+    <?php if (isset($success_message)): ?>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success_message); ?>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (isset($error_message)): ?>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <i class="fas fa-exclamation-circle mr-2"></i><?php echo htmlspecialchars($error_message); ?>
+        </div>
+    <?php endif; ?>
+    
+    <?php if (isset($errors) && !empty($errors)): ?>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <ul class="list-disc list-inside">
+                <?php foreach ($errors as $error): ?>
+                    <li><?php echo htmlspecialchars($error); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
+    <!-- Header Section -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+                    <i class="fas fa-chart-line text-agri-green mr-3"></i>
+                    Yield Monitoring
+                </h1>
+                <p class="text-gray-600 mt-2">Track and monitor agricultural yield from distributed inputs</p>
+                <?php if (!empty($farmer_filter) || !empty($farmer_id_filter)): ?>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            <i class="fas fa-filter mr-2"></i>
+                            Filtered by: <?php echo htmlspecialchars($farmer_filter); ?>
+                        </span>
+                        <a href="yield_monitoring.php" class="text-sm text-gray-600 hover:text-agri-green">
+                            <i class="fas fa-times-circle mr-1"></i>Clear Filter
+                        </a>
                     </div>
+                <?php endif; ?>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="openModal('addVisitModal')">
+                    <i class="fas fa-plus mr-2"></i>Record Visit
+                </button>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Success and Error Messages -->
-                    <div id="messageContainer" class="mb-6" style="display: none;">
-                        <div id="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center" style="display: none;">
-                            <i class="fas fa-check-circle mr-3 text-green-600"></i>
-                            <div>
-                                <strong>Success!</strong>
-                                <span id="successText"></span>
-                            </div>
-                            <button onclick="closeMessage('successMessage')" class="ml-auto text-green-700 hover:text-green-900">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        
-                        <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center" style="display: none;">
-                            <i class="fas fa-exclamation-circle mr-3 text-red-600"></i>
-                            <div>
-                                <strong>Error!</strong>
-                                <span id="errorText"></span>
-                            </div>
-                            <button onclick="closeMessage('errorMessage')" class="ml-auto text-red-700 hover:text-red-900">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Statistics Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <!-- Total Visits -->
-                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-                            <div class="flex items-center">
-                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fas fa-eye text-blue-600 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-2xl font-bold text-gray-900">0</h3>
-                                    <p class="text-gray-600">Total Visits</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Fry/Fingerlings -->
-                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-cyan-500">
-                            <div class="flex items-center">
-                                <div class="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fas fa-fish text-cyan-600 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-2xl font-bold text-gray-900">0</h3>
-                                    <p class="text-gray-600">Fry/Fingerlings</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Poultry & Livestock -->
-                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
-                            <div class="flex items-center">
-                                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fas fa-paw text-orange-600 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-2xl font-bold text-gray-900">0</h3>
-                                    <p class="text-gray-600">Poultry & Livestock</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Average Yield -->
-                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
-                            <div class="flex items-center">
-                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                                    <i class="fas fa-seedling text-green-600 text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-900">0 sacks</h3>
-                                    <p class="text-gray-600">Average Yield</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filter Tabs -->
-                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                        <div class="flex flex-wrap gap-2">
-                            <button class="filter-tab active px-4 py-2 rounded-lg font-medium" data-filter="all">
-                                <i class="fas fa-list mr-2"></i>All Visits
-                            </button>
-                            <button class="filter-tab px-4 py-2 rounded-lg font-medium" data-filter="seeds">
-                                <i class="fas fa-seedling mr-2"></i>Seeds
-                            </button>
-                            <button class="filter-tab px-4 py-2 rounded-lg font-medium" data-filter="livestock">
-                                <i class="fas fa-horse mr-2"></i>Livestock
-                            </button>
-                            <button class="filter-tab px-4 py-2 rounded-lg font-medium" data-filter="fry">
-                                <i class="fas fa-fish mr-2"></i>Fry/Fingerlings
-                            </button>
-                            <button class="filter-tab px-4 py-2 rounded-lg font-medium" data-filter="chicken">
-                                <i class="fas fa-egg mr-2"></i>Chicken
-                            </button>
-                            <button class="filter-tab px-4 py-2 rounded-lg font-medium" data-filter="tools">
-                                <i class="fas fa-tools mr-2"></i>Agricultural Tools
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Search and Filter Section -->
-                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Search Farmer</label>
-                                <div class="relative">
-                                    <input type="text" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" placeholder="Search by farmer name...">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center">
-                                        <i class="fas fa-search text-gray-400"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                                <select id="dateRangeSelect" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" onchange="toggleCustomDateRange()">
-                                    <option value="">All Dates</option>
-                                    <option value="today">Today</option>
-                                    <option value="week">This Week</option>
-                                    <option value="month">This Month</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <!-- Custom Date Range Section (Hidden by default) -->
-                        <div id="customDateRange" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
-                                <input type="date" id="fromDate" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
-                                <input type="date" id="toDate" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Yield Monitoring Content -->
-                    <!-- Empty State - Ready for Database Data -->
-                    <div class="bg-white rounded-lg shadow-md p-12 text-center">
-                        <div class="text-gray-500">
-                            <i class="fas fa-chart-line text-6xl mb-6 text-gray-300"></i>
-                            <h3 class="text-2xl font-semibold mb-4 text-gray-700">No Yield Data Available</h3>
-                            <p class="text-gray-600 mb-6 max-w-md mx-auto">
-                                Start monitoring agricultural yields by recording visits and tracking farmer progress. 
-                                Data will appear here once you begin adding visit records.
-                            </p>
-                        </div>
-                    </div>
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Total Visits -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-eye text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900"><?php echo $total_records; ?></h3>
+                    <p class="text-gray-600">Total Visits</p>
                 </div>
             </div>
+        </div>
 
-            <!-- Modals -->
-            <!-- Add Visit Record Modal -->
-            <div id="addVisitModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-y-auto">
-                    <div class="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-                        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-                            <i class="fas fa-clipboard-check text-agri-green mr-3"></i>Record Yield Visit
-                        </h3>
-                        <p class="text-sm text-gray-600 mt-1">Document yield results and farmer progress</p>
+        <!-- Agronomic Crops -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-wheat-awn text-green-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900"><?php 
+                        // Count yield records for Agronomic Crops (category_id = 1)
+                        $agronomic_count = 0;
+                        foreach ($yield_records as $record) {
+                            if (isset($record['category_id']) && $record['category_id'] == 1) {
+                                $agronomic_count++;
+                            }
+                        }
+                        echo $agronomic_count;
+                    ?></h3>
+                    <p class="text-gray-600">Agronomic Crops</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- High Value Crops -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-apple-alt text-purple-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900"><?php 
+                        // Count yield records for High Value Crops (category_id = 2)
+                        $hvc_count = 0;
+                        foreach ($yield_records as $record) {
+                            if (isset($record['category_id']) && $record['category_id'] == 2) {
+                                $hvc_count++;
+                            }
+                        }
+                        echo $hvc_count;
+                    ?></h3>
+                    <p class="text-gray-600">High Value Crops</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Livestock & Poultry -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-paw text-orange-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900"><?php 
+                        // Count yield records for Livestock (category_id = 3) and Poultry (category_id = 4)
+                        $animal_count = 0;
+                        foreach ($yield_records as $record) {
+                            if (isset($record['category_id']) && ($record['category_id'] == 3 || $record['category_id'] == 4)) {
+                                $animal_count++;
+                            }
+                        }
+                        echo $animal_count;
+                    ?></h3>
+                    <p class="text-gray-600">Livestock & Poultry</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Yield -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-agri-light rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-seedling text-agri-green text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900"><?php 
+                        if ($total_records > 0) {
+                            $total_yield = array_sum(array_column($yield_records, 'yield_amount'));
+                            $avg_yield = $total_yield / $total_records;
+                            echo number_format($avg_yield, 1) . ' sacks';
+                        } else {
+                            echo '0 sacks';
+                        }
+                    ?></h3>
+                    <p class="text-gray-600">Average Yield</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Filter Tabs -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex flex-wrap gap-3 mb-6">
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="agronomic">
+                <i class="fas fa-wheat-awn mr-2"></i>Agronomic Crops
+            </button>
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="high-value">
+                <i class="fas fa-apple-alt mr-2"></i>High Value Crops
+            </button>
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="livestock">
+                <i class="fas fa-horse mr-2"></i>Livestock
+            </button>
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="poultry">
+                <i class="fas fa-egg mr-2"></i>Poultry
+            </button>
+        </div>
+    </div>
+
+    <!-- Search and Filter Controls -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <form method="GET" action="yield_monitoring.php" class="flex flex-col gap-4">
+            <input type="hidden" name="category_filter" id="hidden_category_filter" value="<?php echo htmlspecialchars($_GET['category_filter'] ?? ''); ?>">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Commodity</label>
+                    <select name="commodity_filter" id="commodity_filter" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <option value="">All Commodities</option>
+                        <?php foreach ($commodities as $commodity): ?>
+                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>" 
+                                    data-category="<?php echo htmlspecialchars($commodity['category_id']); ?>"
+                                    <?php echo (isset($_GET['commodity_filter']) && $_GET['commodity_filter'] == $commodity['commodity_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($commodity['commodity_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Search Farmer</label>
+                    <div class="relative">
+                        <input type="text" name="farmer_search" placeholder="Search by farmer name..." 
+                               value="<?php echo htmlspecialchars($_GET['farmer_search'] ?? ''); ?>"
+                               class="search-input w-full px-4 py-2 pl-10 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
                     </div>
-                    <form method="POST" action="record_yield.php">
-                        <div class="px-6 py-6">
-                            <!-- Visit Information Grid -->
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="farmer_name_yield" class="block text-sm font-medium text-gray-700 mb-2">Select Farmer</label>
-                                    <div class="relative">
-                                        <input type="text" 
-                                               class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" 
-                                               id="farmer_name_yield" 
-                                               placeholder="Type farmer name..."
-                                               autocomplete="off"
-                                               required
-                                               onkeyup="searchFarmersYield(this.value)"
-                                               onfocus="showSuggestionsYield()"
-                                               onblur="hideSuggestionsYield()">
-                                        <input type="hidden" name="farmer_id" id="selected_farmer_id_yield" required>
-                                        
-                                        <!-- Suggestions dropdown -->
-                                        <div id="farmer_suggestions_yield" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
-                                            <!-- Suggestions will be populated here -->
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Date Range</label>
+                    <select name="date_filter" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <option value="">All Dates</option>
+                        <option value="7" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '7') ? 'selected' : ''; ?>>Last 7 days</option>
+                        <option value="30" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '30') ? 'selected' : ''; ?>>Last 30 days</option>
+                        <option value="90" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '90') ? 'selected' : ''; ?>>Last 3 months</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
+                    <i class="fas fa-filter mr-2"></i>Apply Filters
+                </button>
+                <?php 
+                // Check if any filters are active
+                $hasActiveFilters = !empty($_GET['category_filter']) || 
+                                  !empty($_GET['commodity_filter']) || 
+                                  !empty($_GET['farmer_search']) || 
+                                  !empty($_GET['date_filter']) ||
+                                  !empty($_GET['farmer']) ||
+                                  !empty($_GET['farmer_id']);
+                
+                if ($hasActiveFilters): ?>
+                    <a href="yield_monitoring.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
+                        <i class="fas fa-times mr-2"></i>Clear Filters
+                    </a>
+                <?php endif; ?>
+            </div>
+        </form>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <?php if ($total_records > 0): ?>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Farmer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Commodity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Season</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yield Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Recorded</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <?php foreach ($yield_records as $record): ?>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <div class="h-10 w-10 rounded-full bg-agri-light flex items-center justify-center">
+                                                <i class="fas fa-user text-agri-green"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                <?php echo htmlspecialchars(trim($record['first_name'] . ' ' . $record['last_name'])); ?>
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                <?php echo htmlspecialchars($record['barangay_name'] ?? 'N/A'); ?>
+                                            </div>
                                         </div>
                                     </div>
-                                    <p class="text-sm text-gray-600 mt-1">Start typing to search for farmers</p>
-                                </div>
-                                <div>
-                                    <label for="input_select" class="block text-sm font-medium text-gray-700 mb-2">Distributed Input</label>
-                                    <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="input_id" required>
-                                        <option value="">Select input type...</option>
-                                        <!-- Options will be populated based on farmer selection -->
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Visit Details -->
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                                <div>
-                                    <label for="visit_date" class="block text-sm font-medium text-gray-700 mb-2">Visit Date</label>
-                                    <input type="date" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="visit_date" value="<?php echo date('Y-m-d'); ?>" required>
-                                </div>
-                                <div>
-                                    <label for="yield_amount" class="block text-sm font-medium text-gray-700 mb-2">Yield Amount</label>
-                                    <input type="number" step="0.1" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="yield_amount" placeholder="0.0" required>
-                                </div>
-                                <div>
-                                    <label for="yield_unit" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
-                                    <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="yield_unit" required>
-                                        <option value="">Select unit...</option>
-                                        <option value="sacks">Sacks</option>
-                                        <option value="kilograms">Kilograms</option>
-                                        <option value="tons">Tons</option>
-                                        <option value="pieces">Pieces</option>
-                                        <option value="heads">Heads</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Quality and Assessment -->
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <label for="quality_grade" class="block text-sm font-medium text-gray-700 mb-2">Quality Grade</label>
-                                    <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="quality_grade" required>
-                                        <option value="">Select grade...</option>
-                                        <option value="Grade A">Grade A - Excellent</option>
-                                        <option value="Grade B">Grade B - Good</option>
-                                        <option value="Grade C">Grade C - Fair</option>
-                                        <option value="Grade D">Grade D - Poor</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="growth_stage" class="block text-sm font-medium text-gray-700 mb-2">Growth Stage</label>
-                                    <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="growth_stage">
-                                        <option value="">Select stage...</option>
-                                        <option value="Seedling">Seedling</option>
-                                        <option value="Vegetative">Vegetative</option>
-                                        <option value="Flowering">Flowering</option>
-                                        <option value="Fruiting">Fruiting</option>
-                                        <option value="Mature">Mature</option>
-                                        <option value="Harvested">Harvested</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Conditions and Notes -->
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Field Conditions</label>
-                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="conditions[]" value="good_weather" class="mr-2">
-                                        <span class="text-sm">Good Weather</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="conditions[]" value="adequate_water" class="mr-2">
-                                        <span class="text-sm">Adequate Water</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="conditions[]" value="pest_issues" class="mr-2">
-                                        <span class="text-sm">Pest Issues</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" name="conditions[]" value="disease_present" class="mr-2">
-                                        <span class="text-sm">Disease Present</span>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-6">
-                                <label for="visit_notes" class="block text-sm font-medium text-gray-700 mb-2">Visit Notes</label>
-                                <textarea class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="visit_notes" rows="4" placeholder="Record observations, recommendations, and any issues noted during the visit..."></textarea>
-                            </div>
-                            
-                            <!-- Recommendations -->
-                            <div class="mb-6">
-                                <label for="recommendations" class="block text-sm font-medium text-gray-700 mb-2">Recommendations</label>
-                                <textarea class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="recommendations" rows="3" placeholder="Provide recommendations for improvement or next steps..."></textarea>
-                            </div>
-                        </div>
-                        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-4 rounded-b-lg sticky bottom-0 border-t border-gray-200 z-10">
-                            <button type="button" class="px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium" onclick="closeModal('addVisitModal')">
-                                <i class="fas fa-times mr-2"></i>Cancel
-                            </button>
-                            <button type="submit" class="px-6 py-3 bg-agri-green text-white rounded-lg hover:bg-agri-dark transition-colors font-medium">
-                                <i class="fas fa-save mr-2"></i>Record Visit
-                            </button>
-                        </div>
-                    </form>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900"><?php echo htmlspecialchars($record['commodity_name'] ?? 'N/A'); ?></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        <?php echo htmlspecialchars($record['season']); ?>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        <?php echo number_format($record['yield_amount'], 2); ?> sacks
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <?php echo date('M d, Y', strtotime($record['record_date'])); ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-agri-green hover:text-agri-dark mr-3" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-800" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">1</span> to <span class="font-medium"><?php echo $total_records; ?></span> of <span class="font-medium"><?php echo $total_records; ?></span> results
+                        </p>
+                    </div>
                 </div>
             </div>
+        <?php else: ?>
+            <div class="text-center py-12">
+                <i class="fas fa-chart-line text-gray-300 text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">No yield records found</h3>
+                <p class="text-gray-500">Start by recording your first visit to track agricultural yield</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    </main>
 
-            <!-- Footer Section -->
-            <footer class="mt-12 bg-white shadow-md p-6 w-full">
-                <div class="text-center text-gray-600">
-                    <div class="flex items-center justify-center mb-2">
-                        <i class="fas fa-seedling text-agri-green mr-2"></i>
-                        <span class="font-semibold">Lagonglong FARMS</span>
-                    </div>
-                    <p class="text-sm">&copy; <?php echo date('Y'); ?> All rights reserved.</p>
-                </div>
-            </footer>
 
-            <script>
-                // Modal functions
-                function openModal(modalId) {
-                    document.getElementById(modalId).classList.remove('hidden');
-                    document.getElementById(modalId).classList.add('flex');
-                }
+<?php include 'yield_record_modal.php'; ?>
 
-                function closeModal(modalId) {
-                    document.getElementById(modalId).classList.add('hidden');
-                    document.getElementById(modalId).classList.remove('flex');
-                }
+<script>
+// Modal Functions
+function openModal(modalId) {
+    const modal = new bootstrap.Modal(document.getElementById(modalId));
+    modal.show();
+}
 
-                // Close modal when clicking outside
-                document.addEventListener('click', function(event) {
-                    const modals = ['addVisitModal'];
-                    modals.forEach(modalId => {
-                        const modal = document.getElementById(modalId);
-                        if (event.target === modal) {
-                            closeModal(modalId);
-                        }
-                    });
-                });
+function closeModal(modalId) {
+    const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+    if (modal) {
+        modal.hide();
+    }
+}
 
-                // Filter functionality
-                document.addEventListener('DOMContentLoaded', function() {
-                    const filterTabs = document.querySelectorAll('.filter-tab');
-                    
-                    filterTabs.forEach(tab => {
-                        tab.addEventListener('click', function() {
-                            // Remove active class from all tabs
-                            filterTabs.forEach(t => t.classList.remove('active'));
-                            // Add active class to clicked tab
-                            this.classList.add('active');
-                            
-                            // Here you would implement the actual filtering logic
-                            // For now, we'll just show console log
-                            const filter = this.getAttribute('data-filter');
-                                    
-                    console.log('Filtering by:', filter);
-                        });
-                    });
-                });
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize farmer autocomplete
+    initializeFarmerAutocomplete();
+    
+    // Initialize filter tabs
+    initializeFilterTabs();
+    
+    // Set active tab based on current category filter
+    setActiveTab();
+    
+    // Initialize commodity filtering based on current category
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryFilter = urlParams.get('category_filter');
+    if (categoryFilter) {
+        filterCommodityDropdown(categoryFilter);
+    }
+    
+    // Auto-hide success messages after 1.5 seconds
+    const successMessages = document.querySelectorAll('.bg-green-100');
+    successMessages.forEach(message => {
+        setTimeout(() => {
+            message.style.transition = 'opacity 0.5s ease-out';
+            message.style.opacity = '0';
+            setTimeout(() => {
+                message.remove();
+            }, 500);
+        }, 1500);
+    });
+});
 
-                // Function to show success message
-                function showSuccessMessage(message) {
-                    const messageContainer = document.getElementById('messageContainer');
-                    const successMessage = document.getElementById('successMessage');
-                    const successText = document.getElementById('successText');
-                    
-                    successText.textContent = ' ' + message;
-                    successMessage.style.display = 'flex';
-                    messageContainer.style.display = 'block';
-                    
-                    // Scroll to top to show message
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    
-                    // Auto-hide after 5 seconds
-                    setTimeout(() => {
-                        closeMessage('successMessage');
-                    }, 5000);
-                }
+// Farmer Autocomplete Functionality - Matching farmers.php style
+function initializeFarmerAutocomplete() {
+    const farmerSearch = document.getElementById('farmer_search');
+    const farmerId = document.getElementById('farmer_id');
+    const suggestions = document.getElementById('farmer_suggestions');
+    let searchTimeout;
 
-                // Function to show error message
-                function showErrorMessage(message) {
-                    const messageContainer = document.getElementById('messageContainer');
-                    const errorMessage = document.getElementById('errorMessage');
-                    const errorText = document.getElementById('errorText');
-                    
-                    errorText.textContent = ' ' + message;
-                    errorMessage.style.display = 'flex';
-                    messageContainer.style.display = 'block';
-                    
-                    // Scroll to top to show message
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
+    farmerSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Clear previous timeout
+        clearTimeout(searchTimeout);
+        
+        if (query.length < 1) {
+            suggestions.innerHTML = '';
+            suggestions.classList.add('hidden');
+            farmerId.value = '';
+            return;
+        }
+        
+        // Show loading indicator
+        suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>';
+        suggestions.classList.remove('hidden');
+        
+        // Debounce search
+        searchTimeout = setTimeout(() => {
+            searchFarmers(query);
+        }, 300);
+    });
 
-                // Function to close message
-                function closeMessage(messageId) {
-                    const message = document.getElementById(messageId);
-                    const messageContainer = document.getElementById('messageContainer');
-                    
-                    message.style.display = 'none';
-                    
-                    // Hide container if no messages are visible
-                    const successVisible = document.getElementById('successMessage').style.display !== 'none';
-                    const errorVisible = document.getElementById('errorMessage').style.display !== 'none';
-                    
-                    if (!successVisible && !errorVisible) {
-                        messageContainer.style.display = 'none';
-                    }
-                }
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!farmerSearch.contains(e.target) && !suggestions.contains(e.target)) {
+            setTimeout(() => {
+                suggestions.classList.add('hidden');
+            }, 200); // Delay to allow click events on suggestions
+        }
+    });
+}
 
-                // Farmer auto-suggestion functionality for yield modal
-                let farmersYield = [];
-
-                // Load farmers data when page loads
-                document.addEventListener('DOMContentLoaded', function() {
-                    loadFarmersYield();
-                });
-
-                function loadFarmersYield() {
-                    fetch('get_farmers.php')
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            // Ensure data is an array, even if empty
-                            farmersYield = Array.isArray(data) ? data : [];
-                        })
-                        .catch(error => {
-                            console.error('Error loading farmers:', error);
-                            farmersYield = []; // Set to empty array on error
-                        });
-                }
-
-                function searchFarmersYield(query) {
-                    const suggestions = document.getElementById('farmer_suggestions_yield');
-                    const selectedFarmerField = document.getElementById('selected_farmer_id_yield');
-                    
-                    if (!suggestions) return; // Exit if element doesn't exist
-                    
-                    if (!query || query.length < 1) {
-                        suggestions.innerHTML = '';
-                        suggestions.classList.add('hidden');
-                        if (selectedFarmerField) selectedFarmerField.value = '';
-                        return;
-                    }
-
-                    // Ensure farmers array exists and is not empty
-                    if (!Array.isArray(farmersYield) || farmersYield.length === 0) {
-                        suggestions.innerHTML = '<div class="px-3 py-2 text-orange-500">No farmers registered yet. Please register farmers first.</div>';
-                        suggestions.classList.remove('hidden');
-                        return;
-                    }
-
-                    const filteredFarmers = farmersYield.filter(farmer => {
-                        if (!farmer || !farmer.first_name || !farmer.last_name) return false;
-                        const fullName = `${farmer.first_name} ${farmer.last_name}`.toLowerCase();
-                        return fullName.includes(query.toLowerCase());
-                    });
-
-                    if (filteredFarmers.length > 0) {
-                        let html = '';
-                        filteredFarmers.forEach((farmer, index) => {
-                            const fullName = `${farmer.first_name || ''} ${farmer.last_name || ''}`.trim();
-                            const farmerId = farmer.farmer_id || '';
-                            html += `<div class="suggestion-item px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100" 
-                                          onclick="selectFarmerYield('${farmerId}', '${fullName}')" 
-                                          data-index="${index}">
-                                        <div class="font-medium">${fullName}</div>
-                                        <div class="text-sm text-gray-600">ID: ${farmerId}</div>
-                                     </div>`;
-                        });
-                        suggestions.innerHTML = html;
-                        suggestions.classList.remove('hidden');
-                    } else {
-                        suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
-                        suggestions.classList.remove('hidden');
-                    }
-                }
-
-                function selectFarmerYield(farmerId, farmerName) {
-                    const farmerNameField = document.getElementById('farmer_name_yield');
-                    const selectedFarmerField = document.getElementById('selected_farmer_id_yield');
-                    const suggestions = document.getElementById('farmer_suggestions_yield');
-                    
-                    if (farmerNameField) farmerNameField.value = farmerName || '';
-                    if (selectedFarmerField) selectedFarmerField.value = farmerId || '';
-                    if (suggestions) suggestions.classList.add('hidden');
-                }
-
-                function showSuggestionsYield() {
-                    const query = document.getElementById('farmer_name_yield').value;
-                    if (query.length > 0) {
-                        searchFarmersYield(query);
-                    }
-                }
-
-                function hideSuggestionsYield() {
-                    // Delay hiding to allow click events on suggestions
-                    setTimeout(() => {
-                        const suggestions = document.getElementById('farmer_suggestions_yield');
-                        if (suggestions) suggestions.classList.add('hidden');
-                    }, 200);
-                }
-
-                // Show success/error messages using HTML notifications
-                <?php if (isset($_SESSION['success'])): ?>
-                    showSuccessMessage(<?php echo json_encode($_SESSION['success']); ?>);
-                    <?php unset($_SESSION['success']); ?>
-                <?php endif; ?>
-
-                <?php if (isset($_SESSION['error'])): ?>
-                    showErrorMessage(<?php echo json_encode($_SESSION['error']); ?>);
-                    <?php unset($_SESSION['error']); ?>
-                <?php endif; ?>
-            </script>
-            <?php if ($offline_mode): ?>
-            <script src="assets/js/bootstrap.bundle.min.js"></script>
-            <?php else: ?>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <?php endif; ?>
+function searchFarmers(query) {
+    const suggestions = document.getElementById('farmer_suggestions');
+    
+    fetch('search_farmers.php?query=' + encodeURIComponent(query))
+        .then(response => response.json())
+        .then(data => {
+            suggestions.innerHTML = '';
             
-            <?php include 'includes/notification_complete.php'; ?>
-        </body>
-        </html>
+            if (data.success && data.farmers && data.farmers.length > 0) {
+                data.farmers.forEach(farmer => {
+                    const item = document.createElement('div');
+                    item.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 farmer-suggestion-item';
+                    item.innerHTML = `
+                        <div class="font-medium text-gray-900">${farmer.full_name}</div>
+                        <div class="text-sm text-gray-600">ID: ${farmer.farmer_id} | Contact: ${farmer.contact_number || 'N/A'}</div>
+                        <div class="text-xs text-gray-500">${farmer.barangay_name || 'N/A'}</div>
+                    `;
+                    
+                    item.addEventListener('click', function() {
+                        document.getElementById('farmer_search').value = farmer.full_name;
+                        document.getElementById('farmer_id').value = farmer.farmer_id;
+                        suggestions.classList.add('hidden');
+                    });
+                    
+                    suggestions.appendChild(item);
+                });
+                suggestions.classList.remove('hidden');
+            } else {
+                const noResults = document.createElement('div');
+                noResults.className = 'px-3 py-2 text-gray-500 text-center';
+                noResults.textContent = 'No farmers found matching your search';
+                suggestions.appendChild(noResults);
+                suggestions.classList.remove('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error searching farmers:', error);
+            suggestions.innerHTML = '<div class="px-3 py-2 text-red-500">Error loading suggestions</div>';
+            suggestions.classList.remove('hidden');
+        });
+}
+
+// Commodity filtering function for modal
+function filterCommodities() {
+    const categoryFilter = document.getElementById('commodity_category_filter');
+    const commoditySelect = document.getElementById('commodity_id');
+    const selectedCategory = categoryFilter.value;
+    
+    // Get all commodity options
+    const allOptions = commoditySelect.querySelectorAll('option');
+    
+    // Reset commodity selection when category changes
+    commoditySelect.value = '';
+    
+    // Show/hide options based on selected category
+    allOptions.forEach(option => {
+        if (option.value === '') {
+            // Always show the "Select Commodity" option
+            option.style.display = 'block';
+        } else {
+            const optionCategory = option.getAttribute('data-category');
+            if (selectedCategory === '' || optionCategory === selectedCategory) {
+                option.style.display = 'block';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Initialize commodity filter when modal opens
+document.getElementById('addVisitModal').addEventListener('shown.bs.modal', function() {
+    // Set default filter to Agronomic Crops and apply filter
+    const categoryFilter = document.getElementById('commodity_category_filter');
+    
+    // Find Agronomic Crops option by text content
+    const options = categoryFilter.querySelectorAll('option');
+    for (let option of options) {
+        if (option.textContent.includes('Agronomic Crops')) {
+            categoryFilter.value = option.value;
+            filterCommodities();
+            break;
+        }
+    }
+});
+
+// Reset form and filters when modal is closed
+document.getElementById('addVisitModal').addEventListener('hidden.bs.modal', function() {
+    // Reset form
+    document.getElementById('yieldVisitForm').reset();
+    
+    // Reset category filter to Agronomic Crops default
+    const categoryFilter = document.getElementById('commodity_category_filter');
+    const options = categoryFilter.querySelectorAll('option');
+    for (let option of options) {
+        if (option.textContent.includes('Agronomic Crops')) {
+            categoryFilter.value = option.value;
+            break;
+        }
+    }
+    
+    // Clear farmer suggestions
+    const suggestions = document.getElementById('farmer_suggestions');
+    if (suggestions) {
+        suggestions.classList.add('hidden');
+    }
+    
+    // Remove validation classes
+    document.querySelectorAll('.is-invalid').forEach(field => {
+        field.classList.remove('is-invalid');
+    });
+});
+
+// Form validation and submission
+document.getElementById('yieldVisitForm').addEventListener('submit', function(e) {
+    // Basic validation
+    const requiredFields = ['farmer_id', 'commodity_id', 'season', 'yield_amount'];
+    let isValid = true;
+    
+    requiredFields.forEach(fieldName => {
+        const field = document.getElementById(fieldName);
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Recording...';
+    submitBtn.disabled = true;
+    
+    // Re-enable button after a delay (in case of validation errors)
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 3000);
+});
+
+// Clear form when modal is hidden
+document.getElementById('addVisitModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('yieldVisitForm').reset();
+    
+    // Remove validation classes
+    const invalidFields = document.querySelectorAll('.is-invalid');
+    invalidFields.forEach(field => field.classList.remove('is-invalid'));
+});
+
+// Filter Tabs Functionality
+function initializeFilterTabs() {
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    
+    filterTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remove active class from all tabs
+            filterTabs.forEach(t => {
+                t.classList.remove('active', 'bg-agri-green', 'text-white');
+                t.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            });
+            
+            // Add active class to clicked tab
+            this.classList.add('active', 'bg-agri-green', 'text-white');
+            this.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            
+            // Get filter value
+            const filterValue = this.getAttribute('data-filter');
+            
+            // Handle filter logic
+            handleFilterChange(filterValue);
+        });
+    });
+}
+
+function handleFilterChange(filterValue) {
+    console.log('Filter changed to:', filterValue);
+    
+    // Map filter values to category IDs
+    const categoryMap = {
+        'agronomic': '1',
+        'high-value': '2', 
+        'livestock': '3',
+        'poultry': '4'
+    };
+    
+    const categoryId = categoryMap[filterValue];
+    
+    // Update hidden category filter field
+    const hiddenField = document.getElementById('hidden_category_filter');
+    if (hiddenField) {
+        hiddenField.value = categoryId;
+    }
+    
+    // Filter commodity dropdown based on selected category
+    filterCommodityDropdown(categoryId);
+}
+
+function setActiveTab() {
+    // Get current category filter from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryFilter = urlParams.get('category_filter');
+    
+    // Map category IDs to filter values
+    const filterMap = {
+        '1': 'agronomic',
+        '2': 'high-value',
+        '3': 'livestock',
+        '4': 'poultry'
+    };
+    
+    const filterValue = filterMap[categoryFilter];
+    if (filterValue) {
+        // Find and activate the corresponding tab
+        const filterTabs = document.querySelectorAll('.filter-tab');
+        filterTabs.forEach(tab => {
+            if (tab.getAttribute('data-filter') === filterValue) {
+                // Remove active class from all tabs
+                filterTabs.forEach(t => {
+                    t.classList.remove('active', 'bg-agri-green', 'text-white');
+                    t.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+                });
+                
+                // Add active class to current tab
+                tab.classList.add('active', 'bg-agri-green', 'text-white');
+                tab.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            }
+        });
+    }
+}
+
+function updateSummaryCards(filterValue) {
+    // This function will update the summary cards based on the selected filter
+    // For now, we'll just log the action
+    console.log('Updating summary cards for filter:', filterValue);
+    
+    // You can implement actual data filtering here
+    // Example: fetch filtered data and update the card values
+}
+
+function filterCommodityDropdown(categoryId) {
+    const commoditySelect = document.getElementById('commodity_filter');
+    const allOptions = commoditySelect.querySelectorAll('option');
+    
+    // Reset commodity selection when category changes
+    commoditySelect.value = '';
+    
+    // Show/hide options based on selected category
+    allOptions.forEach(option => {
+        if (option.value === '') {
+            // Always show the "All Commodities" option
+            option.style.display = 'block';
+        } else {
+            const optionCategory = option.getAttribute('data-category');
+            if (!categoryId || optionCategory === categoryId) {
+                option.style.display = 'block';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+}
+
+function filterDataTable(filterValue) {
+    console.log('Filtering data table for:', filterValue);
+    
+    // Get all table rows (assuming there will be a data table with commodity information)
+    const tableRows = document.querySelectorAll('tbody tr');
+    
+    tableRows.forEach(row => {
+        let showRow = false;
+        
+        // Get category ID from the row (adjust selector as needed when table is implemented)
+        const categoryCell = row.querySelector('td[data-category-id]');
+        const categoryId = categoryCell ? categoryCell.textContent.trim() : '';
+        
+        if (filterValue === 'agronomic') {
+            showRow = (categoryId === '1'); // Agronomic Crops
+        } else if (filterValue === 'high-value') {
+            showRow = (categoryId === '2'); // High Value Crops
+        } else if (filterValue === 'livestock') {
+            showRow = (categoryId === '3'); // Livestock
+        } else if (filterValue === 'poultry') {
+            showRow = (categoryId === '4'); // Poultry
+        } else {
+            // Default: show all rows when no specific filter is active
+            showRow = true;
+        }
+        
+        // Show/hide row
+        row.style.display = showRow ? '' : 'none';
+    });
+    
+    // Update record count if there's a counter element
+    const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])');
+    const recordCounter = document.querySelector('.record-count');
+    if (recordCounter) {
+        recordCounter.textContent = `Showing ${visibleRows.length} records`;
+    }
+}
+</script>
+
+<style>
+.modal-lg {
+    max-width: 800px;
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+.text-danger {
+    font-weight: bold;
+}
+
+.alert-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.modal-content {
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    border-radius: 10px 10px 0 0;
+}
+
+.modal-footer {
+    border-radius: 0 0 10px 10px;
+}
+
+/* Animation for modal */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+/* Form validation styles */
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.is-invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Filter Tab Styles */
+.filter-tab {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.filter-tab:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-tab.active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+.filter-tab:active {
+    transform: translateY(0);
+}
+
+/* Search and Date Range Styling to match image */
+.search-input {
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+
+.search-input:focus {
+    background-color: #ffffff;
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.date-select {
+    background-color: #ffffff;
+    border: 2px solid #1f2937;
+    color: #374151;
+    font-weight: 500;
+}
+
+.date-select:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+/* Label styling */
+label {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Search input text positioning */
+.search-input::placeholder {
+    padding-left: 2rem;
+}
+</style>
+
+<?php include 'includes/notification_complete.php'; ?>

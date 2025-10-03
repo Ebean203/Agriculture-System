@@ -48,9 +48,6 @@ if (!isset($pageTitle)) {
                     <a href="staff.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                         <i class="fas fa-user-tie mr-2"></i>Staff
                     </a>
-                    <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                        <i class="fas fa-cog mr-2"></i>Settings
-                    </a>
                 <?php endif; ?>
                 <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                     <i class="fas fa-sign-out-alt mr-2"></i>Logout

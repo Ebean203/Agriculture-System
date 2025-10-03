@@ -59,3 +59,7 @@ yarn.lock
 # Build output
 /dist/
 /build/
+
+# Generated reports (exclude from version control)
+/reports/*.html
+/reports/*.pdf

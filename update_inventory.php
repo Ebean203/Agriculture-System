@@ -5,6 +5,9 @@ require_once 'conn.php';
 require_once 'includes/activity_logger.php';
 
 if ($_POST['action'] == 'add_stock') {
+    // ADD STOCK: This action adds new inventory to existing stock (replenishment)
+    // This increases the current quantity by the specified amount
+    
     // Validate required fields
     if (!isset($_POST['input_id']) || !isset($_POST['quantity'])) {
         $_SESSION['error'] = "Missing required data for adding stock!";
@@ -60,7 +63,7 @@ if ($_POST['action'] == 'add_stock') {
             $input_data = mysqli_fetch_assoc($input_result);
             
             // Log activity
-            logActivity($conn, "Added $quantity units to {$input_data['input_name']} inventory", 'input', "Input ID: $input_id, Quantity Added: $quantity");
+            logActivity($conn, "Added $quantity units to {$input_data['input_name']} inventory (Stock Replenishment)", 'input', "Input ID: $input_id, Quantity Added: $quantity");
             
             $_SESSION['success'] = "Stock added successfully!";
         } else {
@@ -88,6 +91,10 @@ if ($_POST['action'] == 'add_stock') {
 }
 
 if ($_POST['action'] == 'update_stock') {
+    // UPDATE STOCK: This action sets the inventory to a specific quantity
+    // This is for inventory corrections/adjustments only - NOT for distributions
+    // Distributions are handled separately in distribute_input.php
+    
     // Validate required fields
     if (!isset($_POST['input_id']) || !isset($_POST['new_quantity'])) {
         $_SESSION['error'] = "Missing required data for updating stock!";
@@ -149,7 +156,7 @@ if ($_POST['action'] == 'update_stock') {
             $input_data = mysqli_fetch_assoc($input_result);
             
             // Log activity
-            logActivity($conn, "Updated {$input_data['input_name']} inventory from $old_quantity to $new_quantity units", 'input', "Input ID: $input_id, Old Quantity: $old_quantity, New Quantity: $new_quantity");
+            logActivity($conn, "Adjusted {$input_data['input_name']} inventory from $old_quantity to $new_quantity units (Stock Correction)", 'input', "Input ID: $input_id, Old Quantity: $old_quantity, New Quantity: $new_quantity");
             
             $_SESSION['success'] = "Stock updated successfully!";
         } else {

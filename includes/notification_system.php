@@ -17,7 +17,10 @@ function getNotifications($conn) {
     // Sort notifications by priority and date
     usort($notifications, function($a, $b) {
         if ($a['priority'] == $b['priority']) {
-            return strcmp($a['date'], $b['date']);
+            // Handle null dates safely
+            $date_a = $a['date'] ?? '';
+            $date_b = $b['date'] ?? '';
+            return strcmp($date_a, $date_b);
         }
         return $a['priority'] - $b['priority'];
     });
@@ -34,6 +37,7 @@ function getVisitationNotifications($conn, $today) {
     // Query for upcoming and overdue visitations from mao_distribution_log table
     $query = "
         SELECT 
+            f.farmer_id,
             CONCAT(
                 f.first_name, 
                 CASE 
@@ -95,7 +99,7 @@ function getVisitationNotifications($conn, $today) {
                 'category' => 'visitation',
                 'title' => ($days_until < 0 ? 'Overdue Visitation' : 'Upcoming Visitation'),
                 'message' => $message,
-                'date' => $row['visitation_date'],
+                'date' => $row['visitation_date'] ?? '',
                 'priority' => $priority,
                 'icon' => 'fas fa-calendar-check',
                 'data' => $row
@@ -164,7 +168,7 @@ function getStockNotifications($conn) {
                     'category' => 'inventory',
                     'title' => 'Inventory Alert',
                     'message' => $message,
-                    'date' => $row['last_updated'],
+                    'date' => $row['last_updated'] ?? '',
                     'priority' => $priority,
                     'icon' => 'fas fa-exclamation-triangle',
                     'data' => $row
@@ -205,22 +209,12 @@ function getUnreadNotificationCount($conn) {
     $table_result = mysqli_query($conn, $table_check);
     
     if (mysqli_num_rows($table_result) == 0) {
-        // Table doesn't exist, create it
-        $create_table = "CREATE TABLE IF NOT EXISTS notification_reads (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            notification_id VARCHAR(255) NOT NULL,
-            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_user_notification (user_id, notification_id)
-        )";
-        mysqli_query($conn, $create_table);
-        
-        // All notifications are unread if table was just created
+        // Table doesn't exist - return all notifications as unread without creating table
         return count($notifications);
     }
     
     foreach ($notifications as $notification) {
-        // Check if this notification is read by this user
+        // Check if this notification is read by this user (only if table exists)
         $notification_id = mysqli_real_escape_string($conn, $notification['id']);
         $query = "SELECT id FROM notification_reads 
                   WHERE user_id = $user_id AND notification_id = '$notification_id'";

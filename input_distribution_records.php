@@ -185,14 +185,16 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $page = max(1, $page);
 $offset = ($page - 1) * $records_per_page;
 
-// Search and filter variables
-$search = isset($_POST['search']) ? trim($_POST['search']) : '';
-$barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
-$input_filter = isset($_POST['input_id']) ? trim($_POST['input_id']) : '';
+// Search and filter variables - GET parameters take priority over POST
+$search = isset($_GET['farmer']) ? trim($_GET['farmer']) : (isset($_POST['search']) ? trim($_POST['search']) : '');
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
+$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
+$input_filter = isset($_GET['input_id']) ? trim($_GET['input_id']) : (isset($_POST['input_id']) ? trim($_POST['input_id']) : '');
 
 // Handle clear all - reset search and filter
 if (isset($_POST['clear_all'])) {
     $search = '';
+    $farmer_id_filter = '';
     $barangay_filter = '';
     $input_filter = '';
 }
@@ -201,10 +203,34 @@ if (isset($_POST['clear_all'])) {
 $search_condition = 'WHERE 1=1';
 $search_params = [];
 
-if (!empty($search)) {
-    $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
+// Prioritize farmer_id for exact matching if available
+if (!empty($farmer_id_filter)) {
+    $search_condition .= " AND f.farmer_id = ?";
+    $search_params[] = $farmer_id_filter;
+} elseif (!empty($search)) {
+    $search_condition .= " AND (
+        f.first_name LIKE ? OR 
+        f.middle_name LIKE ? OR 
+        f.last_name LIKE ? OR 
+        f.contact_number LIKE ? OR 
+        CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+        CONCAT(
+            f.first_name, 
+            CASE 
+                WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                THEN CONCAT(' ', f.middle_name) 
+                ELSE '' 
+            END,
+            ' ', f.last_name,
+            CASE 
+                WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                THEN CONCAT(' ', f.suffix) 
+                ELSE '' 
+            END
+        ) LIKE ?
+    )";
     $search_term = "%$search%";
-    $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
+    $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term, $search_term];
 }
 
 if (!empty($barangay_filter)) {
@@ -294,6 +320,26 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
 <?php $pageTitle = 'Input Distribution Records - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 
+                <?php if (isset($_GET['farmer']) && !empty($_GET['farmer'])): ?>
+                    <!-- Notification Filter Banner -->
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-lg shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-filter text-blue-600 text-xl mr-3"></i>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-blue-900">Viewing Notification Results</h3>
+                                    <p class="text-sm text-blue-700">
+                                        Showing distribution records for: <span class="font-bold"><?php echo htmlspecialchars($_GET['farmer']); ?></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <a href="input_distribution_records.php" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+                                <i class="fas fa-times-circle mr-1"></i>View All Records
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
                 <!-- Header Section -->
                 <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -373,7 +419,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                             <button type="submit" class="bg-agri-green text-white px-6 py-2 rounded-lg hover:bg-agri-dark transition-colors">
                                 <i class="fas fa-search mr-2"></i>Search
                             </button>
-                            <?php if (!empty($search) || !empty($barangay_filter) || !empty($input_filter)): ?>
+                            <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter) || !empty($input_filter)): ?>
                                 <button type="submit" name="clear_all" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                                     <i class="fas fa-times mr-2"></i>Clear All
                                 </button>
@@ -388,7 +434,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                         <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                             <i class="fas fa-list-alt mr-2 text-agri-green"></i>
                             Distribution Records
-                            <?php if (!empty($search) || !empty($barangay_filter) || !empty($input_filter)): ?>
+                            <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter) || !empty($input_filter)): ?>
                                 <span class="text-sm font-normal text-gray-600 ml-2">
                                     - Filtered by: 
                                     <?php if (!empty($search)): ?>

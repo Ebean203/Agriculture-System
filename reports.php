@@ -746,7 +746,7 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
     $total_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     $male_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE gender = 'Male' AND registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     $female_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE gender = 'Female' AND registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $total_land_area = $conn->query("SELECT COALESCE(SUM(fc.land_area_hectares), 0) as total FROM farmers f LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
+    $total_land_area = $conn->query("SELECT COALESCE(SUM(f.land_area_hectares), 0) as total FROM farmers f WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
     $avg_farming_years = $conn->query("SELECT COALESCE(AVG(fc.years_farming), 0) as avg FROM farmers f LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['avg'];
     
     // Summary box
@@ -761,7 +761,7 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
     
     // Detailed farmers list
     $farmers_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix, f.gender, 
-                    f.contact_number, fc.land_area_hectares, fc.years_farming, f.registration_date,
+                    f.contact_number, f.land_area_hectares, fc.years_farming, f.registration_date,
                     b.barangay_name, c.commodity_name, h.civil_status, h.household_size
                     FROM farmers f
                     LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
@@ -1031,7 +1031,7 @@ function generateBarangayAnalyticsReport($start_date, $end_date, $conn) {
     // Barangay-wise farmer statistics
     $barangay_sql = "SELECT b.barangay_name, 
                      COUNT(DISTINCT f.farmer_id) as farmer_count,
-                     COALESCE(SUM(fc.land_area_hectares), 0) as total_land_area,
+                     COALESCE(SUM(f.land_area_hectares), 0) as total_land_area,
                      COALESCE(AVG(fc.years_farming), 0) as avg_farming_years,
                      COUNT(CASE WHEN f.gender = 'Male' THEN 1 END) as male_count,
                      COUNT(CASE WHEN f.gender = 'Female' THEN 1 END) as female_count
@@ -1088,8 +1088,8 @@ function generateCommodityProductionReport($start_date, $end_date, $conn) {
     // Commodity distribution among farmers
     $commodity_sql = "SELECT c.commodity_name, cc.category_name,
                       COUNT(DISTINCT f.farmer_id) as farmer_count,
-                      COALESCE(SUM(fc.land_area_hectares), 0) as total_land_area,
-                      COALESCE(AVG(fc.land_area_hectares), 0) as avg_land_area
+                      COALESCE(SUM(f.land_area_hectares), 0) as total_land_area,
+                      COALESCE(AVG(f.land_area_hectares), 0) as avg_land_area
                       FROM commodities c
                       INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
                       LEFT JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id
@@ -1160,7 +1160,7 @@ function generateComprehensiveOverviewReport($start_date, $end_date, $conn) {
     // Comprehensive overview combining all metrics
     $total_farmers = $conn->query("SELECT COUNT(*) as count FROM farmers WHERE registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     $total_distributions = $conn->query("SELECT COUNT(*) as count FROM mao_distribution_log WHERE date_given BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $total_land_area = $conn->query("SELECT COALESCE(SUM(fc.land_area_hectares), 0) as total FROM farmers f LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
+    $total_land_area = $conn->query("SELECT COALESCE(SUM(f.land_area_hectares), 0) as total FROM farmers f WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['total'];
     $active_barangays = $conn->query("SELECT COUNT(DISTINCT f.barangay_id) as count FROM farmers f WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
     
     $html .= '<div class="summary-box">
@@ -1184,8 +1184,7 @@ $saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_dat
                       s.first_name, s.last_name
                       FROM generated_reports r
                       INNER JOIN mao_staff s ON r.staff_id = s.staff_id
-                      ORDER BY r.timestamp DESC
-                      LIMIT 10";
+                      ORDER BY r.timestamp DESC";
 $saved_reports_result = $conn->query($saved_reports_sql);
 ?>
 
@@ -1306,7 +1305,7 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                 </div>
                             </div>
                             <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
-                                <div class="text-3xl font-bold"><?php echo $saved_reports_result->num_rows; ?></div>
+                                <div class="text-3xl font-bold"><span id="savedReportsCount"><?php echo $saved_reports_result->num_rows; ?></span></div>
                                 <div class="text-sm opacity-90">Saved Reports</div>
                             </div>
                         </div>
@@ -1420,57 +1419,77 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                     <p class="text-gray-600 text-sm mt-1">Previously generated reports</p>
                                 </div>
                                 
-                                <?php if ($saved_reports_result->num_rows > 0): ?>
-                                    <div class="space-y-2 max-h-72 overflow-y-auto">
-                                        <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
-                                            <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
-                                                <div class="flex items-start justify-between">
-                                                    <div class="flex-1">
-                                                        <div class="font-medium text-gray-900 text-sm mb-1">
-                                                            <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
-                                                        </div>
-                                                        <div class="text-xs text-gray-600 mb-1">
-                                                            <i class="fas fa-calendar-alt mr-1"></i>
-                                                            <?php echo date('M j', strtotime($report['start_date'])); ?> - 
-                                                            <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
-                                                        </div>
-                                                        <div class="text-xs text-gray-500">
-                                                            <i class="fas fa-user mr-1"></i>
-                                                            <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
-                                                            <span class="mx-1">•</span>
-                                                            <i class="fas fa-clock mr-1"></i>
-                                                            <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
+                                <div id="recentReportsContainer">
+                                    <?php if ($saved_reports_result->num_rows > 0): ?>
+                                        <div class="space-y-2 max-h-72 overflow-y-auto">
+                                            <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
+                                                <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
+                                                    <div class="flex items-start justify-between">
+                                                        <div class="flex-1">
+                                                            <div class="font-medium text-gray-900 text-sm mb-1">
+                                                                <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
+                                                            </div>
+                                                            <div class="text-xs text-gray-600 mb-1">
+                                                                <i class="fas fa-calendar-alt mr-1"></i>
+                                                                <?php echo date('M j', strtotime($report['start_date'])); ?> - 
+                                                                <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
+                                                            </div>
+                                                            <div class="text-xs text-gray-500">
+                                                                <i class="fas fa-user mr-1"></i>
+                                                                <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
+                                                                <span class="mx-1">•</span>
+                                                                <i class="fas fa-clock mr-1"></i>
+                                                                <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    <div class="mt-2 pt-2 border-t border-gray-100">
+                                                        <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
+                                                           target="_blank"
+                                                           class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
+                                                            <i class="fas fa-external-link-alt mr-1"></i>View Report
+                                                        </a>
+                                                    </div>
                                                 </div>
-                                                <div class="mt-2 pt-2 border-t border-gray-100">
-                                                    <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
-                                                       target="_blank"
-                                                       class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
-                                                        <i class="fas fa-external-link-alt mr-1"></i>View Report
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        <?php endwhile; ?>
-                                    </div>
-                                    
-                                    <div class="mt-3 pt-3 border-t border-gray-200">
-                                        <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
-                                            <i class="fas fa-archive mr-1"></i>View All Reports
-                                        </a>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="text-center py-8">
-                                        <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                                            <i class="fas fa-file-alt text-xl text-gray-400"></i>
+                                            <?php endwhile; ?>
                                         </div>
-                                        <h4 class="text-gray-900 font-medium mb-1 text-sm">No reports yet</h4>
-                                        <p class="text-gray-500 text-xs">Generate your first report to see it here</p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                        <div class="mt-3 pt-3 border-t border-gray-200">
+                                            <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
+                                                <i class="fas fa-archive mr-1"></i>View All Reports
+                                            </a>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-gray-500 text-sm">No reports found.</div>
+                                    <?php endif; ?>
+                                </div>
+                                <script>
+                                function refreshRecentReports() {
+                                    $.ajax({
+                                        url: 'get_saved_reports.php',
+                                        method: 'GET',
+                                        success: function(data) {
+                                            $('#recentReportsContainer').html(data);
+                                            refreshSavedReportsCount();
+                                        },
+                                        error: function() {
+                                            $('#recentReportsContainer').html('<div class="text-red-500 text-sm">Failed to load reports.</div>');
+                                        }
+                                    });
+                                }
+                                function refreshSavedReportsCount() {
+                                    $.ajax({
+                                        url: 'get_saved_reports_count.php',
+                                        method: 'GET',
+                                        dataType: 'json',
+                                        success: function(data) {
+                                            if (typeof data.count !== 'undefined') {
+                                                $('#savedReportsCount').text(data.count);
+                                            }
+                                        }
+                                    });
+                                }
+                                window.refreshRecentReports = refreshRecentReports;
+                                window.refreshSavedReportsCount = refreshSavedReportsCount;
+                                </script>
+
 <?php include 'includes/notification_complete.php'; ?>

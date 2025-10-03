@@ -24,7 +24,7 @@ if ($cq) {
 $farmer_commodities = [];
 if (!empty($_GET['farmer_id'])) {
     $farmer_id = $conn->real_escape_string($_GET['farmer_id']);
-    $cq = $conn->query("SELECT commodity_id, land_area_hectares, years_farming, is_primary FROM farmer_commodities WHERE farmer_id = '$farmer_id' ORDER BY is_primary DESC, id ASC");
+    $cq = $conn->query("SELECT commodity_id, years_farming, is_primary FROM farmer_commodities WHERE farmer_id = '$farmer_id' ORDER BY is_primary DESC, id ASC");
     if ($cq) {
         while ($row = $cq->fetch_assoc()) {
             $farmer_commodities[] = $row;
@@ -169,11 +169,15 @@ if ($_SESSION['role'] !== 'admin') {
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-5 mb-3">
                                     <label for="edit_other_income_source" class="form-label">Other Income Source</label>
                                     <input type="text" class="form-control" id="edit_other_income_source" name="other_income_source" placeholder="e.g., OFW allotment, business">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-3 mb-3">
+                                    <label for="edit_land_area_hectares" class="form-label">Land Area (Ha)</label>
+                                    <input type="number" class="form-control" id="edit_land_area_hectares" name="land_area_hectares" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     <div class="form-check mt-4">
                                         <input class="form-check-input" type="checkbox" id="edit_is_member_of_4ps" name="is_member_of_4ps">
                                         <label class="form-check-label" for="edit_is_member_of_4ps">Member of 4Ps</label>
@@ -197,6 +201,28 @@ if ($_SESSION['role'] !== 'admin') {
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="edit_is_boat" name="is_boat">
                                         <label class="form-check-label" for="edit_is_boat">Has Boat</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Photo Management Section -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-camera me-2"></i>Farmer Photos</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="edit_farmer_photo" class="form-label">Upload Geotagged Photo</label>
+                                    <input type="file" class="form-control" id="edit_farmer_photo" name="farmer_photo" accept="image/*">
+                                    <small class="form-text text-muted">Upload photos with GPS coordinates embedded</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Current Photos</label>
+                                    <div id="edit_farmer_photos_display" class="d-flex flex-wrap gap-2">
+                                        <!-- Photos will be displayed here -->
                                     </div>
                                 </div>
                             </div>
@@ -442,6 +468,7 @@ function editFarmer(farmerId) {
                 document.getElementById('edit_barangay_id').value = farmer.barangay_id || '';
                 document.getElementById('edit_address_details').value = farmer.address_details || '';
                 document.getElementById('edit_other_income_source').value = farmer.other_income_source || '';
+                document.getElementById('edit_land_area_hectares').value = farmer.land_area_hectares || '';
                 // Handle checkboxes
                 document.getElementById('edit_is_member_of_4ps').checked = farmer.is_member_of_4ps == '1';
                 document.getElementById('edit_is_ip').checked = farmer.is_ip == '1';

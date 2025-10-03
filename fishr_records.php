@@ -46,7 +46,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Get FishR records for PDF export (using actual database structure)
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details,
-                   GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+                   GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
                    b.barangay_name, f.registration_date as fisherfolk_registration_date
                    FROM farmers f
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
@@ -191,7 +191,7 @@ $total_pages = ceil($total_records / $limit);
 // Get FishR registered farmers with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.address_details,
-        GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+        GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
         b.barangay_name, f.registration_date as fisherfolk_registration_date
         FROM farmers f
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id

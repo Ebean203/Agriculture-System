@@ -2,6 +2,22 @@
 require_once 'conn.php';
 require_once 'check_session.php';
 
+// AJAX endpoint for barangay list
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'barangays') {
+    header('Content-Type: application/json');
+    $barangays = [];
+    $result = $conn->query("SELECT barangay_name FROM barangays ORDER BY barangay_name ASC");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $barangays[] = $row['barangay_name'];
+        }
+        echo json_encode($barangays);
+    } else {
+        echo json_encode(["error" => "Query failed: " . $conn->error]);
+    }
+    exit;
+}
+
 // Handle form submissions
 if ($_POST) {
     if (isset($_POST['action']) && $_POST['action'] == 'register_farmer') {
@@ -18,7 +34,7 @@ unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
 // Initialize default values
-$total_farmers = $total_boats = $total_commodities = $recent_yields = 0;
+$total_farmers = $total_boats = $total_commodities = $total_inventory = $recent_yields = 0;
 $recent_activities = [];
 
 // Get dashboard statistics using procedural MySQL
@@ -64,6 +80,14 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_commodities = $row['total_commodities'];
 }
 
+// Count total inventory items in stock
+$query = "SELECT SUM(quantity_on_hand) as total_inventory FROM mao_inventory WHERE quantity_on_hand > 0";
+$result = mysqli_query($conn, $query);
+$total_inventory = 0;
+if ($result && $row = mysqli_fetch_assoc($result)) {
+    $total_inventory = $row['total_inventory'] ? $row['total_inventory'] : 0;
+}
+
 // Count recent yield records (last 30 days)
 $query = "SELECT COUNT(*) as recent_yields FROM yield_monitoring WHERE record_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
 $result = mysqli_query($conn, $query);
@@ -71,20 +95,48 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
     $recent_yields = $row['recent_yields'];
 }
 
-// Get recent activities (last 5 yield records)
+// Get recent activities from activity logs
 $query = "
-    SELECT ym.*, f.first_name, f.last_name, c.commodity_name, s.first_name as staff_first_name, s.last_name as staff_last_name
-    FROM yield_monitoring ym
-    JOIN farmers f ON ym.farmer_id = f.farmer_id
-    JOIN commodities c ON ym.commodity_id = c.commodity_id
-    JOIN mao_staff s ON ym.recorded_by_staff_id = s.staff_id
-    ORDER BY ym.record_date DESC
-    LIMIT 5
+    SELECT al.*, s.first_name, s.last_name, al.timestamp
+    FROM activity_logs al
+    LEFT JOIN mao_staff s ON al.staff_id = s.staff_id
+    ORDER BY al.timestamp DESC
+    LIMIT 10
 ";
 $result = mysqli_query($conn, $query);
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         $recent_activities[] = $row;
+    }
+}
+
+// Get barangays for filter dropdown
+function getBarangays($conn) {
+    $query = "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name";
+    $result = mysqli_query($conn, $query);
+    $data = [];
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $data[] = $row;
+        }
+    }
+    return $data;
+}
+// Get barangays for filter dropdown
+$barangays = getBarangays($conn);
+
+// Get number of yield_monitoring records per barangay
+$yield_records_per_barangay = [];
+$query = "SELECT b.barangay_name, COUNT(ym.yield_id) AS record_count
+          FROM yield_monitoring ym
+          JOIN farmers f ON ym.farmer_id = f.farmer_id
+          JOIN barangays b ON f.barangay_id = b.barangay_id
+          GROUP BY b.barangay_name
+          ORDER BY b.barangay_name ASC";
+$result = mysqli_query($conn, $query);
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $yield_records_per_barangay[] = $row;
     }
 }
 ?>
@@ -127,225 +179,310 @@ if ($result) {
             </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-            <!-- Total Farmers -->
-            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Total Farmers</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_farmers); ?></p>
+            <!-- Dashboard Main Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+                <!-- Farmers -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-user-friends text-agri-green text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">FARMERS</span>
                     </div>
-                    <div class="p-3 rounded-full bg-blue-100 group-hover:bg-blue-200 transition-colors duration-300">
-                        <i class="fas fa-users text-xl text-blue-600"></i>
+                    <div class="text-2xl font-bold text-agri-green"><?php echo number_format($total_farmers); ?></div>
+                </div>
+                <!-- RSBSA -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-shield-alt text-blue-600 text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">RSBSA</span>
+                    </div>
+                    <div class="text-2xl font-bold text-blue-600"><?php echo number_format($rsbsa_registered); ?></div>
+                </div>
+                <!-- NCFRS -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-file-alt text-purple-600 text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">NCFRS</span>
+                    </div>
+                    <div class="text-2xl font-bold text-purple-600"><?php echo number_format($ncfrs_registered); ?></div>
+                </div>
+                <!-- Weather (wider card) -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center xl:row-span-2 xl:h-[352px] h-[352px] xl:col-span-1 xl:w-full" style="min-width:0;">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-cloud-sun text-gray-500 text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">Weather Today <span class="text-xs text-gray-400">Lagonglong</span></span>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-700">31°C</div>
+                    <div class="text-sm text-gray-500 mb-2">Partly Cloudy</div>
+                    <div class="flex space-x-2 text-xs text-gray-400">
+                        <div>Mon<br>32°/25°</div>
+                        <div>Tue<br>30°/24°</div>
+                        <div>Wed<br>28°/23°</div>
+                        <div>Thu<br>31°/25°</div>
+                        <div>Fri<br>33°/26°</div>
+                    </div>
+                </div>
+                <!-- Commodities -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-box-open text-orange-500 text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">COMMODITIES</span>
+                    </div>
+                    <div class="text-2xl font-bold text-orange-500"><?php echo number_format($total_commodities); ?></div>
+                </div>
+                <!-- Registered Boats -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-ship text-yellow-600 text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">REGISTERED BOATS</span>
+                    </div>
+                    <div class="text-2xl font-bold text-yellow-600"><?php echo number_format($total_boats); ?></div>
+                </div>
+                <!-- Inventory -->
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-cube text-agri-green text-2xl mr-2"></i>
+                        <span class="font-semibold text-gray-700">INVENTORY</span>
+                    </div>
+                    <div class="text-2xl font-bold text-agri-green"><?php echo number_format($total_inventory); ?></div>
+                    <div class="text-xs text-gray-400">items in stock</div>
+                </div>
+            </div>
+
+            <!-- Yield Monitoring, Quick Actions, Farmers by Program -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+                <!-- Yield Monitoring Chart -->
+                <div class="xl:col-span-2">
+                    <div class="bg-white rounded-xl card-shadow p-6 h-full">
+                        <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                            <i class="fas fa-chart-line text-agri-green mr-2"></i><span id="chartTitle">Yield Monitoring</span>
+                        </h3>
+                        <canvas id="yieldChart" height="120"></canvas>
+                        <script>
+                        // Show yearly yield per barangay using a line graph
+                        document.addEventListener('DOMContentLoaded', function() {
+                            fetch('get_report_data.php?type=yield_per_barangay')
+                                .then(res => res.json())
+                                .then(data => {
+                                    updateYieldChart(data.labels, data.data);
+                                });
+                        });
+
+                        let yieldChartInstance = null;
+                        function updateYieldChart(labels, chartData) {
+                            const ctx = document.getElementById('yieldChart').getContext('2d');
+                            if (yieldChartInstance) {
+                                yieldChartInstance.destroy();
+                            }
+                            let chartLabel = 'Yearly Yield per Barangay';
+                            yieldChartInstance = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: labels,
+                                    datasets: [{
+                                        label: chartLabel,
+                                        data: chartData,
+                                        backgroundColor: 'rgba(16,185,129,0.15)',
+                                        borderColor: '#10b981',
+                                        borderWidth: 2,
+                                        pointBackgroundColor: '#10b981',
+                                        pointBorderColor: '#10b981',
+                                        fill: true,
+                                        tension: 0.3
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { display: false },
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: { stepSize: 1 }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        </script>
+                    </div>
+                </div>
+                <!-- Quick Actions -->
+                <div>
+                    <div class="bg-white rounded-xl card-shadow p-6 h-full">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">
+                            <i class="fas fa-bolt text-yellow-500 mr-2"></i>Quick Actions
+                        </h3>
+                        <div class="space-y-4">
+                            <button onclick="openFarmerModal()" class="w-full flex items-center p-4 bg-agri-green text-white rounded-lg hover:bg-green-700 transition-all duration-300">
+                                <i class="fas fa-user-plus text-white text-2xl mr-3"></i>
+                                <span class="font-medium text-base leading-tight">Add New Farmer</span>
+                            </button>
+                            <button onclick="navigateTo('distribute_input.php')" class="w-full flex items-center p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300">
+                                <i class="fas fa-truck text-white text-2xl mr-3"></i>
+                                <span class="font-medium text-base leading-tight">Distribute Inputs</span>
+                            </button>
+                            <button onclick="openYieldModal()" class="w-full flex items-center p-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-300">
+                                <i class="fas fa-clipboard-list text-white text-2xl mr-3"></i>
+                                <span class="font-medium text-base leading-tight">Record Yield</span>
+                            </button>
+                            <button onclick="navigateTo('all_activities.php')" class="w-full flex items-center p-4 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition-all duration-300">
+                                <i class="fas fa-list-alt text-white text-2xl mr-3"></i>
+                                <span class="font-medium text-base leading-tight">All Activities</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- RSBSA Registered -->
-            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">RSBSA Registered</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($rsbsa_registered); ?></p>
+            <!-- Recent Activities & Farmers by Program -->
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+                <!-- Recent Activities -->
+                <div class="xl:col-span-2">
+                    <div class="bg-white rounded-xl card-shadow p-6 h-full">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">
+                            <i class="fas fa-history text-agri-green mr-2"></i>Recent Activities
+                        </h3>
+                        <ul class="space-y-2">
+                            <?php if (!empty($recent_activities)): ?>
+                                <?php foreach ($recent_activities as $activity): ?>
+                                    <li class="flex items-center justify-between py-2 border-b border-gray-100">
+                                        <span class="flex items-center">
+                                            <?php
+                                            // Determine icon based on activity type
+                                            $icon = 'fas fa-info-circle';
+                                            $icon_color = 'text-agri-green';
+                                            
+                                            switch (strtolower($activity['action_type'])) {
+                                                case 'farmer':
+                                                    $icon = 'fas fa-user-plus';
+                                                    $icon_color = 'text-green-600';
+                                                    break;
+                                                case 'inventory':
+                                                    $icon = 'fas fa-boxes';
+                                                    $icon_color = 'text-blue-600';
+                                                    break;
+                                                case 'distribution':
+                                                    $icon = 'fas fa-truck';
+                                                    $icon_color = 'text-orange-600';
+                                                    break;
+                                                case 'yield':
+                                                    $icon = 'fas fa-seedling';
+                                                    $icon_color = 'text-green-500';
+                                                    break;
+                                                case 'staff':
+                                                    $icon = 'fas fa-user-tie';
+                                                    $icon_color = 'text-purple-600';
+                                                    break;
+                                                case 'commodity':
+                                                    $icon = 'fas fa-leaf';
+                                                    $icon_color = 'text-yellow-600';
+                                                    break;
+                                                default:
+                                                    $icon = 'fas fa-check-circle';
+                                                    $icon_color = 'text-agri-green';
+                                            }
+                                            ?>
+                                            <i class="<?php echo $icon . ' ' . $icon_color; ?> mr-2"></i>
+                                            <span class="text-sm">
+                                                <?php echo htmlspecialchars($activity['action']); ?>
+                                                <?php if (!empty($activity['first_name'])): ?>
+                                                    <span class="text-gray-600 text-xs">
+                                                        by <?php echo htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </span>
+                                        </span>
+                                        <span class="text-xs text-gray-400">
+                                            <?php 
+                                            $date = isset($activity['timestamp']) ? $activity['timestamp'] : date('Y-m-d H:i:s');
+                                            echo date('M j, Y', strtotime($date)); 
+                                            ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <li class="flex items-center justify-center py-8 text-gray-500">
+                                    <div class="text-center">
+                                        <i class="fas fa-history text-2xl mb-2"></i>
+                                        <p class="text-sm">No recent activities found</p>
+                                        <p class="text-xs">Activities will appear here as they are logged</p>
+                                    </div>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                        <?php if (!empty($recent_activities)): ?>
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <a href="all_activities.php" class="text-agri-green hover:text-agri-dark font-medium text-sm flex items-center justify-center transition-colors">
+                                    <span>View All Activities</span>
+                                    <i class="fas fa-arrow-right ml-2"></i>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <div class="p-3 rounded-full bg-green-100 transition-colors duration-300">
-                        <i class="fas fa-certificate text-xl text-green-600"></i>
+                </div>
+                <!-- Farmers by Program Pie Chart -->
+                <div>
+                    <div class="bg-white rounded-xl card-shadow p-6 h-full flex flex-col items-center justify-center">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">
+                            <i class="fas fa-users text-agri-green mr-2"></i>Farmers by Program
+                        </h3>
+                        <canvas id="farmersPieChart" width="180" height="180"></canvas>
+                        <div class="flex justify-center mt-4 space-x-4">
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-600 mr-2"></span>RSBSA <span class="ml-1 font-bold text-blue-600"><?php echo number_format($rsbsa_registered); ?></span></div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-purple-600 mr-2"></span>NCFRS <span class="ml-1 font-bold text-purple-600"><?php echo number_format($ncfrs_registered); ?></span></div>
+                            <div class="flex items-center"><span class="w-3 h-3 rounded-full bg-cyan-600 mr-2"></span>FISH-R <span class="ml-1 font-bold text-cyan-600"><?php echo number_format($fisherfolk_registered); ?></span></div>
+                        </div>
+                        <div class="w-full mt-6">
+                            <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Yield Records per Barangay</h4>
+                            <ul class="text-sm text-gray-600 divide-y divide-gray-100">
+                                <?php if (!empty($yield_records_per_barangay)): ?>
+                                    <?php foreach ($yield_records_per_barangay as $row): ?>
+                                        <li class="flex justify-between py-1 px-2">
+                                            <span><?php echo htmlspecialchars($row['barangay_name']); ?></span>
+                                            <span class="font-bold text-agri-green"><?php echo number_format($row['record_count']); ?></span>
+                                        </li>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <li class="py-1 px-2 text-gray-400">No yield records found.</li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var ctx = document.getElementById('farmersPieChart').getContext('2d');
+                            var farmersPieChart = new Chart(ctx, {
+                                type: 'pie',
+                                data: {
+                                    labels: ['RSBSA', 'NCFRS', 'FISH-R'],
+                                    datasets: [{
+                                        data: [
+                                            <?php echo isset($rsbsa_registered) ? $rsbsa_registered : 0; ?>,
+                                            <?php echo isset($ncfrs_registered) ? $ncfrs_registered : 0; ?>,
+                                            <?php echo isset($fisherfolk_registered) ? $fisherfolk_registered : 0; ?>
+                                        ],
+                                        backgroundColor: [
+                                            '#3B82F6', // RSBSA (blue)
+                                            '#8B5CF6', // NCFRS (purple)
+                                            '#06B6D4'  // FISH-R (cyan)
+                                        ],
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: false,
+                                    plugins: {
+                                        legend: {
+                                            display: false
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                        </script>
                     </div>
                 </div>
             </div>
-
-            <!-- NCFRS Registered -->
-            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">NCFRS Registered</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($ncfrs_registered); ?></p>
-                    </div>
-                    <div class="p-3 rounded-full bg-indigo-100 transition-colors duration-300">
-                        <i class="fas fa-id-card text-xl text-indigo-600"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FishR Registered -->
-            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">FishR Registered</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($fisherfolk_registered); ?></p>
-                    </div>
-                    <div class="p-3 rounded-full bg-teal-100 transition-colors duration-300">
-                        <i class="fas fa-fish text-xl text-teal-600"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Second Row Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <!-- Boats Registered -->
-            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Boats Registered</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_boats); ?></p>
-                    </div>
-                    <div class="p-3 rounded-full bg-cyan-100 transition-colors duration-300">
-                        <i class="fas fa-ship text-xl text-cyan-600"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Commodities -->
-            <div class="bg-white rounded-xl card-shadow p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Commodities</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($total_commodities); ?></p>
-                    </div>
-                    <div class="p-3 rounded-full bg-yellow-100 transition-colors duration-300">
-                        <i class="fas fa-wheat-awn text-xl text-yellow-600"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Yields -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Recent Yields</p>
-                        <p class="text-2xl font-bold text-gray-900"><?php echo number_format($recent_yields); ?></p>
-                        <p class="text-xs text-gray-500">Last 30 days</p>
-                    </div>
-                    <div class="p-3 rounded-full bg-purple-100 transition-colors duration-300">
-                        <i class="fas fa-chart-line text-xl text-purple-600"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions and Recent Activities -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Quick Actions -->
-            <div class="lg:col-span-1">
-                <div class="bg-white rounded-xl card-shadow p-6 h-full">
-                    <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center">
-                        <i class="fas fa-bolt text-agri-green mr-3"></i>Quick Actions
-                    </h3>
-                    <div class="space-y-4">
-                        <button onclick="openFarmerModal()" class="w-full flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group">
-                            <div class="p-3 bg-blue-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
-                                <i class="fas fa-user-plus text-white"></i>
-                            </div>
-                            <div class="text-left">
-                                <div class="font-semibold text-blue-900">Add New Farmer</div>
-                                <div class="text-sm text-blue-600">Register a new farmer</div>
-                            </div>
-                        </button>
-                        
-                        <button onclick="navigateTo('mao_inventory.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
-                            <div class="p-3 bg-green-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
-                                <i class="fas fa-boxes text-white"></i>
-                            </div>
-                            <div class="text-left">
-                                <div class="font-semibold text-green-900">Distribute Inputs</div>
-                                <div class="text-sm text-green-600">Manage agricultural inputs</div>
-                            </div>
-                        </button>
-                        
-                        <button onclick="openYieldModal()" class="w-full flex items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
-                            <div class="p-3 bg-purple-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
-                                <i class="fas fa-chart-bar text-white"></i>
-                            </div>
-                            <div class="text-left">
-                                <div class="font-semibold text-purple-900">Record Yield</div>
-                                <div class="text-sm text-purple-600">Track harvest data</div>
-                            </div>
-                        </button>
-                        
-                        <button onclick="navigateTo('all_activities.php')" class="w-full flex items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group">
-                            <div class="p-3 bg-yellow-500 rounded-lg mr-4 group-hover:scale-110 transition-transform">
-                                <i class="fas fa-activity text-white"></i>
-                            </div>
-                            <div class="text-left">
-                                <div class="font-semibold text-yellow-900">View Activities</div>
-                                <div class="text-sm text-yellow-600">All system activities</div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- System Modules -->
-            <div class="lg:col-span-2">
-                <div class="bg-white rounded-lg shadow-md p-6 h-full">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">
-                        <i class="fas fa-th-large text-agri-green mr-2"></i>System Modules
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full pb-2">
-                        <a href="farmers.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-users text-blue-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Farmers Management</span>
-                        </a>
-                        
-                        <a href="rsbsa_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-certificate text-green-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">RSBSA Records</span>
-                        </a>
-                        
-                        <a href="mao_inventory.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-warehouse text-yellow-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Manage Inventory</span>
-                        </a>
-                        
-                        <a href="input_distribution_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-share-square text-orange-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Distribution Records</span>
-                        </a>
-                        
-                        <a href="yield_monitoring.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-chart-bar text-purple-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Yield Monitoring</span>
-                        </a>
-                        
-                        <a href="staff.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-user-tie text-indigo-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">MAO Staff</span>
-                        </a>
-                        
-                        <a href="reports.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-file-alt text-red-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Reports</span>
-                        </a>
-                        
-                        <a href="analytics_dashboard.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-chart-line text-pink-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Visual Analytics</span>
-                        </a>
-                        
-                        <a href="mao_activities.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-calendar-check text-emerald-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">MAO Activities</span>
-                        </a>
-                        
-                        <a href="ncfrs_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-fish text-teal-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">NCFRS Records</span>
-                        </a>
-                        
-                        <a href="boat_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-ship text-blue-500 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">Boat Records</span>
-                        </a>
-                        
-                        <a href="fishr_records.php" class="flex items-center p-4 border rounded-lg hover:border-agri-green hover:shadow-md transition-all h-20 min-h-[80px]">
-                            <i class="fas fa-water text-cyan-600 text-2xl mr-3 flex-shrink-0"></i>
-                            <span class="font-medium text-base leading-tight">FISHR Records</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
 
     <!-- Include the farmer registration modal -->
     <?php include 'farmer_regmodal.php'; ?>
@@ -365,19 +502,24 @@ if ($result) {
 
         // Yield Modal Functions
         function openYieldModal() {
-            document.getElementById('addVisitModal').classList.remove('hidden');
-            document.getElementById('addVisitModal').classList.add('flex');
+            const modal = new bootstrap.Modal(document.getElementById('addVisitModal'));
+            modal.show();
             // Load farmers when modal opens
             loadFarmersYield();
         }
 
         function closeYieldModal() {
-            document.getElementById('addVisitModal').classList.add('hidden');
-            document.getElementById('addVisitModal').classList.remove('flex');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addVisitModal'));
+            if (modal) modal.hide();
             // Reset form
-            document.querySelector('#addVisitModal form').reset();
-            document.getElementById('selected_farmer_id_yield').value = '';
-            document.getElementById('farmer_suggestions_yield').classList.add('hidden');
+            const form = document.querySelector('#addVisitModal form');
+            if (form) form.reset();
+            const farmerIdField = document.getElementById('selected_farmer_id_yield');
+            if (farmerIdField) farmerIdField.value = '';
+            const farmerSuggestions = document.getElementById('farmer_suggestions_yield');
+            if (farmerSuggestions) farmerSuggestions.classList.add('hidden');
+            const farmerNameField = document.getElementById('farmer_name_yield');
+            if (farmerNameField) farmerNameField.value = '';
         }
 
         // Farmer auto-suggestion functionality for yield modal
@@ -509,4 +651,5 @@ if ($result) {
             });
         });
     </script>
+<script src="assets/js/chart.min.js"></script>
 <?php include 'includes/notification_complete.php'; ?>
