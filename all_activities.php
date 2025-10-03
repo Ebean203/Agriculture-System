@@ -39,58 +39,16 @@ function buildFilterUrl($new_params = []) {
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Activities - Lagonglong FARMS</title>
-    <?php include 'includes/assets.php'; ?>
-    
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<?php include 'includes/layout_start.php'; ?>
     
     <style>
-        /* Remove underlines from links and set text color to black */
-        .grid a {
-            text-decoration: none !important;
-            color: #111827 !important;
-        }
-        .grid a:hover {
-            text-decoration: none !important;
-        }
 
-        /* Dropdown menu styles */
-        #dropdownMenu {
-            z-index: 50;
-            transition: all 0.2s ease-in-out;
-            transform-origin: top right;
-        }
-
-        #dropdownMenu.show {
-            display: block;
-        }
-
-        #dropdownArrow.rotate {
-            transform: rotate(180deg);
-        }
-
-        /* Ensure dropdown is above other content */
-        .relative {
-            z-index: 40;
-        }
-
-        /* Ensure navigation has higher z-index than content */
-        nav {
-            z-index: 50;
-        }
 
         /* Smaller activity card styles */
         .activities-list-compact {
             max-height: 500px;
             overflow-y: auto;
+            overflow-x: hidden;
         }
         
         .activity-item {
@@ -106,9 +64,9 @@ function buildFilterUrl($new_params = []) {
         }
         
         .activity-item:hover {
-            transform: translateX(2px);
             box-shadow: 0 2px 12px rgba(0,0,0,0.1);
             border-left-color: #059669;
+            background-color: #f8fafc;
         }
         
         .activity-icon {
@@ -174,81 +132,31 @@ function buildFilterUrl($new_params = []) {
             border: 1px solid #e2e8f0;
         }
     </style>
-    <script>
-        // Function to handle dropdown toggle
-        function toggleDropdown() {
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            const dropdownArrow = document.getElementById('dropdownArrow');
-            dropdownMenu.classList.toggle('show');
-            dropdownArrow.classList.toggle('rotate');
-        }
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const userMenu = document.getElementById('userMenu');
-            const dropdownMenu = document.getElementById('dropdownMenu');
-            const dropdownArrow = document.getElementById('dropdownArrow');
-            
-            if (!userMenu.contains(event.target) && dropdownMenu.classList.contains('show')) {
-                dropdownMenu.classList.remove('show');
-                dropdownArrow.classList.remove('rotate');
-            }
-        });
 
-        // Navigation dropdown functionality
-        function toggleNavigationDropdown() {
-            const dropdown = document.getElementById('navigationDropdown');
-            const arrow = document.getElementById('navigationArrow');
-            
-            if (dropdown.classList.contains('hidden')) {
-                dropdown.classList.remove('hidden');
-                arrow.style.transform = 'rotate(180deg)';
-            } else {
-                dropdown.classList.add('hidden');
-                arrow.style.transform = 'rotate(0deg)';
-            }
-        }
+    <!-- Success/Error Messages -->
+    <?php
+    $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
+    $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
+    unset($_SESSION['success_message']);
+    unset($_SESSION['error_message']);
+    ?>
 
-        // Close navigation dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('navigationDropdown');
-            const button = event.target.closest('button');
-            
-            if (!dropdown.contains(event.target) && (!button || !button.getAttribute('onclick')?.includes('toggleNavigationDropdown'))) {
-                dropdown.classList.add('hidden');
-                document.getElementById('navigationArrow').style.transform = 'rotate(0deg)';
-            }
-        });
-    </script>
-</head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
-        <!-- Navigation -->
-        <?php include 'nav.php'; ?>
+    <?php if (!empty($success_message)): ?>
+        <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
+            <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success_message); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
 
-        <!-- Success/Error Messages (match index.php) -->
-        <?php
-        $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
-        $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
-        unset($_SESSION['success_message']);
-        unset($_SESSION['error_message']);
-        ?>
+    <?php if (!empty($error_message)): ?>
+        <div class="alert alert-danger alert-dismissible fade show m-4" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error_message); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
 
-        <?php if (!empty($success_message)): ?>
-            <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
-                <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success_message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-
-        <?php if (!empty($error_message)): ?>
-            <div class="alert alert-danger alert-dismissible fade show m-4" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error_message); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <div class="px-6 py-4">
             <!-- Header Section (Uniform White Card Design) -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                 <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -265,105 +173,7 @@ function buildFilterUrl($new_params = []) {
                             </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <!-- Go to Page (rightmost) -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center font-medium" onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                    <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                                </button>
-                                <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                    <!-- Dashboard Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                        <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-home text-blue-600 mr-3"></i>
-                                            Dashboard
-                                        </a>
-                                        <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                            Analytics Dashboard
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Inventory Management Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
-                                        <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                            MAO Inventory
-                                        </a>
-                                        <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                            Distribution Records
-                                        </a>
-                                        <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-calendar-check text-green-600 mr-3"></i>
-                                            MAO Activities
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Records Management Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                        <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-users text-green-600 mr-3"></i>
-                                            Farmers Registry
-                                        </a>
-                                        <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                            RSBSA Records
-                                        </a>
-                                        <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                            NCFRS Records
-                                        </a>
-                                        <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                            FishR Records
-                                        </a>
-                                        <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-ship text-indigo-600 mr-3"></i>
-                                            Boat Records
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Monitoring & Reports Section -->
-                                    <div class="border-b border-gray-200">
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                        <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                            Yield Monitoring
-                                        </a>
-                                        <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                            Reports
-                                        </a>
-                                        <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
-                                            <i class="fas fa-list text-gray-600 mr-3"></i>
-                                            All Activities
-                                        </a>
-                                    </div>
-                                    
-                                    <!-- Settings Section -->
-                                    <div>
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                            Staff Management
-                                        </a>
-                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                            System Settings
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="hidden lg:block">
-                                <i class="fas fa-list text-6xl text-white opacity-20"></i>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
             </div>
 
@@ -602,6 +412,4 @@ function buildFilterUrl($new_params = []) {
         </div>
     </div>
     
-    <?php include 'includes/notification_complete.php'; ?>
-</body>
-</html>
+<?php include 'includes/notification_complete.php'; ?>

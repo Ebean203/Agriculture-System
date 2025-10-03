@@ -153,7 +153,7 @@ function validateFarmerData($postData) {
         // New multi-commodity structure - validate at least one commodity exists
         $hasValidCommodity = false;
         foreach ($postData['commodities'] as $commodity) {
-            if (!empty($commodity['commodity_id']) && !empty($commodity['land_area_hectares']) && isset($commodity['years_farming'])) {
+            if (!empty($commodity['commodity_id']) && isset($commodity['years_farming'])) {
                 $hasValidCommodity = true;
                 break;
             }
@@ -163,8 +163,14 @@ function validateFarmerData($postData) {
         }
         // Set a placeholder for primary_commodity - will be handled in the backend
         $validated['primary_commodity'] = 1;
-        $validated['land_area_hectares'] = 0.01; // Placeholder
-        $validated['years_farming'] = 0; // Placeholder
+        
+        // Land area is now handled at farmer level, not commodity level
+        $validated['land_area_hectares'] = validateDecimal($postData['land_area_hectares'] ?? '', 'Land Area', 0);
+        if ($validated['land_area_hectares'] === null) {
+            throw new Exception("Land Area is required and cannot be empty.");
+        }
+        
+        $validated['years_farming'] = 0; // Placeholder - handled in backend
     } else {
         // Fallback validation for old single commodity structure (backward compatibility)
         $validated['primary_commodity'] = validateInteger($postData['commodity_id'] ?? '', 'Primary Commodity', 1);
@@ -228,7 +234,7 @@ function validateFarmerDataForEdit($postData) {
         // New multi-commodity structure - validate at least one commodity exists
         $hasValidCommodity = false;
         foreach ($postData['commodities'] as $commodity) {
-            if (!empty($commodity['commodity_id']) && !empty($commodity['land_area_hectares']) && isset($commodity['years_farming'])) {
+            if (!empty($commodity['commodity_id']) && isset($commodity['years_farming'])) {
                 $hasValidCommodity = true;
                 break;
             }
@@ -238,8 +244,14 @@ function validateFarmerDataForEdit($postData) {
         }
         // Set a placeholder for primary_commodity - will be handled in the backend
         $validated['primary_commodity'] = 1;
-        $validated['land_area_hectares'] = 0.01; // Placeholder
-        $validated['years_farming'] = 0; // Placeholder
+        
+        // Land area is now handled at farmer level, not commodity level
+        $validated['land_area_hectares'] = validateDecimal($postData['land_area_hectares'] ?? '', 'Land Area', 0);
+        if ($validated['land_area_hectares'] === null) {
+            throw new Exception("Land Area is required and cannot be empty.");
+        }
+        
+        $validated['years_farming'] = 0; // Placeholder - handled in backend
     } else {
         // Fallback validation for old single commodity structure (backward compatibility)
         $validated['primary_commodity'] = validateInteger($postData['commodity_id'] ?? '', 'Primary Commodity', 1);

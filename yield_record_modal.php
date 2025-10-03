@@ -28,16 +28,33 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
+                                    <label for="commodity_category_filter" class="form-label">Commodity Category</label>
+                                    <select class="form-select" id="commodity_category_filter" onchange="filterCommodities()">
+                                        <option value="">All Categories</option>
+                                        <?php foreach ($commodity_categories as $category): ?>
+                                            <option value="<?php echo htmlspecialchars($category['category_id']); ?>" 
+                                                    <?php echo $category['category_name'] === 'Agronomic Crops' ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($category['category_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="text-muted">Filter commodities by category</small>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
                                     <label for="commodity_id" class="form-label">Commodity <span class="text-danger">*</span></label>
                                     <select class="form-select" id="commodity_id" name="commodity_id" required>
                                         <option value="">Select Commodity</option>
                                         <?php foreach ($commodities as $commodity): ?>
-                                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>">
+                                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>" 
+                                                    data-category="<?php echo htmlspecialchars($commodity['category_id']); ?>">
                                                 <?php echo htmlspecialchars($commodity['commodity_name']); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+                                <div class="col-md-6 mb-3"></div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">

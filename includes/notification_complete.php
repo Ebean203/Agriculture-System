@@ -83,6 +83,8 @@ window.notificationDropdown = {
             // Prepare data for click handler
             const inputId = notification.data && notification.data.input_id ? notification.data.input_id : '';
             const itemName = notification.data && notification.data.item_name ? notification.data.item_name : '';
+            const farmerName = notification.data && notification.data.farmer_name ? notification.data.farmer_name : '';
+            const farmerId = notification.data && notification.data.farmer_id ? notification.data.farmer_id : '';
             
             html += `
                 <div class="notification-item p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${index === notifications.length - 1 ? 'border-b-0' : ''}"
@@ -90,7 +92,9 @@ window.notificationDropdown = {
                      data-category="${notification.category}"
                      data-item-name="${itemName}"
                      data-input-id="${inputId}"
-                     onclick="handleNotificationClick('${notification.id}', '${notification.category}', '${itemName}', '${inputId}')">
+                     data-farmer-name="${farmerName}"
+                     data-farmer-id="${farmerId}"
+                     onclick="handleNotificationClick('${notification.id}', '${notification.category}', '${itemName}', '${inputId}', '${farmerName}', '${farmerId}')">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0">
                             <i class="${iconClass}"></i>
@@ -224,26 +228,30 @@ function toggleNotificationDropdown() {
 }
 
 // Global click handler functions for notifications
-function handleNotificationClick(notificationId, category, itemName, inputId) {
+function handleNotificationClick(notificationId, category, itemName, inputId, farmerName, farmerId) {
     console.log('Notification clicked:', {
         notificationId: notificationId,
         category: category,
         itemName: itemName,
-        inputId: inputId
+        inputId: inputId,
+        farmerName: farmerName,
+        farmerId: farmerId
     });
     
     // Close notification dropdown
     window.notificationDropdown.close();
     
     // Navigate to appropriate page with specific item focus
-    navigateToNotificationPage(category, itemName, inputId);
+    navigateToNotificationPage(category, itemName, inputId, farmerName, farmerId);
 }
 
-function navigateToNotificationPage(category, itemName, inputId) {
+function navigateToNotificationPage(category, itemName, inputId, farmerName, farmerId) {
     console.log('Navigating to:', {
         category: category,
         itemName: itemName,
-        inputId: inputId
+        inputId: inputId,
+        farmerName: farmerName,
+        farmerId: farmerId
     });
     
     // Navigate based on notification category with smart routing
@@ -261,23 +269,40 @@ function navigateToNotificationPage(category, itemName, inputId) {
             }
             break;
         case 'visitation':
-            console.log('Redirecting to visitation records');
-            // Redirect to input distribution records page with specific search
-            if (itemName && itemName !== '') {
+            console.log('Redirecting to visitation records with farmer:', farmerName, 'ID:', farmerId);
+            // Redirect to input distribution records page with farmer filter
+            // Prefer farmer_id for exact matching, fallback to farmer name
+            if (farmerId && farmerId !== '') {
+                window.location.href = 'input_distribution_records.php?farmer_id=' + farmerId + '&farmer=' + encodeURIComponent(farmerName);
+            } else if (farmerName && farmerName !== '') {
+                window.location.href = 'input_distribution_records.php?farmer=' + encodeURIComponent(farmerName);
+            } else if (itemName && itemName !== '') {
                 window.location.href = 'input_distribution_records.php?search=' + encodeURIComponent(itemName);
             } else {
                 window.location.href = 'input_distribution_records.php';
             }
             break;
         case 'farmer':
-            console.log('Redirecting to farmers page');
-            // Redirect to farmers page
-            window.location.href = 'farmers.php';
+            console.log('Redirecting to farmers page with farmer:', farmerName, 'ID:', farmerId);
+            // Redirect to farmers page with farmer filter
+            if (farmerId && farmerId !== '') {
+                window.location.href = 'farmers.php?farmer_id=' + farmerId;
+            } else if (farmerName && farmerName !== '') {
+                window.location.href = 'farmers.php?search=' + encodeURIComponent(farmerName);
+            } else {
+                window.location.href = 'farmers.php';
+            }
             break;
         case 'yield':
-            console.log('Redirecting to yield monitoring');
-            // Redirect to yield monitoring page
-            window.location.href = 'yield_monitoring.php';
+            console.log('Redirecting to yield monitoring with farmer:', farmerName, 'ID:', farmerId);
+            // Redirect to yield monitoring page with farmer filter
+            if (farmerId && farmerId !== '') {
+                window.location.href = 'yield_monitoring.php?farmer_id=' + farmerId + '&farmer=' + encodeURIComponent(farmerName);
+            } else if (farmerName && farmerName !== '') {
+                window.location.href = 'yield_monitoring.php?farmer=' + encodeURIComponent(farmerName);
+            } else {
+                window.location.href = 'yield_monitoring.php';
+            }
             break;
         default:
             console.log('Redirecting to dashboard (default)');

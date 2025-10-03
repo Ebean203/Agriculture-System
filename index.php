@@ -34,7 +34,7 @@ unset($_SESSION['success_message']);
 unset($_SESSION['error_message']);
 
 // Initialize default values
-$total_farmers = $total_boats = $total_commodities = $recent_yields = 0;
+$total_farmers = $total_boats = $total_commodities = $total_inventory = $recent_yields = 0;
 $recent_activities = [];
 
 // Get dashboard statistics using procedural MySQL
@@ -80,6 +80,14 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_commodities = $row['total_commodities'];
 }
 
+// Count total inventory items in stock
+$query = "SELECT SUM(quantity_on_hand) as total_inventory FROM mao_inventory WHERE quantity_on_hand > 0";
+$result = mysqli_query($conn, $query);
+$total_inventory = 0;
+if ($result && $row = mysqli_fetch_assoc($result)) {
+    $total_inventory = $row['total_inventory'] ? $row['total_inventory'] : 0;
+}
+
 // Count recent yield records (last 30 days)
 $query = "SELECT COUNT(*) as recent_yields FROM yield_monitoring WHERE record_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
 $result = mysqli_query($conn, $query);
@@ -87,15 +95,13 @@ if ($result && $row = mysqli_fetch_assoc($result)) {
     $recent_yields = $row['recent_yields'];
 }
 
-// Get recent activities (last 5 yield records)
+// Get recent activities from activity logs
 $query = "
-    SELECT ym.*, f.first_name, f.last_name, c.commodity_name, s.first_name as staff_first_name, s.last_name as staff_last_name
-    FROM yield_monitoring ym
-    JOIN farmers f ON ym.farmer_id = f.farmer_id
-    JOIN commodities c ON ym.commodity_id = c.commodity_id
-    JOIN mao_staff s ON ym.recorded_by_staff_id = s.staff_id
-    ORDER BY ym.record_date DESC
-    LIMIT 5
+    SELECT al.*, s.first_name, s.last_name, al.timestamp
+    FROM activity_logs al
+    LEFT JOIN mao_staff s ON al.staff_id = s.staff_id
+    ORDER BY al.timestamp DESC
+    LIMIT 10
 ";
 $result = mysqli_query($conn, $query);
 if ($result) {
@@ -237,7 +243,7 @@ if ($result) {
                         <i class="fas fa-cube text-agri-green text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">INVENTORY</span>
                     </div>
-                    <div class="text-2xl font-bold text-agri-green">82</div>
+                    <div class="text-2xl font-bold text-agri-green"><?php echo number_format($total_inventory); ?></div>
                     <div class="text-xs text-gray-400">items in stock</div>
                 </div>
             </div>
@@ -338,42 +344,81 @@ if ($result) {
                             <i class="fas fa-history text-agri-green mr-2"></i>Recent Activities
                         </h3>
                         <ul class="space-y-2">
-                            <li class="flex items-center justify-between py-2 border-b border-gray-100">
-                                <span class="flex items-center">
-                                    <i class="fas fa-check-circle text-agri-green mr-2"></i>
-                                    Distributed 150 bags of Fertilizer to various farmers.
-                                </span>
-                                <span class="text-xs text-gray-400">2025-09-18</span>
-                            </li>
-                            <li class="flex items-center justify-between py-2 border-b border-gray-100">
-                                <span class="flex items-center">
-                                    <i class="fas fa-check-circle text-agri-green mr-2"></i>
-                                    Registered new farmer: Juan Dela Cruz.
-                                </span>
-                                <span class="text-xs text-gray-400">2025-09-17</span>
-                            </li>
-                            <li class="flex items-center justify-between py-2 border-b border-gray-100">
-                                <span class="flex items-center">
-                                    <i class="fas fa-check-circle text-agri-green mr-2"></i>
-                                    Recorded 2,200kg of yield from Field B.
-                                </span>
-                                <span class="text-xs text-gray-400">2025-09-16</span>
-                            </li>
-                            <li class="flex items-center justify-between py-2 border-b border-gray-100">
-                                <span class="flex items-center">
-                                    <i class="fas fa-check-circle text-agri-green mr-2"></i>
-                                    Logged new boat for fisherman Mark Santos.
-                                </span>
-                                <span class="text-xs text-gray-400">2025-09-15</span>
-                            </li>
-                            <li class="flex items-center justify-between py-2">
-                                <span class="flex items-center">
-                                    <i class="fas fa-check-circle text-agri-green mr-2"></i>
-                                    Updated inventory for Rice Seeds.
-                                </span>
-                                <span class="text-xs text-gray-400">2025-09-14</span>
-                            </li>
+                            <?php if (!empty($recent_activities)): ?>
+                                <?php foreach ($recent_activities as $activity): ?>
+                                    <li class="flex items-center justify-between py-2 border-b border-gray-100">
+                                        <span class="flex items-center">
+                                            <?php
+                                            // Determine icon based on activity type
+                                            $icon = 'fas fa-info-circle';
+                                            $icon_color = 'text-agri-green';
+                                            
+                                            switch (strtolower($activity['action_type'])) {
+                                                case 'farmer':
+                                                    $icon = 'fas fa-user-plus';
+                                                    $icon_color = 'text-green-600';
+                                                    break;
+                                                case 'inventory':
+                                                    $icon = 'fas fa-boxes';
+                                                    $icon_color = 'text-blue-600';
+                                                    break;
+                                                case 'distribution':
+                                                    $icon = 'fas fa-truck';
+                                                    $icon_color = 'text-orange-600';
+                                                    break;
+                                                case 'yield':
+                                                    $icon = 'fas fa-seedling';
+                                                    $icon_color = 'text-green-500';
+                                                    break;
+                                                case 'staff':
+                                                    $icon = 'fas fa-user-tie';
+                                                    $icon_color = 'text-purple-600';
+                                                    break;
+                                                case 'commodity':
+                                                    $icon = 'fas fa-leaf';
+                                                    $icon_color = 'text-yellow-600';
+                                                    break;
+                                                default:
+                                                    $icon = 'fas fa-check-circle';
+                                                    $icon_color = 'text-agri-green';
+                                            }
+                                            ?>
+                                            <i class="<?php echo $icon . ' ' . $icon_color; ?> mr-2"></i>
+                                            <span class="text-sm">
+                                                <?php echo htmlspecialchars($activity['action']); ?>
+                                                <?php if (!empty($activity['first_name'])): ?>
+                                                    <span class="text-gray-600 text-xs">
+                                                        by <?php echo htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </span>
+                                        </span>
+                                        <span class="text-xs text-gray-400">
+                                            <?php 
+                                            $date = isset($activity['timestamp']) ? $activity['timestamp'] : date('Y-m-d H:i:s');
+                                            echo date('M j, Y', strtotime($date)); 
+                                            ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <li class="flex items-center justify-center py-8 text-gray-500">
+                                    <div class="text-center">
+                                        <i class="fas fa-history text-2xl mb-2"></i>
+                                        <p class="text-sm">No recent activities found</p>
+                                        <p class="text-xs">Activities will appear here as they are logged</p>
+                                    </div>
+                                </li>
+                            <?php endif; ?>
                         </ul>
+                        <?php if (!empty($recent_activities)): ?>
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <a href="all_activities.php" class="text-agri-green hover:text-agri-dark font-medium text-sm flex items-center justify-center transition-colors">
+                                    <span>View All Activities</span>
+                                    <i class="fas fa-arrow-right ml-2"></i>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <!-- Farmers by Program Pie Chart -->

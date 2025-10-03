@@ -163,7 +163,7 @@ function handleFarmerRegistration($conn, $post_data) {
     // Generate unique farmer ID - format: FMR + date + random number
     do {
         $date_part = date('Ymd'); // YYYYMMDD format
-        $random_part = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        $random_part = str_pad(rand(1, 9999), 3, '0', STR_PAD_LEFT);
         $farmer_id = 'FMR' . $date_part . $random_part;
         
         // Check if this ID already exists
@@ -179,17 +179,17 @@ function handleFarmerRegistration($conn, $post_data) {
         
         $conn->begin_transaction();
         
-        // Insert farmer with all fields matching new schema (without commodity fields)
+        // Insert farmer with all fields matching new schema (including land_area_hectares)
         $stmt = $conn->prepare("INSERT INTO farmers 
             (farmer_id, first_name, middle_name, last_name, suffix, birth_date, gender, 
              contact_number, barangay_id, address_details, 
-             other_income_source, is_member_of_4ps, is_ip, is_rsbsa, is_ncfrs, is_boat, is_fisherfolk, registration_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+             other_income_source, land_area_hectares, is_member_of_4ps, is_ip, is_rsbsa, is_ncfrs, is_boat, is_fisherfolk, registration_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
-        $stmt->bind_param("ssssssssissiiiiii", 
+        $stmt->bind_param("ssssssssissdiiiiii", 
             $farmer_id, $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'], 
             $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'], $validated['address_details'], 
-            $validated['other_income_source'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk']);
+            $validated['other_income_source'], $validated['land_area_hectares'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk']);
         $stmt->execute();
         
         // Insert commodity relationship into junction table
@@ -197,21 +197,19 @@ function handleFarmerRegistration($conn, $post_data) {
             $primary_commodity_index = isset($post_data['primary_commodity_index']) ? intval($post_data['primary_commodity_index']) : 0;
             
             foreach ($post_data['commodities'] as $index => $commodity_data) {
-                if (!empty($commodity_data['commodity_id']) && !empty($commodity_data['land_area_hectares']) && isset($commodity_data['years_farming'])) {
+                if (!empty($commodity_data['commodity_id']) && isset($commodity_data['years_farming'])) {
                     $is_primary = ($index == $primary_commodity_index) ? 1 : 0;
                     
                     // Store values in variables for bind_param (required for pass by reference)
                     $commodity_id = intval($commodity_data['commodity_id']);
-                    $land_area = floatval($commodity_data['land_area_hectares']);
                     $years_farming = intval($commodity_data['years_farming']);
                     
                     $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
-                        (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
-                        VALUES (?, ?, ?, ?, ?)");
-                    $commodity_stmt->bind_param("sidii", 
+                        (farmer_id, commodity_id, years_farming, is_primary) 
+                        VALUES (?, ?, ?, ?)");
+                    $commodity_stmt->bind_param("siii", 
                         $farmer_id, 
                         $commodity_id, 
-                        $land_area, 
                         $years_farming,
                         $is_primary
                     );
@@ -310,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
                     }
                     // Fetch all commodities for this farmer
                     $commodities = [];
-                    $com_sql = "SELECT commodity_id, land_area_hectares, years_farming, is_primary FROM farmer_commodities WHERE farmer_id = '$farmer_id' ORDER BY is_primary DESC, id ASC";
+                    $com_sql = "SELECT commodity_id, years_farming, is_primary FROM farmer_commodities WHERE farmer_id = '$farmer_id' ORDER BY is_primary DESC, id ASC";
                     $com_result = $conn->query($com_sql);
                     if ($com_result) {
                         while ($row = $com_result->fetch_assoc()) {
@@ -334,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
             
             try {
                 $stmt = $conn->prepare("SELECT f.*, h.*, c.commodity_name, b.barangay_name,
-                                      fc.land_area_hectares, fc.years_farming,
+                                      fc.years_farming,
                                       DATE_FORMAT(f.registration_date, '%M %d, %Y at %h:%i %p') as formatted_registration_date
                                       FROM farmers f 
                                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
@@ -342,11 +340,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
                                       LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
                                       LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
                                       WHERE f.farmer_id = ?");
+                
+                // Fetch farmer photos separately
+                $photo_stmt = $conn->prepare("SELECT file_path, uploaded_at 
+                                            FROM farmer_photos 
+                                            WHERE farmer_id = ? 
+                                            ORDER BY uploaded_at DESC");
+                $photo_stmt->bind_param("s", $_GET['id']);
+                $photo_stmt->execute();
+                $photo_result = $photo_stmt->get_result();
+                $photos = [];
+                while ($photo = $photo_result->fetch_assoc()) {
+                    $photos[] = $photo;
+                }
                 $stmt->bind_param("s", $_GET['id']);
                 $stmt->execute();
                 $result = $stmt->get_result();
                 
                 if ($farmer = $result->fetch_assoc()) {
+                    $farmer['photos'] = $photos; // Add photos to farmer data
                     $html = generateFarmerViewHTML($farmer);
                     echo json_encode(['success' => true, 'html' => $html]);
                 } else {
@@ -364,7 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
             }
             
             try {
-                $stmt = $conn->prepare("SELECT f.*, h.*, fc.commodity_id, fc.land_area_hectares, fc.years_farming, c.commodity_name 
+                $stmt = $conn->prepare("SELECT f.*, h.*, fc.commodity_id, fc.years_farming, c.commodity_name 
                                       FROM farmers f 
                                       LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
                                       LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
@@ -406,6 +418,39 @@ function generateFarmerViewHTML($farmer) {
     }
     $html .= '</div>';
     $html .= '</div>';
+    
+    // Farmer Photos Section (if photos exist)
+    if (isset($farmer['photos']) && !empty($farmer['photos'])) {
+        $html .= '<div class="row g-3 mb-3">';
+        $html .= '<div class="col-12">';
+        $html .= '<div class="card border-0 shadow-sm">';
+        $html .= '<div class="card-header bg-light border-0">';
+        $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-camera me-2"></i>Farmer Photos (' . count($farmer['photos']) . ')</h6>';
+        $html .= '</div>';
+        $html .= '<div class="card-body">';
+        $html .= '<div class="row g-2">';
+        
+        foreach ($farmer['photos'] as $index => $photo) {
+            $photoPath = $photo['file_path'];
+            $html .= '<div class="col-md-3 col-sm-4 col-6">';
+            $html .= '<div class="position-relative">';
+            $html .= '<img src="' . htmlspecialchars($photoPath) . '" class="img-fluid rounded shadow-sm farmer-photo" alt="Farmer Photo" style="width: 100%; height: 200px; object-fit: cover; cursor: pointer;" onclick="viewPhotoModal(\'' . htmlspecialchars($photoPath) . '\', \'' . htmlspecialchars($photo['uploaded_at']) . '\')">';
+            
+            // Photo info overlay
+            $html .= '<div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white p-2 rounded-bottom">';
+            $html .= '<small class="d-block"><i class="fas fa-calendar me-1"></i>' . date('M j, Y', strtotime($photo['uploaded_at'])) . '</small>';
+            $html .= '</div>';
+            
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+        
+        $html .= '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
+    }
     
     // Information cards
     $html .= '<div class="row g-3">';
@@ -655,19 +700,25 @@ while ($row = $barangays_result->fetch_assoc()) {
     $barangays[] = $row;
 }
 
-// Search and filter functionality
-$search = isset($_POST['search']) ? trim($_POST['search']) : '';
-$barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
+// Search and filter functionality - GET parameters take priority over POST
+$search = isset($_GET['search']) ? trim($_GET['search']) : (isset($_POST['search']) ? trim($_POST['search']) : '');
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
+$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
 
 // Handle clear all - reset search and filter
 if (isset($_POST['clear_all'])) {
     $search = '';
+    $farmer_id_filter = '';
     $barangay_filter = '';
 }
 $search_condition = 'WHERE f.archived = 0';
 $search_params = [];
 
-if (!empty($search)) {
+// Prioritize farmer_id for exact matching if available
+if (!empty($farmer_id_filter)) {
+    $search_condition .= " AND f.farmer_id = ?";
+    $search_params[] = $farmer_id_filter;
+} elseif (!empty($search)) {
     $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
     $search_term = "%$search%";
     $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
@@ -693,7 +744,7 @@ $total_pages = ceil($total_records / $records_per_page);
 // Get farmers data with commodity and household information from junction table
 $sql = "SELECT f.*, c.commodity_name, b.barangay_name, h.civil_status, h.spouse_name, 
                h.household_size, h.education_level, h.occupation,
-               GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info
+               GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info
         FROM farmers f 
     LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
     LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
@@ -858,6 +909,11 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                 class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
                             <i class="fas fa-plus mr-2"></i>Add New Farmer
                         </button>
+                        
+                        <button data-bs-toggle="modal" data-bs-target="#geotaggingModal"
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="fas fa-map-marker-alt mr-2"></i>Geo-tag Farmer
+                        </button>
                         </div>
                     </div>
                 </div>
@@ -901,7 +957,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                         <button type="submit" class="bg-agri-green text-white px-6 py-2 rounded-lg hover:bg-agri-dark transition-colors">
                             <i class="fas fa-search mr-2"></i>Search
                         </button>
-                        <?php if (!empty($search) || !empty($barangay_filter)): ?>
+                        <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter)): ?>
                             <button type="submit" name="clear_all" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-times mr-2"></i>Clear All
                             </button>
@@ -915,7 +971,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                 <div class="p-6 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">
                         Farmers List 
-                        <?php if (!empty($search) || !empty($barangay_filter)): ?>
+                        <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter)): ?>
                             <span class="text-sm font-normal text-gray-600">
                                 - Filtered by: 
                                 <?php if (!empty($search)): ?>
@@ -1118,6 +1174,24 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         </div>
     </div>
 
+    <!-- Photo View Modal -->
+    <div class="modal fade" id="photoViewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title text-primary"><i class="fas fa-camera me-2"></i>Farmer Photo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-0">
+                    <img id="modalPhotoImage" src="" class="img-fluid" alt="Farmer Photo" style="max-height: 70vh;">
+                    <div class="p-3 bg-light">
+                        <small class="text-muted" id="modalPhotoDate"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Archive Confirmation Modal -->
     <div class="modal fade" id="archiveConfirmModal" tabindex="-1">
         <div class="modal-dialog">
@@ -1166,6 +1240,13 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                     console.error('Error:', error);
                     alert('Error loading farmer details');
                 });
+        }
+
+        // Function to view photo in modal
+        function viewPhotoModal(photoPath, uploadDate) {
+            document.getElementById('modalPhotoImage').src = photoPath;
+            document.getElementById('modalPhotoDate').textContent = 'Uploaded: ' + new Date(uploadDate).toLocaleDateString();
+            new bootstrap.Modal(document.getElementById('photoViewModal')).show();
         }
 
         // Function to show archive confirmation
@@ -1291,4 +1372,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
     
     <!-- Include Farmer Edit Modal -->
     <?php include 'farmer_editmodal.php'; ?>
+    
+    <!-- Include Geo-tagging Modal -->
+    <?php include 'geotagging_modal.php'; ?>
 <?php include 'includes/notification_complete.php'; ?>

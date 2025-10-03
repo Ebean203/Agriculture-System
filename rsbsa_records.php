@@ -87,7 +87,8 @@ $total_pages = max(1, ceil($total_records / $records_per_page));
 // Get RSBSA registered farmers with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
-        GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+        f.land_area_hectares,
+        GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
         b.barangay_name, h.household_size,
         f.registration_date as rsbsa_registration_date
         FROM farmers f

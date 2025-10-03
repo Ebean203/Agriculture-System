@@ -45,8 +45,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     
     // Get NCFRS records for PDF export
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-                   f.contact_number, f.address_details,
-                   GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+                   f.contact_number, f.address_details, f.land_area_hectares,
+                   GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
                    b.barangay_name, f.registration_date as ncfrs_registration_date
                    FROM farmers f
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
@@ -237,7 +237,8 @@ $total_pages = ceil($total_records / $records_per_page);
 // Fetch NCFRS records with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
-        GROUP_CONCAT(DISTINCT CONCAT(c.commodity_name, ' (', fc.land_area_hectares, ' ha)') SEPARATOR ', ') as commodities_info,
+        f.land_area_hectares,
+        GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
         b.barangay_name, h.household_size,
         f.registration_date as ncfrs_registration_date
         FROM farmers f

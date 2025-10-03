@@ -162,14 +162,19 @@ if ($_SESSION['role'] !== 'admin') {
                                     </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="other_income_source" class="form-label">Other Income Source <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="other_income_source" name="other_income_source" rows="2" placeholder="e.g., fishing, vending, etc." required></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RSBSA Registration Section -->
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="other_income_source" class="form-label">Other Income Source <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="other_income_source" name="other_income_source" rows="2" placeholder="e.g., fishing, vending, etc." required></textarea>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="land_area_hectares" class="form-label">Total Land Area (Hectares)</label>
+                    <input type="number" class="form-control" id="land_area_hectares" name="land_area_hectares" step="0.01" min="0" placeholder="0.00">
+                    <small class="form-text text-muted">Total land area owned by the farmer</small>
+                </div>
+            </div>
+        </div>
+    </div>                    <!-- RSBSA Registration Section -->
                     <!-- Household Information Section -->
                     <div class="card mb-4">
                         <div class="card-header bg-light">
@@ -228,13 +233,10 @@ if ($_SESSION['role'] !== 'admin') {
                         <div class="card-body">
                             <!-- Column Headers -->
                             <div class="row mb-2 border-bottom pb-2">
-                                <div class="col-md-4">
+                                <div class="col-md-5">
                                     <strong>Commodity</strong>
                                 </div>
-                                <div class="col-md-2 text-center">
-                                    <strong>Land Area (ha)</strong>
-                                </div>
-                                <div class="col-md-2 text-center">
+                                <div class="col-md-3 text-center">
                                     <strong>Years Experience</strong>
                                 </div>
                                 <div class="col-md-2 text-center">
@@ -249,7 +251,7 @@ if ($_SESSION['role'] !== 'admin') {
                                 <!-- Primary commodity row (required) -->
                                 <div class="commodity-row mb-3 p-3 border rounded bg-light" data-commodity-index="0">
                                     <div class="row align-items-end">
-                                        <div class="col-md-4 mb-3">
+                                        <div class="col-md-5 mb-3">
                                             <select class="form-select commodity-select" name="commodities[0][commodity_id]" required>
                                                 <option value="">Select Commodity</option>
                                                 <?php foreach ($commodities as $c): ?>
@@ -257,10 +259,7 @@ if ($_SESSION['role'] !== 'admin') {
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
-                                        <div class="col-md-2 mb-3">
-                                            <input type="number" step="0.01" min="0" class="form-control text-center" name="commodities[0][land_area_hectares]" placeholder="0.00" required>
-                                        </div>
-                                        <div class="col-md-2 mb-3">
+                                        <div class="col-md-3 mb-3">
                                             <input type="number" min="0" max="100" class="form-control text-center" name="commodities[0][years_farming]" placeholder="0" required>
                                         </div>
                                         <div class="col-md-2 mb-3">
@@ -301,6 +300,8 @@ if ($_SESSION['role'] !== 'admin') {
                         </div>
                     </div>
                     
+
+
 
                     <div class="alert alert-info">
                         <small><i class="fas fa-info-circle me-1"></i>Fields marked with <span class="text-danger">*</span> are required.</small>
@@ -366,16 +367,13 @@ function addCommodityRow() {
     
     newRow.innerHTML = `
         <div class="row align-items-end">
-            <div class="col-md-4 mb-3">
+            <div class="col-md-5 mb-3">
                 <select class="form-select commodity-select" name="commodities[${commodityIndex}][commodity_id]" required>
                     <option value="">Select Commodity</option>
                     ${commodityOptions}
                 </select>
             </div>
-            <div class="col-md-2 mb-3">
-                <input type="number" step="0.01" min="0" class="form-control text-center" name="commodities[${commodityIndex}][land_area_hectares]" placeholder="0.00" required>
-            </div>
-            <div class="col-md-2 mb-3">
+            <div class="col-md-3 mb-3">
                 <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${commodityIndex}][years_farming]" placeholder="0" required>
             </div>
             <div class="col-md-2 mb-3">
@@ -522,6 +520,8 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
         submitBtn.disabled = false;
     }, 3000);
 });
+
+
 </script>
 
 <style>

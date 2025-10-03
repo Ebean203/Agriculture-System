@@ -131,7 +131,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     <i class="fas fa-plus mr-2"></i>Add Input
                                     <i class="fas fa-chevron-down ml-2 transition-transform" id="addInputArrow"></i>
                                 </button>
-                                <div id="addInputDropdown" class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
+                                <div id="addInputDropdown" class="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
                                     <button onclick="openAddNewInputTypeModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
                                         <i class="fas fa-plus-circle text-green-600 mr-2"></i>
                                         New Input Type
@@ -139,6 +139,11 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     <button onclick="openAddToExistingModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
                                         <i class="fas fa-layer-group text-blue-600 mr-2"></i>
                                         Add to Existing
+                                    </button>
+                                    <hr class="my-1 border-gray-200">
+                                    <button onclick="openAddNewCommodityModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
+                                        <i class="fas fa-seedling text-orange-600 mr-2"></i>
+                                        New Commodity
                                     </button>
                                 </div>
                             </div>
@@ -744,6 +749,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-plus-circle text-agri-green mr-2"></i>Add Stock
                 </h3>
+                <p class="text-sm text-gray-600 mt-1">Add new stock to existing inventory</p>
             </div>
             <form method="POST" action="update_inventory.php">
                 <div class="px-6 py-4">
@@ -766,6 +772,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="mb-4">
                         <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Add</label>
                         <input type="number" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="quantity" min="1" required>
+                        <p class="text-xs text-green-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            This will add to the existing stock quantity.
+                        </p>
                     </div>
                     <input type="hidden" name="action" value="add_stock">
                 </div>
@@ -782,8 +792,9 @@ while ($row = mysqli_fetch_assoc($result)) {
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                    <i class="fas fa-edit text-agri-green mr-2"></i>Update Stock
+                    <i class="fas fa-edit text-agri-green mr-2"></i>Update Stock Level
                 </h3>
+                <p class="text-sm text-gray-600 mt-1">Correct the current stock quantity (inventory adjustment only)</p>
             </div>
             <form method="POST" action="update_inventory.php">
                 <div class="px-6 py-4">
@@ -798,6 +809,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="mb-4">
                         <label for="new_quantity" class="block text-sm font-medium text-gray-700 mb-2">New Quantity</label>
                         <input type="number" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="new_quantity" id="new_quantity" min="0" required>
+                        <p class="text-xs text-blue-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            This will set the total stock to the specified quantity. For distributions, use the "Distribute" button.
+                        </p>
                     </div>
                     <input type="hidden" name="input_id" id="update_input_id">
                     <input type="hidden" name="action" value="update_stock">
@@ -1612,6 +1627,57 @@ while ($row = mysqli_fetch_assoc($result)) {
         </div>
     </div>
 
+    <!-- Add New Commodity Modal -->
+    <div id="addNewCommodityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Add New Commodity</h3>
+                <p class="text-sm text-gray-600 mt-1">Create a new agricultural commodity type</p>
+            </div>
+            <form action="add_new_input.php" method="POST" class="p-6">
+                <input type="hidden" name="action" value="new_commodity">
+                
+                <div class="mb-4">
+                    <label for="commodity_name" class="block text-sm font-medium text-gray-700 mb-2">Commodity Name</label>
+                    <input type="text" id="commodity_name" name="commodity_name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                           placeholder="e.g., Rice, Corn, Vegetables">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="commodity_category" class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="commodity_category" name="category_id" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                        <option value="">Select Category</option>
+                        <?php
+                        // Fetch commodity categories
+                        $categories_query = "SELECT category_id, category_name FROM commodity_categories ORDER BY category_name";
+                        $categories_result = mysqli_query($conn, $categories_query);
+                        if ($categories_result) {
+                            while ($category = mysqli_fetch_assoc($categories_result)) {
+                                echo "<option value='{$category['category_id']}'>{$category['category_name']}</option>";
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+                
+
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddNewCommodityModal()"
+                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors">
+                        Add Commodity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Open Add New Input Type Modal
         function openAddNewInputTypeModal() {
@@ -1633,6 +1699,16 @@ while ($row = mysqli_fetch_assoc($result)) {
             document.getElementById('addToExistingModal').classList.add('hidden');
         }
 
+        // Open Add New Commodity Modal
+        function openAddNewCommodityModal() {
+            document.getElementById('addNewCommodityModal').classList.remove('hidden');
+        }
+
+        // Close Add New Commodity Modal
+        function closeAddNewCommodityModal() {
+            document.getElementById('addNewCommodityModal').classList.add('hidden');
+        }
+
         // Toggle Add Input Dropdown
         function toggleAddInputDropdown() {
             const dropdown = document.getElementById('addInputDropdown');
@@ -1645,6 +1721,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         window.addEventListener('click', function(event) {
             const newInputModal = document.getElementById('addNewInputTypeModal');
             const existingModal = document.getElementById('addToExistingModal');
+            const commodityModal = document.getElementById('addNewCommodityModal');
             const dropdown = document.getElementById('addInputDropdown');
             
             if (event.target === newInputModal) {
@@ -1652,6 +1729,9 @@ while ($row = mysqli_fetch_assoc($result)) {
             }
             if (event.target === existingModal) {
                 closeAddToExistingModal();
+            }
+            if (event.target === commodityModal) {
+                closeAddNewCommodityModal();
             }
             
             // Close dropdown if clicking outside

@@ -11,9 +11,21 @@ if (mysqli_num_rows($table_check) == 0) {
     die("Error: yield_monitoring table does not exist. Please import the yield_monitoring.sql file first.");
 }
 
-// Get commodities for dropdown
+// Get commodity categories for filter dropdown
+$commodity_categories = [];
+$categories_query = mysqli_query($conn, "SELECT category_id, category_name FROM commodity_categories ORDER BY category_name");
+if ($categories_query) {
+    while ($row = mysqli_fetch_assoc($categories_query)) {
+        $commodity_categories[] = $row;
+    }
+}
+
+// Get commodities with their categories for dropdown
 $commodities = [];
-$commodities_query = mysqli_query($conn, "SELECT commodity_id, commodity_name FROM commodities ORDER BY commodity_name");
+$commodities_query = mysqli_query($conn, "SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name 
+                                          FROM commodities c 
+                                          LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id 
+                                          ORDER BY cc.category_name, c.commodity_name");
 if ($commodities_query) {
     while ($row = mysqli_fetch_assoc($commodities_query)) {
         $commodities[] = $row;
@@ -65,6 +77,14 @@ $success_message = $_SESSION['success_message'] ?? null;
 $error_message = $_SESSION['error_message'] ?? null;
 unset($_SESSION['success_message'], $_SESSION['error_message']);
 
+// Get filter parameters from GET
+$farmer_filter = isset($_GET['farmer']) ? trim($_GET['farmer']) : '';
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
+$farmer_search = isset($_GET['farmer_search']) ? trim($_GET['farmer_search']) : '';
+$category_filter = isset($_GET['category_filter']) ? trim($_GET['category_filter']) : '';
+$commodity_filter = isset($_GET['commodity_filter']) ? trim($_GET['commodity_filter']) : '';
+$date_filter = isset($_GET['date_filter']) ? trim($_GET['date_filter']) : '';
+
 // Fetch yield records from database
 $yield_records = [];
 $total_records = 0;
@@ -76,20 +96,122 @@ try {
         die("Error: yield_monitoring table does not exist. Please create the table first.");
     }
     
+    // Build query with filters
+    $where_clause = "WHERE 1=1";
+    $params = [];
+    $types = "";
+    
+    // Farmer ID filter (for notification redirects)
+    if (!empty($farmer_id_filter)) {
+        // Exact match by farmer ID
+        $where_clause .= " AND f.farmer_id = ?";
+        $params[] = $farmer_id_filter;
+        $types .= "s";
+    } elseif (!empty($farmer_filter)) {
+        // Search by farmer name
+        $where_clause .= " AND (
+            f.first_name LIKE ? OR 
+            f.last_name LIKE ? OR 
+            CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(
+                f.first_name, 
+                CASE 
+                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.middle_name) 
+                    ELSE '' 
+                END,
+                ' ', f.last_name,
+                CASE 
+                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.suffix) 
+                    ELSE '' 
+                END
+            ) LIKE ?
+        )";
+        $search_term = "%$farmer_filter%";
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $types .= "ssss";
+    }
+    
+    // Farmer search filter (from new form)
+    if (!empty($farmer_search)) {
+        $where_clause .= " AND (
+            f.first_name LIKE ? OR 
+            f.last_name LIKE ? OR 
+            CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(
+                f.first_name, 
+                CASE 
+                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.middle_name) 
+                    ELSE '' 
+                END,
+                ' ', f.last_name,
+                CASE 
+                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.suffix) 
+                    ELSE '' 
+                END
+            ) LIKE ?
+        )";
+        $search_term = "%$farmer_search%";
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $types .= "ssss";
+    }
+    
+    // Category filter
+    if (!empty($category_filter)) {
+        $where_clause .= " AND cc.category_id = ?";
+        $params[] = $category_filter;
+        $types .= "i";
+    }
+    
+    // Commodity filter
+    if (!empty($commodity_filter)) {
+        $where_clause .= " AND c.commodity_id = ?";
+        $params[] = $commodity_filter;
+        $types .= "i";
+    }
+    
+    // Date filter
+    if (!empty($date_filter)) {
+        $where_clause .= " AND DATE(ym.record_date) = ?";
+        $params[] = $date_filter;
+        $types .= "s";
+    }
+    
     // Fetch yield records with farmer and commodity information
-    $query = "SELECT ym.*, f.first_name, f.last_name, f.middle_name, f.contact_number, 
-                     b.barangay_name, c.commodity_name
+    $query = "SELECT ym.*, f.first_name, f.last_name, f.middle_name, f.suffix, f.contact_number, 
+                     b.barangay_name, c.commodity_name, cc.category_id, cc.category_name
               FROM yield_monitoring ym
               LEFT JOIN farmers f ON ym.farmer_id = f.farmer_id
               LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
               LEFT JOIN commodities c ON ym.commodity_id = c.commodity_id
+              LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id
+              $where_clause
               ORDER BY ym.record_date DESC";
     
-    $result = mysqli_query($conn, $query);
-    if ($result) {
+    if (!empty($params)) {
+        $stmt = mysqli_prepare($conn, $query);
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
         $yield_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
-        $total_records = count($yield_records);
+        mysqli_stmt_close($stmt);
+    } else {
+        $result = mysqli_query($conn, $query);
+        if ($result) {
+            $yield_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        }
     }
+    
+    $total_records = count($yield_records);
 } catch (Exception $e) {
     $errors[] = "Error fetching yield records: " . $e->getMessage();
 }
@@ -131,6 +253,17 @@ include 'includes/layout_start.php';
                     Yield Monitoring
                 </h1>
                 <p class="text-gray-600 mt-2">Track and monitor agricultural yield from distributed inputs</p>
+                <?php if (!empty($farmer_filter) || !empty($farmer_id_filter)): ?>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            <i class="fas fa-filter mr-2"></i>
+                            Filtered by: <?php echo htmlspecialchars($farmer_filter); ?>
+                        </span>
+                        <a href="yield_monitoring.php" class="text-sm text-gray-600 hover:text-agri-green">
+                            <i class="fas fa-times-circle mr-1"></i>Clear Filter
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
                 <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="openModal('addVisitModal')">
@@ -155,50 +288,71 @@ include 'includes/layout_start.php';
             </div>
         </div>
 
-        <!-- Fry/Fingerlings -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-cyan-500">
+        <!-- Agronomic Crops -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
             <div class="flex items-center">
-                <div class="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mr-4">
-                    <i class="fas fa-fish text-cyan-600 text-xl"></i>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-wheat-awn text-green-600 text-xl"></i>
                 </div>
                 <div>
                     <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        $fry_count = 0;
+                        // Count yield records for Agronomic Crops (category_id = 1)
+                        $agronomic_count = 0;
                         foreach ($yield_records as $record) {
-                            if (stripos($record['commodity_name'] ?? '', 'fry') !== false || 
-                                stripos($record['commodity_name'] ?? '', 'fingerling') !== false) {
-                                $fry_count++;
+                            if (isset($record['category_id']) && $record['category_id'] == 1) {
+                                $agronomic_count++;
                             }
                         }
-                        echo $fry_count;
+                        echo $agronomic_count;
                     ?></h3>
-                    <p class="text-gray-600">Fry/Fingerlings</p>
+                    <p class="text-gray-600">Agronomic Crops</p>
                 </div>
             </div>
         </div>
 
-    <!-- Poultry & Livestock -->
-    <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
-        <div class="flex items-center">
-            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-                <i class="fas fa-paw text-orange-600 text-xl"></i>
-            </div>
-            <div>
+        <!-- High Value Crops -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-apple-alt text-purple-600 text-xl"></i>
+                </div>
+                <div>
                     <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        $livestock_count = 0;
+                        // Count yield records for High Value Crops (category_id = 2)
+                        $hvc_count = 0;
                         foreach ($yield_records as $record) {
-                            if (stripos($record['commodity_name'] ?? '', 'chicken') !== false || 
-                                stripos($record['commodity_name'] ?? '', 'livestock') !== false ||
-                                stripos($record['commodity_name'] ?? '', 'poultry') !== false) {
-                                $livestock_count++;
+                            if (isset($record['category_id']) && $record['category_id'] == 2) {
+                                $hvc_count++;
                             }
                         }
-                        echo $livestock_count;
+                        echo $hvc_count;
                     ?></h3>
-                <p class="text-gray-600">Poultry & Livestock</p>
+                    <p class="text-gray-600">High Value Crops</p>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- Livestock & Poultry -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                    <i class="fas fa-paw text-orange-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900"><?php 
+                        // Count yield records for Livestock (category_id = 3) and Poultry (category_id = 4)
+                        $animal_count = 0;
+                        foreach ($yield_records as $record) {
+                            if (isset($record['category_id']) && ($record['category_id'] == 3 || $record['category_id'] == 4)) {
+                                $animal_count++;
+                            }
+                        }
+                        echo $animal_count;
+                    ?></h3>
+                    <p class="text-gray-600">Livestock & Poultry</p>
+                </div>
+            </div>
+        </div>
 
         <!-- Average Yield -->
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
@@ -222,51 +376,83 @@ include 'includes/layout_start.php';
         </div>
     </div>
 
+
+
     <!-- Filter Tabs -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <div class="flex flex-wrap gap-3 mb-6">
-            <button class="filter-tab active bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" data-filter="all">
-                <i class="fas fa-list mr-2"></i>All Visits
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="agronomic">
+                <i class="fas fa-wheat-awn mr-2"></i>Agronomic Crops
             </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="seeds">
-                <i class="fas fa-seedling mr-2"></i>Seeds
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="high-value">
+                <i class="fas fa-apple-alt mr-2"></i>High Value Crops
             </button>
             <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="livestock">
                 <i class="fas fa-horse mr-2"></i>Livestock
             </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="fry">
-                <i class="fas fa-fish mr-2"></i>Fry/Fingerlings
-            </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="chicken">
-                <i class="fas fa-egg mr-2"></i>Chicken
-            </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="tools">
-                <i class="fas fa-wrench mr-2"></i>Agricultural Tools
+            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="poultry">
+                <i class="fas fa-egg mr-2"></i>Poultry
             </button>
         </div>
     </div>
 
-    <!-- Search and Date Range Filters -->
+    <!-- Search and Filter Controls -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="flex flex-col sm:flex-row gap-6">
-            <div class="flex-1">
-                <label class="block text-sm font-semibold text-gray-800 mb-2">Search Farmer</label>
-                <div class="relative">
-                    <input type="text" placeholder="Search by farmer name..." class="search-input w-full px-4 py-2 pl-4 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+        <form method="GET" action="yield_monitoring.php" class="flex flex-col gap-4">
+            <input type="hidden" name="category_filter" id="hidden_category_filter" value="<?php echo htmlspecialchars($_GET['category_filter'] ?? ''); ?>">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Commodity</label>
+                    <select name="commodity_filter" id="commodity_filter" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <option value="">All Commodities</option>
+                        <?php foreach ($commodities as $commodity): ?>
+                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>" 
+                                    data-category="<?php echo htmlspecialchars($commodity['category_id']); ?>"
+                                    <?php echo (isset($_GET['commodity_filter']) && $_GET['commodity_filter'] == $commodity['commodity_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($commodity['commodity_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Search Farmer</label>
+                    <div class="relative">
+                        <input type="text" name="farmer_search" placeholder="Search by farmer name..." 
+                               value="<?php echo htmlspecialchars($_GET['farmer_search'] ?? ''); ?>"
+                               class="search-input w-full px-4 py-2 pl-10 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 mb-2">Date Range</label>
+                    <select name="date_filter" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <option value="">All Dates</option>
+                        <option value="7" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '7') ? 'selected' : ''; ?>>Last 7 days</option>
+                        <option value="30" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '30') ? 'selected' : ''; ?>>Last 30 days</option>
+                        <option value="90" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '90') ? 'selected' : ''; ?>>Last 3 months</option>
+                    </select>
                 </div>
             </div>
-            <div class="sm:w-48">
-                <label class="block text-sm font-semibold text-gray-800 mb-2">Date Range</label>
-                <select class="date-select w-full px-4 py-2 bg-white border-2 border-gray-800 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                    <option>All Dates</option>
-                    <option>Today</option>
-                    <option>This Week</option>
-                    <option>This Month</option>
-                    <option>This Year</option>
-                </select>
+            <div class="flex gap-3">
+                <button type="submit" class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
+                    <i class="fas fa-filter mr-2"></i>Apply Filters
+                </button>
+                <?php 
+                // Check if any filters are active
+                $hasActiveFilters = !empty($_GET['category_filter']) || 
+                                  !empty($_GET['commodity_filter']) || 
+                                  !empty($_GET['farmer_search']) || 
+                                  !empty($_GET['date_filter']) ||
+                                  !empty($_GET['farmer']) ||
+                                  !empty($_GET['farmer_id']);
+                
+                if ($hasActiveFilters): ?>
+                    <a href="yield_monitoring.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
+                        <i class="fas fa-times mr-2"></i>Clear Filters
+                    </a>
+                <?php endif; ?>
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Data Table Section -->
@@ -390,6 +576,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize filter tabs
     initializeFilterTabs();
     
+    // Set active tab based on current category filter
+    setActiveTab();
+    
+    // Initialize commodity filtering based on current category
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryFilter = urlParams.get('category_filter');
+    if (categoryFilter) {
+        filterCommodityDropdown(categoryFilter);
+    }
+    
     // Auto-hide success messages after 1.5 seconds
     const successMessages = document.querySelectorAll('.bg-green-100');
     successMessages.forEach(message => {
@@ -485,6 +681,77 @@ function searchFarmers(query) {
         });
 }
 
+// Commodity filtering function for modal
+function filterCommodities() {
+    const categoryFilter = document.getElementById('commodity_category_filter');
+    const commoditySelect = document.getElementById('commodity_id');
+    const selectedCategory = categoryFilter.value;
+    
+    // Get all commodity options
+    const allOptions = commoditySelect.querySelectorAll('option');
+    
+    // Reset commodity selection when category changes
+    commoditySelect.value = '';
+    
+    // Show/hide options based on selected category
+    allOptions.forEach(option => {
+        if (option.value === '') {
+            // Always show the "Select Commodity" option
+            option.style.display = 'block';
+        } else {
+            const optionCategory = option.getAttribute('data-category');
+            if (selectedCategory === '' || optionCategory === selectedCategory) {
+                option.style.display = 'block';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Initialize commodity filter when modal opens
+document.getElementById('addVisitModal').addEventListener('shown.bs.modal', function() {
+    // Set default filter to Agronomic Crops and apply filter
+    const categoryFilter = document.getElementById('commodity_category_filter');
+    
+    // Find Agronomic Crops option by text content
+    const options = categoryFilter.querySelectorAll('option');
+    for (let option of options) {
+        if (option.textContent.includes('Agronomic Crops')) {
+            categoryFilter.value = option.value;
+            filterCommodities();
+            break;
+        }
+    }
+});
+
+// Reset form and filters when modal is closed
+document.getElementById('addVisitModal').addEventListener('hidden.bs.modal', function() {
+    // Reset form
+    document.getElementById('yieldVisitForm').reset();
+    
+    // Reset category filter to Agronomic Crops default
+    const categoryFilter = document.getElementById('commodity_category_filter');
+    const options = categoryFilter.querySelectorAll('option');
+    for (let option of options) {
+        if (option.textContent.includes('Agronomic Crops')) {
+            categoryFilter.value = option.value;
+            break;
+        }
+    }
+    
+    // Clear farmer suggestions
+    const suggestions = document.getElementById('farmer_suggestions');
+    if (suggestions) {
+        suggestions.classList.add('hidden');
+    }
+    
+    // Remove validation classes
+    document.querySelectorAll('.is-invalid').forEach(field => {
+        field.classList.remove('is-invalid');
+    });
+});
+
 // Form validation and submission
 document.getElementById('yieldVisitForm').addEventListener('submit', function(e) {
     // Basic validation
@@ -557,32 +824,56 @@ function initializeFilterTabs() {
 function handleFilterChange(filterValue) {
     console.log('Filter changed to:', filterValue);
     
-    // Update summary cards based on filter
-    updateSummaryCards(filterValue);
+    // Map filter values to category IDs
+    const categoryMap = {
+        'agronomic': '1',
+        'high-value': '2', 
+        'livestock': '3',
+        'poultry': '4'
+    };
     
-    // Filter data table (when implemented)
-    filterDataTable(filterValue);
+    const categoryId = categoryMap[filterValue];
     
-    // You can add more filter logic here
-    switch(filterValue) {
-        case 'all':
-            console.log('Showing all visits');
-            break;
-        case 'seeds':
-            console.log('Filtering by seeds');
-            break;
-        case 'livestock':
-            console.log('Filtering by livestock');
-            break;
-        case 'fry':
-            console.log('Filtering by fry/fingerlings');
-            break;
-        case 'chicken':
-            console.log('Filtering by chicken');
-            break;
-        case 'tools':
-            console.log('Filtering by agricultural tools');
-            break;
+    // Update hidden category filter field
+    const hiddenField = document.getElementById('hidden_category_filter');
+    if (hiddenField) {
+        hiddenField.value = categoryId;
+    }
+    
+    // Filter commodity dropdown based on selected category
+    filterCommodityDropdown(categoryId);
+}
+
+function setActiveTab() {
+    // Get current category filter from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryFilter = urlParams.get('category_filter');
+    
+    // Map category IDs to filter values
+    const filterMap = {
+        '1': 'agronomic',
+        '2': 'high-value',
+        '3': 'livestock',
+        '4': 'poultry'
+    };
+    
+    const filterValue = filterMap[categoryFilter];
+    if (filterValue) {
+        // Find and activate the corresponding tab
+        const filterTabs = document.querySelectorAll('.filter-tab');
+        filterTabs.forEach(tab => {
+            if (tab.getAttribute('data-filter') === filterValue) {
+                // Remove active class from all tabs
+                filterTabs.forEach(t => {
+                    t.classList.remove('active', 'bg-agri-green', 'text-white');
+                    t.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+                });
+                
+                // Add active class to current tab
+                tab.classList.add('active', 'bg-agri-green', 'text-white');
+                tab.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            }
+        });
     }
 }
 
@@ -595,12 +886,65 @@ function updateSummaryCards(filterValue) {
     // Example: fetch filtered data and update the card values
 }
 
+function filterCommodityDropdown(categoryId) {
+    const commoditySelect = document.getElementById('commodity_filter');
+    const allOptions = commoditySelect.querySelectorAll('option');
+    
+    // Reset commodity selection when category changes
+    commoditySelect.value = '';
+    
+    // Show/hide options based on selected category
+    allOptions.forEach(option => {
+        if (option.value === '') {
+            // Always show the "All Commodities" option
+            option.style.display = 'block';
+        } else {
+            const optionCategory = option.getAttribute('data-category');
+            if (!categoryId || optionCategory === categoryId) {
+                option.style.display = 'block';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+}
+
 function filterDataTable(filterValue) {
-    // This function will filter the data table based on the selected filter
     console.log('Filtering data table for:', filterValue);
     
-    // You can implement actual table filtering here
-    // Example: show/hide table rows based on filter criteria
+    // Get all table rows (assuming there will be a data table with commodity information)
+    const tableRows = document.querySelectorAll('tbody tr');
+    
+    tableRows.forEach(row => {
+        let showRow = false;
+        
+        // Get category ID from the row (adjust selector as needed when table is implemented)
+        const categoryCell = row.querySelector('td[data-category-id]');
+        const categoryId = categoryCell ? categoryCell.textContent.trim() : '';
+        
+        if (filterValue === 'agronomic') {
+            showRow = (categoryId === '1'); // Agronomic Crops
+        } else if (filterValue === 'high-value') {
+            showRow = (categoryId === '2'); // High Value Crops
+        } else if (filterValue === 'livestock') {
+            showRow = (categoryId === '3'); // Livestock
+        } else if (filterValue === 'poultry') {
+            showRow = (categoryId === '4'); // Poultry
+        } else {
+            // Default: show all rows when no specific filter is active
+            showRow = true;
+        }
+        
+        // Show/hide row
+        row.style.display = showRow ? '' : 'none';
+    });
+    
+    // Update record count if there's a counter element
+    const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])');
+    const recordCounter = document.querySelector('.record-count');
+    if (recordCounter) {
+        recordCounter.textContent = `Showing ${visibleRows.length} records`;
+    }
 }
 </script>
 
@@ -716,3 +1060,4 @@ label {
 }
 </style>
 
+<?php include 'includes/notification_complete.php'; ?>
