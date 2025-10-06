@@ -635,3 +635,111 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                 </div>
             </div>
 <?php include 'includes/notification_complete.php'; ?>
+<script>
+// Export the current Distribution Records view to a PDF-friendly HTML (opens in new tab)
+function exportToPDF() {
+    try {
+        // Read current search and filter values
+        const searchVal = document.getElementById('distribution_search')?.value || '';
+        const barangayVal = document.querySelector('select[name="barangay"]')?.value || '';
+        const inputIdVal = document.querySelector('select[name="input_id"]')?.value || '';
+
+        // Create a temporary form to POST values to the export handler
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'input_distribution_records.php?action=export_pdf';
+        form.target = '_blank'; // open in new tab for download/print
+
+        const addField = (name, value) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        };
+
+        addField('search', searchVal);
+        addField('barangay', barangayVal);
+        addField('input_id', inputIdVal);
+
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+    } catch (e) {
+        console.error('Export to PDF failed:', e);
+        alert('Sorry, something went wrong while generating the export.');
+    }
+}
+</script>
+<script>
+// --- Auto-suggest search for Distribution Records (mirrors farmers.php pattern) ---
+function searchDistributionAutoSuggest(query) {
+    const suggestions = document.getElementById('distribution_suggestions');
+    if (!suggestions) return;
+
+    if (!query || query.length < 1) {
+        suggestions.innerHTML = '';
+        suggestions.classList.add('hidden');
+        return;
+    }
+
+    // Loading indicator
+    suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Searching...</div>';
+    suggestions.classList.remove('hidden');
+
+    // Query common endpoint used across the app
+    fetch('get_farmers.php?action=search&include_archived=false&query=' + encodeURIComponent(query))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.farmers) && data.farmers.length > 0) {
+                let html = '';
+                data.farmers.forEach(farmer => {
+                    const safeName = (farmer.full_name || '').replace(/'/g, "\\'");
+                    html += `
+                        <div class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0" 
+                             onclick="selectDistributionSuggestion('${farmer.farmer_id}', '${safeName}')">
+                            <div class="font-medium text-gray-900">${farmer.full_name}</div>
+                            <div class="text-sm text-gray-600">ID: ${farmer.farmer_id} | Contact: ${farmer.contact_number || 'N/A'}</div>
+                            <div class="text-xs text-gray-500">${farmer.barangay_name || ''}</div>
+                        </div>
+                    `;
+                });
+                suggestions.innerHTML = html;
+                suggestions.classList.remove('hidden');
+            } else {
+                suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
+                suggestions.classList.remove('hidden');
+            }
+        })
+        .catch(err => {
+            console.error('Search error:', err);
+            suggestions.innerHTML = '<div class="px-3 py-2 text-red-500">Error loading suggestions</div>';
+            suggestions.classList.remove('hidden');
+        });
+}
+
+function selectDistributionSuggestion(farmerId, farmerName) {
+    const input = document.getElementById('distribution_search');
+    const suggestions = document.getElementById('distribution_suggestions');
+    if (input) input.value = farmerName || '';
+    if (suggestions) suggestions.classList.add('hidden');
+
+    // Submit the surrounding form to apply filter
+    const form = input ? input.closest('form') : null;
+    if (form) form.submit();
+}
+
+function showDistributionSuggestions() {
+    const input = document.getElementById('distribution_search');
+    if (input && input.value.length >= 1) {
+        searchDistributionAutoSuggest(input.value);
+    }
+}
+
+function hideDistributionSuggestions() {
+    const suggestions = document.getElementById('distribution_suggestions');
+    if (suggestions) {
+        setTimeout(() => suggestions.classList.add('hidden'), 200);
+    }
+}
+</script>
