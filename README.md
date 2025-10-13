@@ -1,280 +1,223 @@
-# 🌾 Lagonglong FARMS - Agriculture Management System
+# 🌾 Lagonglong FARMS (Agriculture-System)
 
-A comprehensive web-based system designed for the Municipal Agriculture Office (MAO) to manage farmer registrations, track agricultural inputs, monitor yields, and maintain comprehensive records for various agricultural programs in Lagonglong Municipality.
+A PHP/MySQL web application for Municipal Agriculture Office operations: farmer registry, yield monitoring, input inventory and distribution, maritime records, and rich reporting with saved HTML exports.
 
-## 🎯 System Overview
+## Overview
 
-**Lagonglong FARMS** is a full-featured agriculture management platform that streamlines the entire agricultural administration process - from farmer registration to yield monitoring, inventory management, and comprehensive reporting. The system serves as a centralized hub for MAO operations, supporting multiple government programs including RSBSA, NCFRS, and FishR.
+This repository contains the Lagonglong FARMS system used by the MAO to manage end‑to‑end agricultural operations. Core pages live at the project root (PHP) and shared UI/logic is under `includes/`. Assets (CSS/JS/fonts) are under `assets/`. Generated reports are saved to `reports/`, and uploaded farmer photos to `uploads/farmer_photos/`.
 
-## ✨ Core Features & Modules
+Key entrypoints:
+- `login.php` — authentication for MAO staff with roles
+- `index.php` — main dashboard (stats, charts, quick actions, activities)
+- `farmers.php` — farmers registry and management
+- `yield_monitoring.php` — record and analyze yields
+- `mao_inventory.php` — manage inputs and inventory
+- `distribute_input.php` / `input_distribution_records.php` — distribution workflow and history
+- `reports.php` — generate and auto-save report HTML files; view recent via `get_saved_reports.php`
+- `boat_records.php`, `ncfrs_records.php`, `fishr_records.php` — maritime/fisherfolk modules
 
-### 🏠 **Dashboard & Analytics**
-- **Real-time Statistics**: Live overview of farmers, commodities, inventory levels, and recent activities
-- **Quick Action Cards**: Direct access to register farmers, record yields, manage inventory, and generate reports
-- **Activity Feed**: Recent system activities and updates for transparency
-- **Visual Analytics Dashboard**: Interactive charts and graphs for data insights
-- **Performance Metrics**: KPIs for agricultural program monitoring
+Helper endpoints/components:
+- `get_report_data.php` — JSON data for charts (yield, activities, distribution, etc.)
+- `get_barangays.php`, `get_farmers.php`, `search_farmers.php` — data/ajax helpers
+- `includes/layout_start.php` — authenticated layout shell (sidebar + topbar)
+- `includes/sidebar.php` / `nav.php` — navigation components
+- `includes/activity_logger.php` — audit logging helper
+- `includes/assets.php` — asset loader (offline/CDN) + Chart.js helper
 
-### 👨‍🌾 **Farmer Management System**
-- **Comprehensive Registration**: Complete farmer profiles with personal, household, and agricultural information
-- **Multi-Program Support**: 
-  - **RSBSA** (Registry System for Basic Sectors in Agriculture)
-  - **NCFRS** (National Convergence for Fisheries Registration System)
-  - **FishR** (Fisherfolk Registration System)
-- **Barangay Integration**: Location-based farmer organization and filtering
-- **Archive System**: Maintain historical records without data loss
-- **Photo Management**: Upload and manage farmer photos with geo-tagging capabilities
-- **Search & Filter**: Advanced search functionality with real-time suggestions
-- **Duplicate Prevention**: Automatic validation to prevent duplicate registrations
+## Tech stack
 
-### 📊 **Yield Monitoring & Recording**
-- **Real-time Yield Tracking**: Record crop yields with detailed farm visit information
-- **Land Parcel Integration**: Link yields to specific land parcels and areas
-- **Commodity Classification**: Categorized crop tracking (Rice, Corn, Vegetables, Fruits, etc.)
-- **Quality Assessment**: Grade crops and track growth stages
-- **Condition Monitoring**: Record field conditions, weather, and recommendations
-- **Historical Data**: Maintain complete yield history for trend analysis
-- **Visit Scheduling**: Track and schedule follow-up farm visits
+- PHP 7.4+ (mysqli) with sessions
+- MySQL/MariaDB
+- Bootstrap 5 + Tailwind (via script) + Font Awesome
+- jQuery and Chart.js (via `includeChartAssets()`)
 
-### 🚢 **Maritime & Fisheries Management**
-- **Boat Registration**: Comprehensive fishing vessel database
-- **Vessel Specifications**: Track boat types, sizes, registration numbers, and ownership
-- **NCFRS Integration**: Complete fisherfolk registration system
-- **FishR Records**: Detailed fisherfolk profiles and activities
-- **Maritime Equipment**: Track fishing gear and equipment distribution
+Assets are loaded locally by default (`includes/assets.php` sets `$offline_mode = true`). Switch to CDN by setting `$offline_mode = false`.
 
-### 📦 **Inventory & Distribution System**
-- **Input Management**: Complete tracking of seeds, fertilizers, pesticides, and equipment
-- **Real-time Stock Levels**: Live inventory monitoring with low-stock alerts
-- **Distribution Logging**: Record and track input distribution to farmers
-- **Visitation System**: Automated follow-up scheduling for distributed inputs
-- **Category Management**: Organized input categories for efficient management
-- **Supplier Tracking**: Monitor input sources and suppliers
-- **Cost Tracking**: Financial monitoring of inventory investments
+## Setup (Windows + XAMPP)
 
-### 📈 **Reports & Analytics Engine**
-- **Comprehensive Reports**: 
-  - Farmer Registration Analytics
-  - Commodity Production Reports
-  - Yield Monitoring Summaries
-  - Input Distribution Analysis
-  - Inventory Status Reports
-  - Barangay Analytics
-- **Custom Date Ranges**: Flexible reporting periods
-- **PDF Export**: Professional report generation with MAO branding
-- **Automated Saving**: All reports automatically saved to database
-- **Visual Charts**: Data visualization with Chart.js integration
-- **Filtering Options**: Filter by barangay, commodity, date ranges, and more
+Prerequisites:
+- XAMPP with Apache and MySQL/MariaDB
+- PHP 7.4+ (bundled with XAMPP)
 
-### 🏛️ **Administrative Features**
-- **Staff Management**: MAO personnel accounts with role-based access
-- **Activity Logging**: Comprehensive audit trail of all system actions
-- **Session Management**: Secure authentication and session handling
-- **Settings Configuration**: System customization and maintenance options
-- **Database Management**: Built-in tools for data maintenance
-- **Backup Systems**: Data protection and recovery capabilities
+Steps:
+1) Place this folder under `C:\xampp\htdocs\Agriculture-System` (or clone to that path)
+2) Configure database connection in `conn.php`:
+   - Default values:
+     - host: `localhost`
+     - user: `root`
+     - pass: `` (empty)
+     - db: `agriculture-system`
+   - Adjust to match your local DB and credentials.
+3) Create/import the database schema for `agriculture-system`
+   - Ensure required tables exist: `farmers`, `barangays`, `yield_monitoring`, `mao_inventory`, `mao_staff`, `roles`, `activity_logs`, `commodities`, any maritime tables you use, and `generated_reports` (auto-created if missing by `reports.php`).
+4) Start Apache and MySQL in XAMPP Control Panel
+5) Visit `http://localhost/Agriculture-System/login.php` and sign in
 
-### 🔧 **Advanced Technical Features**
-- **Auto-Suggestion System**: Smart search with type-ahead functionality
-- **Real-time Validation**: Instant form validation and error handling
-- **AJAX Integration**: Smooth user experience without page reloads
-- **Responsive Design**: Mobile-friendly interface for field use
-- **File Upload Support**: Document attachments and proof handling
-- **Transaction Safety**: Database transactions for data integrity
-- **Error Handling**: Robust error management and user feedback
+Directories that need write access by PHP:
+- `reports/` — report HTML is saved here automatically
+- `uploads/farmer_photos/` — uploaded images
 
-## 🛠️ Technical Specifications
+## Authentication & Sessions
 
-### **Backend Technology**
-- **PHP 7.4+**: Server-side scripting and business logic
-- **MySQL/MariaDB**: Relational database management
-- **Session Management**: Secure user authentication
-- **File Handling**: Image and document upload capabilities
+- `login.php` verifies credentials from `mao_staff` joined with `roles` and uses `password_verify()`
+- `check_session.php` protects pages; inactive sessions expire after 30 minutes
+- User info available via `$_SESSION` (`user_id`, `username`, `role`, `full_name`)
 
-### **Frontend Technology**
-- **Bootstrap 5**: Responsive CSS framework
-- **JavaScript/jQuery**: Interactive user interface
-- **Chart.js**: Data visualization and analytics
-- **FontAwesome**: Icon library for enhanced UX
-- **AJAX**: Asynchronous data processing
+## Dashboard & Analytics
 
-### **Database Schema**
-The system uses a comprehensive database structure with interconnected tables:
+- `index.php` shows totals for farmers, RSBSA/NCFRS/Fisherfolk, boats, commodities, inventory, recent yields, and an activity list
+- Charts fetch JSON from `get_report_data.php`, e.g. `type=yield_per_barangay`
+- A modern layout is composed by `includes/layout_start.php` + `includes/sidebar.php` + `nav.php`
 
-#### **Core Tables**
-- `farmers` - Main farmer registry with personal and agricultural data
-- `land_parcels` - Land ownership and parcel information
-- `yield_monitoring` - Crop yield tracking and monitoring data
-- `household_info` - Household demographics and socioeconomic data
+## Reports
 
-#### **Registration Systems**
-- `rsbsa_registered_farmers` - RSBSA program participants
-- `ncfrs_registered_farmers` - NCFRS maritime program participants
-- `fisherfolk_registered_farmers` - FishR program participants
-- `boats` - Fishing vessel registration and specifications
+- Generate in `reports.php` with date range and type; output is HTML styled for printing
+- Every generated report is saved to `reports/` and recorded in `generated_reports`
+- Recent/saved reports are listed via `get_saved_reports.php`
 
-#### **Inventory & Distribution**
-- `input_categories` - Types of agricultural inputs available
-- `mao_inventory` - Current stock levels and inventory tracking
-- `mao_distribution_log` - Input distribution history and records
+## Inventory & Distribution
 
-#### **System Management**
-- `mao_staff` - System users and staff accounts
-- `activity_logs` - Comprehensive audit trail
-- `barangays` - Geographic location references
-- `commodities` - Agricultural product classifications
-- `farmer_photos` - Photo storage with geo-tagging data
+- `mao_inventory.php` manages stock; totals are surfaced on dashboard
+- `distribute_input.php` records distributions; history in `input_distribution_records.php`
+- Distribution and yield data are available to charts via `get_report_data.php`
 
-## 🚀 Installation & Setup
+## Farmers & Maritime
 
-### **Prerequisites**
-- XAMPP/WAMP/LAMP stack
-- PHP 7.4 or higher
-- MySQL 5.7 or MariaDB 10.3+
-- Web browser (Chrome, Firefox, Safari, Edge)
+- `farmers.php` handles registration and management; photo uploads go to `uploads/farmer_photos/`
+- `boat_records.php`, `ncfrs_records.php`, `fishr_records.php` cover maritime data
 
-### **Installation Steps**
+## Activity Logging
 
-1. **Clone/Download the System**
-   ```bash
-   git clone [repository-url]
-   cd Agriculture-System-Clone
-   ```
+- Use `includes/activity_logger.php::logActivity($conn, $action, $action_type, $details)`
+- Activities appear on dashboard and `all_activities.php`
 
-2. **Database Setup**
-   - Import the SQL database file into MySQL
-   - Update connection settings in `conn.php`:
-   ```php
-   $host = "localhost";
-   $user = "root";
-   $pass = "";
-   $db = "agriculture-system";
-   ```
+## Assets
 
-3. **File Permissions**
-   - Ensure write permissions for `/uploads` and `/reports` directories
-   - Set proper permissions for photo storage
+- `includes/assets.php` loads Bootstrap, Tailwind (script), jQuery, FontAwesome, and optional Chart.js via `includeChartAssets()`
+- Set `$offline_mode` to false to use CDN assets
 
-4. **Access the System**
-   - Navigate to `http://localhost/Agriculture-System-Clone`
-   - Login with administrator credentials
+## Security notes
 
-## 📱 System Navigation & Usage
+- Sessions are enforced on all main pages (`includes/layout_start.php` includes `check_session.php`)
+- Passwords should be hashed when inserted (login uses `password_verify()`)
+- Prefer using prepared statements (most pages use mysqli prepared statements for mutations)
+- Limit upload types/size for `uploads/farmer_photos/`
 
-### **Main Dashboard** (`index.php`)
-Central hub showing real-time statistics, quick actions, and recent activities
+Tip: Do not commit real DB credentials. For production, create a least‑privileged DB user for the app and use a strong password.
 
-### **Farmer Management** (`farmers.php`)
-- Register new farmers with comprehensive forms
-- View, edit, and manage existing farmer records
-- Archive/restore farmer accounts
-- Upload and manage farmer photos with geo-tagging
+## Operations & Endpoint Catalog
 
-### **Yield Monitoring** (`yield_monitoring.php`)
-- Record crop yields with detailed information
-- Track multiple commodities and categories
-- Monitor farming conditions and recommendations
+This section enumerates the system’s major operations, their purpose, main scripts, and side‑effects (DB changes, file writes, logs, sessions, JSON responses).
 
-### **Inventory Management** (`mao_inventory.php`)
-- Monitor stock levels of agricultural inputs
-- Record new inventory additions
-- Track distribution to farmers
+### 1. Authentication & Sessions
+- Login (`login.php`): Verifies username/password (table: `mao_staff` + `roles`). On success sets `$_SESSION[user_id|username|role|full_name]` and logs activity (`activity_logs`).
+- Session Guard (`check_session.php`): Redirects unauthenticated users to `login.php`; expires sessions after 30 minutes of inactivity.
+- Logout (`logout.php`): Destroys session (not shown above but expected standard behavior) and may log an action.
 
-### **Reports & Analytics** (`reports.php`, `analytics_dashboard.php`)
-- Generate comprehensive reports
-- View visual analytics and charts
-- Export reports as PDF documents
+### 2. Dashboard & Analytics
+- Dashboard (`index.php`): Queries counts (farmers, program registrations, commodities, inventory sum, recent yields) and loads recent 10 activities.
+- Chart Data (`get_report_data.php`): Returns JSON for chart types:
+   - `yield_per_barangay`, `yield`, `activities`, `input_distribution`, `inventory`, `boat`, `farmer` (aggregations over related tables).
+- Recent Activities Widget (`includes/recent_activities.php`): Fetches last 5 entries with staff/role join.
 
-### **Maritime Records** (`boat_records.php`, `ncfrs_records.php`, `fishr_records.php`)
-- Manage fishing vessel registrations
-- Track fisherfolk and maritime activities
-- Maintain NCFRS and FishR program records
+### 3. Farmer Registry
+- Core Page (`farmers.php`): CRUD-style listing & forms (not fully listed here, inferred from usage in other scripts).
+- Photo Upload (`upload_farmer_photo.php`): Validates farmer existence, file type (JPEG/PNG), size (<5MB), stores in `uploads/farmer_photos/`, inserts record into `farmer_photos`, logs activity, returns JSON.
+- PDF/HTML Export (`pdf_export.php?action=export_pdf`): Generates styled HTML “export” for farmers based on filters (program flags, name/contact search, barangay). File is streamed (HTML attachment) not persisted in `reports/` by this script.
 
-## 🔐 Security Features
+### 4. Programs & Maritime Modules
+- `rsbsa_records.php`, `ncfrs_records.php`, `fishr_records.php`, `boat_records.php`: Present specialized filtered views (inferred) for each program / boat registry. Boat and program flags are stored on `farmers` table and/or related program-specific tables.
 
-- **Session Management**: Secure login and session handling
-- **SQL Injection Protection**: Prepared statements throughout
-- **File Upload Validation**: Secure file handling and validation
-- **Access Control**: Role-based permissions for different user types
-- **Activity Logging**: Complete audit trail of all actions
-- **Data Validation**: Client-side and server-side validation
+### 5. Inventory Management
+- Inventory Page (`mao_inventory.php`): Displays current stock (joined across `input_categories` + `mao_inventory`).
+- Add Stock / Initialize (`update_inventory.php` with `action=add_stock`): Increases `quantity_on_hand` or inserts new inventory row. Logs activity with action_type `input`.
+- Adjust Stock (`update_inventory.php` with `action=update_stock`): Sets `quantity_on_hand` to exact value (correction). Logs change with before/after quantities.
+- Input Visitation Requirement Check (`get_input_visitation_status.php?input_id=...`): Returns JSON `{input_name, requires_visitation}` from `input_categories`.
 
-## 📊 Key Performance Indicators
+### 6. Distribution & Visitation Scheduling
+- Distribute Input (`distribute_input.php`): Validates form fields; enforces positive quantity; requires visitation date for all distributions (logic forces `requires_visitation=1`). Transaction steps:
+   1. Insert into `mao_distribution_log` (fields: farmer_id, input_id, quantity_distributed, date_given, visitation_date)
+   2. Decrement `mao_inventory.quantity_on_hand`
+   3. Log activity (action_type `input`)
+   4. Commit or rollback on failures
+   Sets session success/error message for redirect back to `mao_inventory.php`.
+- Distribution Records (`input_distribution_records.php`):
+   - Paginated listing with multi-field search (farmer name variations, contact, barangay, input). Exact farmer ID prioritization when provided.
+   - PDF/HTML Export (`?action=export_pdf`): Streams styled HTML table of records based on filters.
+   - Admin access enforced (`role=admin`).
 
-The system tracks and displays:
-- Total registered farmers across all programs
-- Active commodity types and production levels
-- Inventory levels and distribution rates
-- Yield trends and agricultural productivity
-- Program participation rates (RSBSA, NCFRS, FishR)
-- Barangay-wise agricultural statistics
+### 7. Yield Monitoring
+- Yield Monitoring (`yield_monitoring.php`): Records and lists yields; data source for `get_report_data.php` yield-related chart endpoints. (CRUD specifics inferred from dashboard and report aggregation queries.)
 
-## 🎯 Target Users
+### 8. Reporting Engine
+- Report Generation (`reports.php` POST `action=generate_report`): Builds HTML string via `generateReportContent()` for a `report_type` and date range. Always:
+   - Saves file to `reports/report_<type>_<timestamp>.html`
+   - Ensures table `generated_reports` exists (auto-creates if absent)
+   - Inserts metadata row (report_type, dates, file_path, staff_id)
+   - Logs activity (action_type `farmer`, message describes saved report)
+   - Outputs HTML to browser (for view/print) / prints success message or error fallback.
+- Report Save (`reports.php` POST `action=save_generated_report`): Persists HTML from client (if already rendered) following similar steps.
+- Saved Reports List (`get_saved_reports.php`): Returns HTML snippet list of previously generated reports (recent-first) including author and timestamp.
 
-### **MAO Staff**
-- Register and manage farmer information
-- Record yield data during farm visits
-- Distribute agricultural inputs
-- Generate reports for program monitoring
+### 9. Notifications System
+- Fetch Notifications (`get_notifications.php`): Returns either counts (when `count_only=true`) or full notification list plus unread count using functions from `includes/notification_system.php` (not shown). JSON structure includes `success`, `notifications[]`, `unread_count`, `total_count`.
+- Notification UI integrated in `nav.php` (bell icon toggles dynamic panel with scrollable list).
 
-### **MAO Administrators**
-- Manage staff accounts and permissions
-- Configure system settings
-- Monitor overall system activities
-- Generate comprehensive analytics
+### 10. Staff & Roles Management
+- Add Staff (`staff_actions.php` POST `action=add_staff`): Admin-only. Validates uniqueness of username; validates role_id; hashes password (bcrypt via `password_hash`); inserts into `mao_staff`; logs activity (action_type `staff`). Returns status via session messages.
+- Listing/Management (`staff.php`): Interface (inferred) for staff listing, referencing roles and actions script.
 
-### **Field Officers**
-- Mobile-friendly interface for field data collection
-- Quick farmer lookup and registration
-- Real-time yield recording capabilities
+### 11. Activity Logging
+- Utility (`includes/activity_logger.php::logActivity`): Inserts entry into `activity_logs` capturing `staff_id`, `action`, `action_type`, `details`, plus timestamp.
+- Consumption: Dashboard, recent activities widget, auditing of inventory/distribution/staff/report operations.
 
-## 🔧 Maintenance & Support
+### 12. File & Report Storage
+- Farmer Photos: `uploads/farmer_photos/<farmerId>_<timestamp>.ext`
+- Generated Reports: `reports/report_<type>_<timestamp>.html` accessible directly and indexed in `generated_reports`.
+- Exported “PDF” pages are HTML downloads (use browser / external tool to convert to actual PDF if needed).
 
-### **Regular Maintenance**
-- Database backup and optimization
-- File cleanup and organization
-- Performance monitoring
-- Security updates
+### 13. PDF/HTML Export Utilities
+- Farmers Export: `pdf_export.php?action=export_pdf` builds HTML with custom `SimplePDF` class (misnamed; outputs HTML attachment) including summary stats and styling.
+- Distribution Export: `input_distribution_records.php?action=export_pdf` streams filtered distribution dataset.
 
-### **System Updates**
-- Feature enhancements based on user feedback
-- Bug fixes and security patches
-- Performance improvements
-- New report types and analytics
+### 14. Validation & Error Handling Patterns
+- Server-side validation for required fields, numeric constraints, dates (`DateTime::createFromFormat`), file type/size for uploads.
+- Transactions for critical multi-step operations (distribution) to maintain consistency.
+- Session-based flash messaging (`$_SESSION['success']`, `$_SESSION['error']`, etc.) consumed by pages after redirect.
 
-## 📈 Future Enhancements
+### 15. Security Considerations (Current State)
+- Session enforcement via `check_session.php` (all major pages include layout which includes the check).
+- Mixed use of direct queries and prepared statements; sensitive inserts (login, staff add, farmer checks) use prepared statements; some read queries still rely on escaped strings.
+- Password storage: secure hashing for staff accounts with `password_hash` / `password_verify`.
+- File upload sanitation limited to MIME type + size; consider adding extension whitelist and image reprocessing for stricter control.
+- Inventory and distribution guarded by server-side validations and transactions.
 
-- **Mobile Application**: Native mobile app for field operations
-- **SMS Integration**: Automated notifications and alerts
-- **Weather Integration**: Real-time weather data for farming decisions
-- **Market Price Integration**: Current commodity price tracking
-- **Advanced Analytics**: Machine learning for yield predictions
-- **API Integration**: Connect with national agricultural databases
+### 16. Frontend Interactions
+- AJAX/Fetch: Charts (`fetch(get_report_data.php?type=...)`), notifications (`get_notifications.php`), saved reports listing (`get_saved_reports.php`), possibly farmer search endpoints (e.g., `search_farmers.php`, `get_farmers.php`).
+- Dynamic UI: Sidebar collapse state saved to `localStorage`; dropdown menus and notification panel managed via JS in `nav.php` / layout.
 
-## 🤝 Contributing
+### 17. Planned Hardening (Not Yet Applied)
+- Database credential separation (admin vs app user)
+- Enforce least privilege and password in `conn.php`
+- Expand prepared statement coverage
+- Rate limiting or throttling for login and critical endpoints
 
-This system is maintained by the Lagonglong Municipal Agriculture Office. For feature requests, bug reports, or improvements, please contact the system administrator.
+## Suggested Improvements (Roadmap)
+- Replace remaining raw `mysqli_query` with prepared queries for uniform security.
+- Implement role-based authorization middleware (centralize checks beyond page-level conditions).
+- Add CSRF tokens for all POST forms performing state changes.
+- True PDF generation (e.g., DOMPDF, TCPDF) instead of HTML attachment naming.
+- Central configuration file for environment (credentials, offline/CDN switch, feature flags).
+- Add queue or cron for visitation reminders (email/SMS integration).
 
-## 📄 License
+## Troubleshooting
 
-This system is developed for the exclusive use of Lagonglong Municipal Agriculture Office and is not licensed for distribution or modification without proper authorization.
+- Blank/redirect to login: ensure session is working and you’re accessing via `http://localhost/...`
+- Database connection failed: verify `conn.php` host/user/pass/db and that MySQL is running in XAMPP
+- Charts not loading: check browser console and that `get_report_data.php` returns JSON
+- Reports not saving: confirm `reports/` directory is writable
+- Images not uploading: confirm `uploads/farmer_photos/` exists and is writable
 
-## 📞 Support & Contact
+## License & Contact
 
-**Municipal Agriculture Office - Lagonglong**
-- **System Administrator**: [Contact Information]
-- **Technical Support**: [Support Email/Phone]
-- **Office Address**: [MAO Office Address]
-
----
-
-## 🌟 System Statistics
-
-**Database Management**: Comprehensive farmer registry with multi-program support
-**Report Generation**: Automated PDF reports with professional formatting  
-**Real-time Analytics**: Live dashboard with interactive charts and KPIs
-**Mobile Responsive**: Optimized for field use on tablets and smartphones
-**Security Compliant**: Follows government data protection standards
-**Performance Optimized**: Fast loading times and efficient database queries
-
-*Developed to support the agricultural development initiatives of Lagonglong Municipality and improve the efficiency of Municipal Agriculture Office operations.*
+This system is for the Lagonglong Municipal Agriculture Office. Contact the system administrator for support and access.

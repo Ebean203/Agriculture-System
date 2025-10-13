@@ -1,4 +1,88 @@
 <?php
+// Consolidated Yield Report Function
+function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
+    $html = '';
+    // Poultry/Livestock categories
+    $head_categories = ['Livestocks', 'Poultry'];
+    // Get all categories in desired order
+    $category_order = ['Agronomic Crops', 'High Value Crops', 'Livestocks', 'Poultry'];
+    $categories = [];
+    $cat_res = $conn->query("SELECT category_id, category_name FROM commodity_categories");
+    while ($row = $cat_res->fetch_assoc()) {
+        $categories[$row['category_name']] = $row['category_id'];
+    }
+    // Get all commodities by category
+    $commodities = [];
+    $com_res = $conn->query("SELECT commodity_id, commodity_name, category_id FROM commodities");
+    while ($row = $com_res->fetch_assoc()) {
+        $cat_name = array_search($row['category_id'], $categories) ?: array_search($row['category_id'], array_flip($categories));
+        $commodities[$cat_name][$row['commodity_name']] = $row['commodity_id'];
+    }
+    // Get all barangays
+    $barangays = [];
+    $brgy_res = $conn->query("SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name");
+    while ($row = $brgy_res->fetch_assoc()) {
+        $barangays[$row['barangay_id']] = $row['barangay_name'];
+    }
+    // Get all yield data in the range
+    $sql = "SELECT cc.category_name, c.commodity_name, b.barangay_name, b.barangay_id, y.unit,
+                SUM(y.yield_amount) as total_yield
+            FROM yield_monitoring y
+            INNER JOIN commodities c ON y.commodity_id = c.commodity_id
+            INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
+            INNER JOIN farmers f ON y.farmer_id = f.farmer_id
+            INNER JOIN barangays b ON f.barangay_id = b.barangay_id
+            WHERE y.record_date BETWEEN ? AND ?
+            GROUP BY cc.category_name, c.commodity_name, b.barangay_id, y.unit
+            ORDER BY cc.category_name, c.commodity_name, b.barangay_name";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ss', $start_date, $end_date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $yield_data = [];
+    while ($row = $result->fetch_assoc()) {
+        $cat = $row['category_name'];
+        $com = $row['commodity_name'];
+        $brgy = $row['barangay_name'];
+        $unit = $row['unit'];
+        $is_head = in_array($cat, $head_categories);
+        $label = $is_head ? 'Number of Heads' : 'Total Yield';
+        $yield_data[$cat][$com][$brgy] = [
+            'amount' => $row['total_yield'],
+            'unit' => $unit,
+            'is_head' => $is_head,
+            'label' => $label
+        ];
+    }
+    $html .= '<div class="summary-box">';
+    $html .= '<h3 style="margin-top: 0; color: #15803d;">🧮 Consolidated Yield of All Commodities</h3>';
+    $html .= '<div class="summary-item"><span class="summary-label">Analysis Period:</span> ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</div>';
+    $html .= '</div>';
+    foreach ($category_order as $cat) {
+        if (!isset($commodities[$cat])) continue;
+        $html .= '<h3 style="color:#166534; margin-top:30px;">' . htmlspecialchars($cat) . '</h3>';
+        foreach ($commodities[$cat] as $com => $com_id) {
+            // Find unit and label from yield_data if exists, else default
+            $sample = null;
+            foreach ($yield_data[$cat][$com] ?? [] as $brgy => $info) { $sample = $info; break; }
+            $unit = $sample ? $sample['unit'] : '';
+            $is_head = $sample ? $sample['is_head'] : in_array($cat, $head_categories);
+            $label = $is_head ? 'Number of Heads' : 'Total Yield';
+            $html .= '<h4 style="margin-bottom:5px;">' . htmlspecialchars($com) . ($unit ? ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($unit) . ')</span>' : '') . '</h4>';
+            $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
+            $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($label) . '</th></tr></thead><tbody>';
+            $total = 0;
+            foreach ($barangays as $brgy_id => $brgy_name) {
+                $amount = isset($yield_data[$cat][$com][$brgy_name]) ? $yield_data[$cat][$com][$brgy_name]['amount'] : 0;
+                $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($brgy_name) . '</td><td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($amount, 2) . '</td></tr>';
+                $total += $amount;
+            }
+            $html .= '<tr style="font-weight:bold; background:#f0fdf4;"><td style="border:1px solid #16a34a; padding:8px;">Total</td><td style="border:1px solid #16a34a; padding:8px;">' . number_format($total, 2) . '</td></tr>';
+            $html .= '</tbody></table>';
+        }
+    }
+    return $html;
+}
 require_once 'check_session.php';
 require_once 'conn.php';
 
@@ -625,11 +709,19 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
                 success: function(response) {
                     if (response.success) {
                         document.getElementById("saveStatus").innerHTML = 
-                            "<div class=\\"save-success\\"><i class=\\"fas fa-check-circle\\"></i> " + response.message + "</div>";
+                            "<div class=\"save-success\"><i class=\"fas fa-check-circle\"></i> " + response.message + "</div>";
                         saveBtn.style.display = "none"; // Hide save button after successful save
+                        // Refresh saved reports count in parent window if available
+                        if (window.opener && typeof window.opener.refreshSavedReportsCount === "function") {
+                            window.opener.refreshSavedReportsCount();
+                        }
+                        if (window.opener && typeof window.opener.refreshRecentReports === "function") {
+                            window.opener.refreshRecentReports();
+                        }
+                        setTimeout(function() { window.close(); }, 800);
                     } else {
                         document.getElementById("saveStatus").innerHTML = 
-                            "<div class=\\"save-error\\"><i class=\\"fas fa-exclamation-circle\\"></i> " + response.message + "</div>";
+                            "<div class=\"save-error\"><i class=\"fas fa-exclamation-circle\"></i> " + response.message + "</div>";
                         saveBtn.innerHTML = originalText;
                         saveBtn.disabled = false;
                     }
@@ -691,14 +783,16 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
     
     // Header
     $html .= '<div class="header">
-        <div class="title">' . ucfirst(str_replace('_', ' ', $report_type)) . ' Report</div>
-        <div class="subtitle">Lagonglong FARMS</div>
-        <div class="report-info">Report Period: ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</div>
-        <div class="report-info">Generated by: ' . htmlspecialchars($_SESSION['full_name']) . '</div>
+        <div class="title">Lagonglong FARMS - Agriculture System</div>
+        <div class="subtitle">' . ucfirst(str_replace('_', ' ', $report_type)) . ' Report</div>
+        <div class="report-info">' . date('F d, Y', strtotime($end_date)) . '</div>
     </div>';
     
     // Generate content based on report type
     switch ($report_type) {
+        case 'consolidated_yield':
+            $html .= generateConsolidatedYieldReport($start_date, $end_date, $conn);
+            break;
         case 'farmers_summary':
             $html .= generateFarmersSummaryReport($start_date, $end_date, $conn);
             break;
@@ -728,13 +822,11 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
     }
     
     $html .= '<div class="footer">
-        <p>Lagonglong FARMS - ' . ucfirst(str_replace('_', ' ', $report_type)) . ' Report</p>
-        <p>This report contains data from ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</p>
-        <p>Generated on: ' . date('n/j/y, g:i A') . '</p>
-    </div>
-</body>
-</html>';
-    
+        <p>Generated by: ' . htmlspecialchars($_SESSION['full_name']) . '</p>
+    </div>';
+    $html .= '</div>';
+    $html .= '</body></html>';
+    // No redundant parent refresh script here; handled in AJAX success
     return $html;
 }
 
@@ -794,7 +886,11 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
             <tbody>';
         
         while ($row = $farmers_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
+            $suffix = isset($row['suffix']) ? trim($row['suffix']) : '';
+            if (in_array(strtolower($suffix), ['n/a', 'na'])) {
+                $suffix = '';
+            }
+            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
             $html .= '<tr>
                 <td>' . htmlspecialchars($row['farmer_id']) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
@@ -1340,7 +1436,7 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                     <p class="text-gray-600 mt-2">Select report type and date range to generate comprehensive analytics</p>
                                 </div>
                                 
-                                <form method="POST" target="_blank" class="space-y-8">
+                                <form method="POST" target="_blank" class="space-y-8" id="generateReportForm">
                                     <input type="hidden" name="action" value="generate_report">
                                     
                                     <div>
@@ -1358,6 +1454,58 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                             <option value="commodity_production">🌱 Commodity Production Report</option>
                                             <option value="registration_analytics">📋 Registration Analytics Report</option>
                                             <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
+                                            <option value="consolidated_yield">🧮 Consolidated Yield of All Commodities</option>
+// Consolidated Yield Report Function
+function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
+    $html = '';
+    $sql = "SELECT cc.category_name, c.commodity_name, b.barangay_name, SUM(y.yield_amount) as total_yield, y.unit
+            FROM yield_monitoring y
+            INNER JOIN commodities c ON y.commodity_id = c.commodity_id
+            INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
+            INNER JOIN barangays b ON y.barangay_id = b.barangay_id
+            WHERE y.record_date BETWEEN ? AND ?
+            GROUP BY cc.category_name, c.commodity_name, b.barangay_name, y.unit
+            ORDER BY cc.category_name, c.commodity_name, b.barangay_name";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ss', $start_date, $end_date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $cat = $row['category_name'];
+        $com = $row['commodity_name'];
+        $brgy = $row['barangay_name'];
+        $unit = $row['unit'];
+        $data[$cat][$com]['unit'] = $unit;
+        $data[$cat][$com]['barangays'][$brgy] = $row['total_yield'];
+        if (!isset($data[$cat][$com]['total'])) $data[$cat][$com]['total'] = 0;
+        $data[$cat][$com]['total'] += $row['total_yield'];
+    }
+    $html .= '<div class="summary-box">';
+    $html .= '<h3 style="margin-top: 0; color: #15803d;">🧮 Consolidated Yield of All Commodities</h3>';
+    $html .= '<div class="summary-item"><span class="summary-label">Analysis Period:</span> ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</div>';
+    $html .= '</div>';
+    if (empty($data)) {
+        $html .= '<p style="text-align:center; padding:20px;">No yield data found for the selected period.</p>';
+        return $html;
+    }
+    foreach ($data as $cat => $commodities) {
+        $html .= '<h3 style="color:#166534; margin-top:30px;">' . htmlspecialchars($cat) . '</h3>';
+        foreach ($commodities as $com => $info) {
+            $html .= '<h4 style="margin-bottom:5px;">' . htmlspecialchars($com) . ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($info['unit']) . ')</span></h4>';
+            $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
+            $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">Total Yield</th></tr></thead><tbody>';
+            $grand_total = 0;
+            foreach ($info['barangays'] as $brgy => $yield) {
+                $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($brgy) . '</td><td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($yield, 2) . '</td></tr>';
+                $grand_total += $yield;
+            }
+            $html .= '<tr style="font-weight:bold; background:#f0fdf4;"><td style="border:1px solid #16a34a; padding:8px;">Total</td><td style="border:1px solid #16a34a; padding:8px;">' . number_format($info['total'], 2) . '</td></tr>';
+            $html .= '</tbody></table>';
+        }
+    }
+    return $html;
+}
                                         </select>
                                     </div>
                                     
@@ -1403,6 +1551,13 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                         </button>
                                     </div>
                                 </form>
+                                <script>
+                                document.getElementById('generateReportForm').addEventListener('submit', function() {
+                                    setTimeout(function() {
+                                        window.location.reload();
+                                    }, 1500);
+                                });
+                                </script>
                             </div>
                         </div>
 
@@ -1490,6 +1645,18 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                 }
                                 window.refreshRecentReports = refreshRecentReports;
                                 window.refreshSavedReportsCount = refreshSavedReportsCount;
+                                // Always refresh on page load
+                                $(document).ready(function() {
+                                    refreshSavedReportsCount();
+                                    refreshRecentReports();
+                                });
                                 </script>
+<script>
+    // Refresh when window regains focus (user returns from report tab)
+    window.addEventListener('focus', function() {
+        if (typeof refreshSavedReportsCount === 'function') refreshSavedReportsCount();
+        if (typeof refreshRecentReports === 'function') refreshRecentReports();
+    });
+</script>
 
 <?php include 'includes/notification_complete.php'; ?>

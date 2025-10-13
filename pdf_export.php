@@ -253,7 +253,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         $html .= '<table>
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Full Name</th>
                     <th>Birth Date</th>
                     <th>Gender</th>
@@ -299,10 +298,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         
         // Add data rows
         while ($row = $export_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
-            
+            $suffix = isset($row['suffix']) ? trim($row['suffix']) : '';
+            // Exclude suffix if it is any case variation of 'N/A' or 'n/a'
+            if (in_array(strtolower($suffix), ['n/a', 'na'])) {
+                $suffix = '';
+            }
+            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
             $html .= '<tr>
-                <td class="text-center">' . formatData($row['farmer_id']) . '</td>
                 <td>' . formatData($full_name) . '</td>
                 <td class="text-center">' . formatData($row['birth_date'], 'date') . '</td>
                 <td class="text-center">' . formatData($row['gender']) . '</td>

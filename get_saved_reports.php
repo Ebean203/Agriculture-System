@@ -8,11 +8,13 @@ if (!isset($_SESSION['user_id'])) {
     exit('Unauthorized');
 }
 
+
 $saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_date, r.file_path, r.timestamp,
                       s.first_name, s.last_name
                       FROM generated_reports r
                       INNER JOIN mao_staff s ON r.staff_id = s.staff_id
-                      ORDER BY r.timestamp DESC";
+                      ORDER BY r.timestamp DESC
+                      LIMIT 4";
 $saved_reports_result = $conn->query($saved_reports_sql);
 
 $html = '';

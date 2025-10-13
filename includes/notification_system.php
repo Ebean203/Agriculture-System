@@ -58,6 +58,7 @@ function getVisitationNotifications($conn, $today) {
             ic.input_name as purpose,
             mdl.quantity_distributed,
             mdl.log_id,
+            mdl.status,
             DATEDIFF(mdl.visitation_date, '$today') as days_until_visit
         FROM mao_distribution_log mdl
         JOIN farmers f ON mdl.farmer_id = f.farmer_id
@@ -65,6 +66,7 @@ function getVisitationNotifications($conn, $today) {
         LEFT JOIN input_categories ic ON mdl.input_id = ic.input_id
         WHERE mdl.visitation_date IS NOT NULL
         AND mdl.visitation_date <= '$reminder_date'
+        AND (mdl.status = 'pending' OR mdl.status = 'rescheduled')
         ORDER BY mdl.visitation_date ASC
     ";
     
