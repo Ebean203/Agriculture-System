@@ -1,183 +1,134 @@
 <?php
-require_once 'check_session.php';
-require_once 'conn.php';
+require_once __DIR__ . '/conn.php';
 
-// Check if user has admin access
-if ($_SESSION['role'] !== 'admin') {
-    header("Location: index.php");
-    exit();
-}
-
-// Handle PDF export
+// --- Export to PDF/Print-friendly HTML handler ---
 if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
-    // Build search condition for export
+    // Accept POST for filters
     $search = isset($_POST['search']) ? trim($_POST['search']) : '';
     $barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
     $input_filter = isset($_POST['input_id']) ? trim($_POST['input_id']) : '';
+    $status_filter = '';
+    $farmer_id_filter = '';
+
+    // Build search condition (same as main logic, but no pagination)
     $search_condition = 'WHERE 1=1';
     $search_params = [];
-    
-    if (!empty($search)) {
-        $search_condition .= " AND (f.first_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ?)";
-        $search_term = "%$search%";
-        $search_params = [$search_term, $search_term, $search_term];
+    if ($status_filter !== '') {
+        $search_condition .= " AND mdl.status = ?";
+        $search_params[] = $status_filter;
     }
-    
+    if (!empty($farmer_id_filter)) {
+        $search_condition .= " AND f.farmer_id = ?";
+        $search_params[] = $farmer_id_filter;
+    } elseif (!empty($search)) {
+        $search_condition .= " AND (
+            f.first_name LIKE ? OR 
+            f.middle_name LIKE ? OR 
+            f.last_name LIKE ? OR 
+            f.contact_number LIKE ? OR 
+            CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(
+                f.first_name, 
+                CASE 
+                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.middle_name) 
+                    ELSE '' 
+                END,
+                ' ', f.last_name,
+                CASE 
+                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
+                    THEN CONCAT(' ', f.suffix) 
+                    ELSE '' 
+                END
+            ) LIKE ?
+        )";
+        $search_term = "%$search%";
+        $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term, $search_term];
+    }
     if (!empty($barangay_filter)) {
         $search_condition .= " AND f.barangay_id = ?";
         $search_params[] = $barangay_filter;
     }
-    
     if (!empty($input_filter)) {
         $search_condition .= " AND mdl.input_id = ?";
         $search_params[] = $input_filter;
     }
-    
-    // Get distribution records for PDF export
-    $export_sql = "SELECT mdl.log_id, mdl.date_given, mdl.quantity_distributed, 
-                   mdl.visitation_date, f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-                   f.contact_number, b.barangay_name, ic.input_name, ic.unit
-                   FROM mao_distribution_log mdl
-                   INNER JOIN farmers f ON mdl.farmer_id = f.farmer_id
-                   INNER JOIN input_categories ic ON mdl.input_id = ic.input_id
-                   LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                   $search_condition
-                   ORDER BY mdl.date_given DESC, mdl.log_id DESC";
-    
+
+    $sql = "SELECT mdl.log_id, mdl.date_given, mdl.quantity_distributed, 
+        mdl.visitation_date, mdl.status, f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
+        f.contact_number, b.barangay_name, ic.input_name, ic.unit
+        FROM mao_distribution_log mdl
+        INNER JOIN farmers f ON mdl.farmer_id = f.farmer_id
+        INNER JOIN input_categories ic ON mdl.input_id = ic.input_id
+        LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
+        $search_condition
+        ORDER BY mdl.date_given DESC, mdl.log_id DESC";
+
     if (!empty($search_params)) {
-        $stmt = $conn->prepare($export_sql);
+        $stmt = $conn->prepare($sql);
         $stmt->bind_param(str_repeat('s', count($search_params)), ...$search_params);
         $stmt->execute();
-        $export_result = $stmt->get_result();
+        $result = $stmt->get_result();
     } else {
-        $export_result = $conn->query($export_sql);
+        $result = $conn->query($sql);
     }
-    
-    // Create PDF content
-    $html = '<div class="header">
-        <div class="title">Input Distribution Records Report</div>
-        <div class="subtitle">Lagonglong FARMS - Input Distribution Management</div>
-        <div class="subtitle">Generated on: ' . date('F d, Y h:i A') . '</div>
-        <div class="subtitle">Total Records: ' . $export_result->num_rows . '</div>
-    </div>';
-    
-    if ($export_result->num_rows > 0) {
-        $html .= '<table>
-            <thead>
-                <tr>
-                    <th>Log ID</th>
-                    <th>Farmer Name</th>
-                    <th>Contact</th>
-                    <th>Barangay</th>
-                    <th>Input Type</th>
-                    <th>Quantity</th>
-                    <th>Unit</th>
-                    <th>Date Given</th>
-                    <th>Visitation Date</th>
-                </tr>
-            </thead>
-            <tbody>';
-        
-        while ($row = $export_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
-            $visitation_status = $row['visitation_date'] ? date('M d, Y', strtotime($row['visitation_date'])) : 'Not Required';
-            
-            $html .= '<tr>
-                <td>' . htmlspecialchars($row['log_id']) . '</td>
-                <td>' . htmlspecialchars($full_name) . '</td>
-                <td>' . htmlspecialchars($row['contact_number']) . '</td>
-                <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars($row['input_name']) . '</td>
-                <td>' . htmlspecialchars($row['quantity_distributed']) . '</td>
-                <td>' . htmlspecialchars($row['unit']) . '</td>
-                <td>' . date('M d, Y', strtotime($row['date_given'])) . '</td>
-                <td>' . htmlspecialchars($visitation_status) . '</td>
-            </tr>';
-        }
-        
-        $html .= '</tbody></table>';
-    } else {
-        $html .= '<div style="text-align: center; padding: 50px;">
-            <h3>No Distribution Records Found</h3>
-            <p>No input distribution records match the specified criteria.</p>
-        </div>';
-    }
-    
-    // Output PDF-ready HTML
-    echo '<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Input Distribution Records Report</title>';
-    include 'includes/assets.php';
+
+    // Output print-friendly HTML
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8">';
+    echo '<title>Input Distribution Records Export</title>';
     echo '<style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            font-size: 12px;
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h1 { color: #256029; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #bbb; padding: 8px 10px; font-size: 13px; }
+        th { background: #256029; color: #fff; }
+        tr:nth-child(even) { background: #f6f6f6; }
+        .status-badge { border-radius: 12px; padding: 2px 10px; font-size: 12px; display: inline-block; }
+        .completed { background: #d1fae5; color: #065f46; }
+        .pending { background: #fef3c7; color: #92400e; }
+        .rescheduled, .scheduled { background: #dbeafe; color: #1e40af; }
+        .cancelled { background: #e5e7eb; color: #374151; }
+    </style>';
+    echo '</head><body>';
+    echo '<h1>Input Distribution Records Export</h1>';
+    echo '<p>Exported on: <b>' . date('F d, Y h:i A') . '</b></p>';
+    echo '<table>';
+    echo '<tr>';
+    echo '<th>ID</th><th>Farmer Name</th><th>Contact</th><th>Barangay</th><th>Input</th><th>Quantity</th><th>Given Date</th><th>Visit Date</th><th>Status</th>';
+    echo '</tr>';
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $suffix = isset($row['suffix']) ? trim($row['suffix']) : '';
+            if (in_array(strtolower($suffix), ['n/a', 'na','N/A', 'n/A','NA','N/a'])) {
+                $suffix = '';
+            }
+            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
+            $status = $row['status'];
+            $status_class = 'status-badge ' . ($status === 'completed' ? 'completed' : ($status === 'pending' ? 'pending' : ($status === 'rescheduled' ? 'rescheduled' : ($status === 'scheduled' ? 'scheduled' : ($status === 'cancelled' ? 'cancelled' : '')))));
+            echo '<tr>';
+            echo '<td>#' . htmlspecialchars($row['log_id']) . '</td>';
+            echo '<td>' . htmlspecialchars($full_name) . '</td>';
+            echo '<td>' . htmlspecialchars($row['contact_number']) . '</td>';
+            echo '<td>' . htmlspecialchars($row['barangay_name']) . '</td>';
+            echo '<td>' . htmlspecialchars($row['input_name']) . '</td>';
+            echo '<td>' . number_format($row['quantity_distributed']) . ' ' . htmlspecialchars($row['unit']) . '</td>';
+            echo '<td>' . ($row['date_given'] ? date('M d, Y', strtotime($row['date_given'])) : '-') . '</td>';
+            echo '<td>' . ($row['visitation_date'] ? date('M d, Y', strtotime($row['visitation_date'])) : '-') . '</td>';
+            echo '<td><span class="' . $status_class . '">' . ucfirst($status) . '</span></td>';
+            echo '</tr>';
         }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #16a34a;
-            padding-bottom: 10px;
-        }
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #16a34a;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            font-size: 14px;
-            color: #15803d;
-            margin-bottom: 5px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 10px;
-        }
-        th {
-            background-color: #16a34a;
-            color: white;
-            padding: 8px 4px;
-            text-align: left;
-            border: 1px solid #ddd;
-            font-weight: bold;
-            font-size: 9px;
-        }
-        td {
-            padding: 6px 4px;
-            border: 1px solid #ddd;
-            vertical-align: top;
-            word-wrap: break-word;
-            max-width: 80px;
-        }
-        tr:nth-child(even) {
-            background-color: #dcfce7;
-        }
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 10px;
-            color: #6b7280;
-            border-top: 1px solid #d1d5db;
-            padding-top: 10px;
-        }
-    </style>
-</head>
-<body>
-    ' . $html . '
-    <div class="footer">
-        <p>Lagonglong FARMS - Input Distribution Records</p>
-        <p>This report contains ' . $export_result->num_rows . ' distribution records</p>
-    </div>
-</body>
-</html>';
+    } else {
+        echo '<tr><td colspan="9" style="text-align:center; color:#888;">No records found for the selected filters.</td></tr>';
+    }
+    echo '</table>';
+    echo '<p style="margin-top:40px; font-size:12px; color:#888;">Lagonglong FARMS - Input Distribution Management System</p>';
+    echo '<script>window.print();</script>';
+    echo '</body></html>';
     exit;
 }
+
+// --- Main logic for UI (not export) ---
 
 // Pagination settings
 $records_per_page = 10;
@@ -191,17 +142,28 @@ $farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
 $input_filter = isset($_GET['input_id']) ? trim($_GET['input_id']) : (isset($_POST['input_id']) ? trim($_POST['input_id']) : '');
 
+$status_filter = isset($_GET['status']) ? trim($_GET['status']) : (isset($_POST['status']) ? trim($_POST['status']) : '');
+if (!in_array($status_filter, ['pending', 'rescheduled', 'completed', 'scheduled', 'cancelled', ''])) {
+    $status_filter = '';
+}
+
 // Handle clear all - reset search and filter
 if (isset($_POST['clear_all'])) {
     $search = '';
     $farmer_id_filter = '';
     $barangay_filter = '';
     $input_filter = '';
+    $status_filter = 'pending';
 }
 
 // Build search condition
 $search_condition = 'WHERE 1=1';
 $search_params = [];
+// Status filter (only apply if user selected a status)
+if ($status_filter !== '') {
+    $search_condition .= " AND mdl.status = ?";
+    $search_params[] = $status_filter;
+}
 
 // Prioritize farmer_id for exact matching if available
 if (!empty($farmer_id_filter)) {
@@ -265,16 +227,16 @@ $total_pages = max(1, ceil($total_records / $records_per_page));
 
 // Fetch distribution records with pagination
 $sql = "SELECT mdl.log_id, mdl.date_given, mdl.quantity_distributed, 
-        mdl.visitation_date, f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
-        f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
-        b.barangay_name, ic.input_name, ic.unit
-        FROM mao_distribution_log mdl
-        INNER JOIN farmers f ON mdl.farmer_id = f.farmer_id
-        INNER JOIN input_categories ic ON mdl.input_id = ic.input_id
-        LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-        $search_condition
-        ORDER BY mdl.date_given DESC, mdl.log_id DESC
-        LIMIT ? OFFSET ?";
+    mdl.visitation_date, mdl.status, f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
+    f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
+    b.barangay_name, ic.input_name, ic.unit
+    FROM mao_distribution_log mdl
+    INNER JOIN farmers f ON mdl.farmer_id = f.farmer_id
+    INNER JOIN input_categories ic ON mdl.input_id = ic.input_id
+    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
+    $search_condition
+    ORDER BY mdl.date_given DESC, mdl.log_id DESC
+    LIMIT ? OFFSET ?";
 
 if (!empty($search_params)) {
     $stmt = $conn->prepare($sql);
@@ -303,7 +265,7 @@ while ($row = $inputs_result->fetch_assoc()) {
 }
 
 // Function to build URL parameters
-function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
+function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $status = '') {
     $params = "?page=$page";
     if (!empty($search)) {
         $params .= "&search=" . urlencode($search);
@@ -314,10 +276,14 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
     if (!empty($input_id)) {
         $params .= "&input_id=" . urlencode($input_id);
     }
+    if (!empty($status)) {
+        $params .= "&status=" . urlencode($status);
+    }
     return $params;
 }
 ?>
 <?php $pageTitle = 'Input Distribution Records - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 
                 <?php if (isset($_GET['farmer']) && !empty($_GET['farmer'])): ?>
@@ -428,47 +394,65 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                     </form>
                 </div>
 
+
                 <!-- Distribution Records Table -->
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div class="p-6 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                            <i class="fas fa-list-alt mr-2 text-agri-green"></i>
-                            Distribution Records
-                            <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter) || !empty($input_filter)): ?>
-                                <span class="text-sm font-normal text-gray-600 ml-2">
-                                    - Filtered by: 
-                                    <?php if (!empty($search)): ?>
-                                        Search "<?php echo htmlspecialchars($search); ?>"
-                                    <?php endif; ?>
-                                    <?php if (!empty($search) && (!empty($barangay_filter) || !empty($input_filter))): ?> & <?php endif; ?>
-                                    <?php if (!empty($barangay_filter)): ?>
-                                        <?php 
-                                        $selected_barangay = '';
-                                        foreach ($barangays as $barangay) {
-                                            if ($barangay['barangay_id'] == $barangay_filter) {
-                                                $selected_barangay = $barangay['barangay_name'];
-                                                break;
+                    <div class="p-6 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-list-alt mr-2 text-agri-green"></i>
+                                Distribution Records
+                                <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter) || !empty($input_filter)): ?>
+                                    <span class="text-sm font-normal text-gray-600 ml-2">
+                                        - Filtered by: 
+                                        <?php if (!empty($search)): ?>
+                                            Search "<?php echo htmlspecialchars($search); ?>"
+                                        <?php endif; ?>
+                                        <?php if (!empty($search) && (!empty($barangay_filter) || !empty($input_filter))): ?> & <?php endif; ?>
+                                        <?php if (!empty($barangay_filter)): ?>
+                                            <?php 
+                                            $selected_barangay = '';
+                                            foreach ($barangays as $barangay) {
+                                                if ($barangay['barangay_id'] == $barangay_filter) {
+                                                    $selected_barangay = $barangay['barangay_name'];
+                                                    break;
+                                                }
                                             }
-                                        }
-                                        ?>
-                                        Barangay "<?php echo htmlspecialchars($selected_barangay); ?>"
-                                    <?php endif; ?>
-                                    <?php if (!empty($input_filter)): ?>
-                                        <?php if (!empty($barangay_filter)): ?> & <?php endif; ?>
-                                        <?php 
-                                        $selected_input = '';
-                                        foreach ($inputs as $input) {
-                                            if ($input['input_id'] == $input_filter) {
-                                                $selected_input = $input['input_name'];
-                                                break;
+                                            ?>
+                                            Barangay "<?php echo htmlspecialchars($selected_barangay); ?>"
+                                        <?php endif; ?>
+                                        <?php if (!empty($input_filter)): ?>
+                                            <?php if (!empty($barangay_filter)): ?> & <?php endif; ?>
+                                            <?php 
+                                            $selected_input = '';
+                                            foreach ($inputs as $input) {
+                                                if ($input['input_id'] == $input_filter) {
+                                                    $selected_input = $input['input_name'];
+                                                    break;
+                                                }
                                             }
-                                        }
-                                        ?>
-                                        Input "<?php echo htmlspecialchars($selected_input); ?>"
-                                    <?php endif; ?>
-                                </span>
-                            <?php endif; ?>
-                        </h3>
+                                            ?>
+                                            Input "<?php echo htmlspecialchars($selected_input); ?>"
+                                        <?php endif; ?>
+                                    </span>
+                                <?php endif; ?>
+                            </h3>
+                        </div>
+                        <form method="GET" class="flex items-center gap-3">
+                            <label for="status_filter" class="text-sm font-medium text-gray-700 mr-2">
+                                <i class="fas fa-filter mr-1"></i>Status:
+                            </label>
+                            <select name="status" id="status_filter" class="py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" onchange="this.form.submit()">
+                                <option value="" <?php echo ($status_filter === '') ? 'selected' : ''; ?>>All Statuses</option>
+                                <option value="pending" <?php echo ($status_filter === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                <option value="rescheduled" <?php echo ($status_filter === 'rescheduled') ? 'selected' : ''; ?>>Rescheduled</option>
+                                <option value="completed" <?php echo ($status_filter === 'completed') ? 'selected' : ''; ?>>Completed</option>
+                            </select>
+                            <!-- Keep other filters in the form as hidden fields -->
+                            <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+                            <input type="hidden" name="barangay" value="<?php echo htmlspecialchars($barangay_filter); ?>">
+                            <input type="hidden" name="input_id" value="<?php echo htmlspecialchars($input_filter); ?>">
+                        </form>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -485,7 +469,16 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                                         <i class="fas fa-seedling mr-1"></i>Input & Quantity
                                     </th>
                                     <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                        <i class="fas fa-calendar mr-1"></i>Dates & Status
+                                        <i class="fas fa-calendar mr-1"></i>Given Date
+                                    </th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-calendar-check mr-1"></i>Visit Date
+                                    </th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-info-circle mr-1"></i>Status
+                                    </th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        <i class="fas fa-cogs mr-1"></i>Actions
                                     </th>
                                 </tr>
                             </thead>
@@ -500,7 +493,14 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                                             </td>
                                             <td class="px-4 py-4">
                                                 <div class="text-sm font-medium text-gray-900 truncate max-w-48">
-                                                    <?php echo htmlspecialchars(trim($distribution['first_name'] . ' ' . $distribution['middle_name'] . ' ' . $distribution['last_name'] . ' ' . $distribution['suffix'])); ?>
+                                                    <?php 
+                                                        $suffix = isset($distribution['suffix']) ? trim($distribution['suffix']) : '';
+                                                        if (in_array(strtolower($suffix), ['n/a', 'na','N/A', 'n/A','NA','N/a'])) {
+                                                            $suffix = '';
+                                                        }
+                                                        $full_name = trim($distribution['first_name'] . ' ' . $distribution['middle_name'] . ' ' . $distribution['last_name'] . ' ' . $suffix);
+                                                        echo htmlspecialchars($full_name);
+                                                    ?>
                                                 </div>
                                                 <div class="text-xs text-gray-500 mt-1">
                                                     <i class="fas fa-phone mr-1"></i>
@@ -528,58 +528,180 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '') {
                                                 </div>
                                             </td>
                                             <td class="px-3 py-4">
-                                                <div class="space-y-2">
-                                                    <div class="text-xs text-gray-900">
-                                                        <div class="flex items-center mb-1">
-                                                            <i class="fas fa-calendar mr-1 text-blue-600"></i>
-                                                            <span class="font-medium">Given:</span>
+                                                <span class="text-xs"><?php echo date('M d, Y', strtotime($distribution['date_given'])); ?></span>
+                                            </td>
+                                            <td class="px-3 py-4">
+                                                <?php if ($distribution['visitation_date']): ?>
+                                                    <span class="text-xs"><?php echo date('M d, Y', strtotime($distribution['visitation_date'])); ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-xs text-gray-400 italic">N/A</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-3 py-4">
+                                                <?php
+                                                // Always show the raw status from the database, with proper formatting
+                                                $visit_status = $distribution['status'] ?? '';
+                                                $status_map = [
+                                                    'completed' => ['class' => 'bg-green-100 text-green-800', 'text' => 'Completed', 'icon' => 'fa-check-circle'],
+                                                    'pending' => ['class' => 'bg-yellow-100 text-yellow-800', 'text' => 'Pending', 'icon' => 'fa-clock'],
+                                                    'rescheduled' => ['class' => 'bg-blue-100 text-blue-800', 'text' => 'Rescheduled', 'icon' => 'fa-calendar-alt'],
+                                                    'scheduled' => ['class' => 'bg-blue-100 text-blue-800', 'text' => 'Scheduled', 'icon' => 'fa-calendar-alt'],
+                                                    'cancelled' => ['class' => 'bg-gray-200 text-gray-600', 'text' => 'Cancelled', 'icon' => 'fa-ban'],
+                                                ];
+                                                $status_info = $status_map[$visit_status] ?? ['class' => 'bg-gray-100 text-gray-800', 'text' => ucfirst($visit_status), 'icon' => 'fa-info-circle'];
+                                                ?>
+                                                <span class="<?php echo $status_info['class']; ?> px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit status-badge">
+                                                    <i class="fas <?php echo $status_info['icon']; ?> mr-1"></i>
+                                                    <?php echo $status_info['text']; ?>
+                                                </span>
+                                            </td>
+                                            <td class="px-3 py-4">
+                                                <?php
+                                                // Show actions based on status
+                                                if ($visit_status === 'completed') {
+                                                    echo '<span class="text-gray-400 italic">No actions needed</span>';
+                                                } elseif ($visit_status === 'pending' || $visit_status === 'rescheduled') {
+                                                ?>
+                                                    <button class="ml-2 px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-semibold flex items-center mark-done-btn" data-id="<?php echo $distribution['log_id']; ?>">
+                                                        <i class="fas fa-check mr-1"></i> Mark as Done
+                                                    </button>
+                                                    <button class="ml-2 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-semibold flex items-center reschedule-btn" data-id="<?php echo $distribution['log_id']; ?>">
+                                                        <i class="fas fa-calendar-alt mr-1"></i> Reschedule
+                                                    </button>
+                                                <?php
+                                                } else {
+                                                    echo '<span class="text-gray-400 italic">No actions needed</span>';
+                                                }
+                                                ?>
+                                                <!-- Mark as Done Modal -->
+                                                <div id="markDoneModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden">
+                                                    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                                                        <h3 class="text-lg font-bold mb-4 text-gray-900 flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Mark as Done</h3>
+                                                        <p class="mb-4 text-gray-700">Are you sure you want to mark this distribution as <span class="font-bold text-green-600">Completed</span>?</p>
+                                                        <div class="flex justify-end gap-2">
+                                                            <button class="close-mark-done-modal px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800" data-id="<?php echo $distribution['log_id']; ?>">Cancel</button>
+                                                            <button class="confirm-mark-done px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold" data-id="<?php echo $distribution['log_id']; ?>">Yes, Mark as Done</button>
                                                         </div>
-                                                        <span class="text-xs"><?php echo date('M d, Y', strtotime($distribution['date_given'])); ?></span>
-                                                    </div>
-                                                    
-                                                    <?php if ($distribution['visitation_date']): ?>
-                                                        <div class="text-xs text-gray-900">
-                                                            <div class="flex items-center mb-1">
-                                                                <i class="fas fa-calendar-check mr-1 text-green-600"></i>
-                                                                <span class="font-medium">Visit:</span>
-                                                            </div>
-                                                            <span class="text-xs"><?php echo date('M d, Y', strtotime($distribution['visitation_date'])); ?></span>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                    
-                                                    <div class="mt-2">
-                                                        <?php
-                                                        $status_class = 'bg-green-100 text-green-800';
-                                                        $status_text = 'Distributed';
-                                                        $status_icon = 'fa-check-circle';
-                                                        
-                                                        if ($distribution['visitation_date']) {
-                                                            $current_date = new DateTime();
-                                                            $visitation_date = new DateTime($distribution['visitation_date']);
-                                                            
-                                                            if ($visitation_date < $current_date) {
-                                                                $status_class = 'bg-yellow-100 text-yellow-800';
-                                                                $status_text = 'Pending';
-                                                                $status_icon = 'fa-clock';
-                                                            } else {
-                                                                $status_class = 'bg-blue-100 text-blue-800';
-                                                                $status_text = 'Scheduled';
-                                                                $status_icon = 'fa-calendar-alt';
-                                                            }
-                                                        }
-                                                        ?>
-                                                        <span class="<?php echo $status_class; ?> px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit">
-                                                            <i class="fas <?php echo $status_icon; ?> mr-1"></i>
-                                                            <?php echo $status_text; ?>
-                                                        </span>
                                                     </div>
                                                 </div>
+                                                <!-- Reschedule Modal -->
+                                                <div id="rescheduleModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden">
+                                                    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                                                        <h3 class="text-lg font-bold mb-4 text-gray-900 flex items-center"><i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Reschedule Visitation</h3>
+                                                        <form class="reschedule-form" data-id="<?php echo $distribution['log_id']; ?>">
+                                                            <label class="block mb-2 text-gray-700">New Visitation Date</label>
+                                                            <input type="date" name="new_date" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" required>
+                                                            <div class="flex justify-end gap-2">
+                                                                <button type="button" class="close-reschedule-modal px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800" data-id="<?php echo $distribution['log_id']; ?>">Cancel</button>
+                                                                <button type="submit" class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold">Reschedule</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                                <script>
+                                                document.addEventListener('DOMContentLoaded', function() {
+                                                    // Mark as Done button
+                                                    document.querySelectorAll('.mark-done-btn').forEach(function(btn) {
+                                                        btn.addEventListener('click', function(e) {
+                                                            e.preventDefault();
+                                                            var id = this.getAttribute('data-id');
+                                                            document.getElementById('markDoneModal-' + id).classList.remove('hidden');
+                                                        });
+                                                    });
+                                                    // Close Mark as Done modal
+                                                    document.querySelectorAll('.close-mark-done-modal').forEach(function(btn) {
+                                                        btn.addEventListener('click', function() {
+                                                            var id = this.getAttribute('data-id');
+                                                            document.getElementById('markDoneModal-' + id).classList.add('hidden');
+                                                        });
+                                                    });
+                                                    // Confirm Mark as Done
+                                                    document.querySelectorAll('.confirm-mark-done').forEach(function(btn) {
+                                                        btn.addEventListener('click', function() {
+                                                            var id = this.getAttribute('data-id');
+                                                            var button = this;
+                                                            button.disabled = true;
+                                                            fetch('mark_distribution_complete.php', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                                                body: 'distribution_id=' + encodeURIComponent(id)
+                                                            })
+                                                            .then(response => response.json())
+                                                            .then(data => {
+                                                                if (data.success) {
+                                                                    var statusSpan = document.querySelector('button.mark-done-btn[data-id="'+id+'"], button.reschedule-btn[data-id="'+id+'"], #markDoneModal-'+id).closest('td').previousElementSibling.querySelector('.status-badge');
+                                                                    statusSpan.className = 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit status-badge';
+                                                                    statusSpan.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Completed';
+                                                                    document.getElementById('markDoneModal-' + id).classList.add('hidden');
+                                                                    document.querySelector('button.mark-done-btn[data-id="'+id+'"], button.reschedule-btn[data-id="'+id+'"], #markDoneModal-'+id).closest('td').querySelectorAll('.mark-done-btn, .reschedule-btn').forEach(function(b){b.remove();});
+                                                                } else {
+                                                                    alert(data.message || 'Failed to update.');
+                                                                    button.disabled = false;
+                                                                }
+                                                            })
+                                                            .catch(() => {
+                                                                alert('Failed to update.');
+                                                                button.disabled = false;
+                                                            });
+                                                        });
+                                                    });
+                                                    // Reschedule button
+                                                    document.querySelectorAll('.reschedule-btn').forEach(function(btn) {
+                                                        btn.addEventListener('click', function(e) {
+                                                            e.preventDefault();
+                                                            var id = this.getAttribute('data-id');
+                                                            document.getElementById('rescheduleModal-' + id).classList.remove('hidden');
+                                                        });
+                                                    });
+                                                    // Close Reschedule modal
+                                                    document.querySelectorAll('.close-reschedule-modal').forEach(function(btn) {
+                                                        btn.addEventListener('click', function() {
+                                                            var id = this.getAttribute('data-id');
+                                                            document.getElementById('rescheduleModal-' + id).classList.add('hidden');
+                                                        });
+                                                    });
+                                                    // Reschedule form submit
+                                                    document.querySelectorAll('.reschedule-form').forEach(function(form) {
+                                                        form.addEventListener('submit', function(e) {
+                                                            e.preventDefault();
+                                                            var id = this.getAttribute('data-id');
+                                                            var newDate = this.querySelector('input[name="new_date"]').value;
+                                                            if (!newDate) return alert('Please select a new visitation date.');
+                                                            var submitBtn = this.querySelector('button[type="submit"]');
+                                                            submitBtn.disabled = true;
+                                                            fetch('mark_distribution_complete.php', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                                                body: 'distribution_id=' + encodeURIComponent(id) + '&reschedule=1&new_date=' + encodeURIComponent(newDate)
+                                                            })
+                                                            .then(response => response.json())
+                                                            .then(data => {
+                                                                if (data.success) {
+                                                                    var statusSpan = document.querySelector('button.mark-done-btn[data-id="'+id+'"], button.reschedule-btn[data-id="'+id+'"], #rescheduleModal-'+id).closest('td').previousElementSibling.querySelector('.status-badge');
+                                                                    statusSpan.className = 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit status-badge';
+                                                                    statusSpan.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>Rescheduled';
+                                                                    document.getElementById('rescheduleModal-' + id).classList.add('hidden');
+                                                                    // Do NOT remove the action buttons for rescheduled status; leave them visible
+                                                                } else {
+                                                                    alert(data.message || 'Failed to reschedule.');
+                                                                    submitBtn.disabled = false;
+                                                                }
+                                                            })
+                                                            .catch(() => {
+                                                                alert('Failed to reschedule.');
+                                                                submitBtn.disabled = false;
+                                                            });
+                                                        });
+                                                    });
+                                                });
+                                                </script>
+                                            </td>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                             <div class="flex flex-col items-center">
                                                 <i class="fas fa-share-square text-6xl text-gray-300 mb-4"></i>
                                                 <h3 class="text-lg font-medium text-gray-900 mb-2">No Distribution Records Found</h3>
@@ -644,27 +766,23 @@ function exportToPDF() {
         const barangayVal = document.querySelector('select[name="barangay"]')?.value || '';
         const inputIdVal = document.querySelector('select[name="input_id"]')?.value || '';
 
-        // Create a temporary form to POST values to the export handler
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'input_distribution_records.php?action=export_pdf';
-        form.target = '_blank'; // open in new tab for download/print
+        let exportUrl = 'export_distribution_pdf.php?action=export_distribution_pdf';
+        if (searchVal) exportUrl += `&search=${encodeURIComponent(searchVal)}`;
+        if (barangayVal) exportUrl += `&barangay=${encodeURIComponent(barangayVal)}`;
+        if (inputIdVal) exportUrl += `&input_id=${encodeURIComponent(inputIdVal)}`;
 
-        const addField = (name, value) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = name;
-            input.value = value;
-            form.appendChild(input);
-        };
+        // Show loading indicator
+        const exportBtn = document.querySelector('button[onclick="exportToPDF()"]');
+        const originalText = exportBtn.innerHTML;
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating PDF...';
+        exportBtn.disabled = true;
 
-        addField('search', searchVal);
-        addField('barangay', barangayVal);
-        addField('input_id', inputIdVal);
+        window.open(exportUrl, '_blank');
 
-        document.body.appendChild(form);
-        form.submit();
-        form.remove();
+        setTimeout(() => {
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
+        }, 3000);
     } catch (e) {
         console.error('Export to PDF failed:', e);
         alert('Sorry, something went wrong while generating the export.');
