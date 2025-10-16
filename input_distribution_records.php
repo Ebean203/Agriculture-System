@@ -574,8 +574,8 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                 }
                                                 ?>
                                                 <!-- Mark as Done Modal -->
-                                                <div id="markDoneModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden">
-                                                    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                                                <div id="markDoneModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center hidden">
+                                                    <div class="modal-content-custom bg-white rounded-lg shadow-lg p-6 w-full max-w-sm opacity-0 scale-95 transition-all duration-200" style="pointer-events: none;">
                                                         <h3 class="text-lg font-bold mb-4 text-gray-900 flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Mark as Done</h3>
                                                         <p class="mb-4 text-gray-700">Are you sure you want to mark this distribution as <span class="font-bold text-green-600">Completed</span>?</p>
                                                         <div class="flex justify-end gap-2">
@@ -585,8 +585,8 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                     </div>
                                                 </div>
                                                 <!-- Reschedule Modal -->
-                                                <div id="rescheduleModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden">
-                                                    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+                                                <div id="rescheduleModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center hidden">
+                                                    <div class="modal-content-custom bg-white rounded-lg shadow-lg p-6 w-full max-w-sm opacity-0 scale-95 transition-all duration-200" style="pointer-events: none;">
                                                         <h3 class="text-lg font-bold mb-4 text-gray-900 flex items-center"><i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Reschedule Visitation</h3>
                                                         <form class="reschedule-form" data-id="<?php echo $distribution['log_id']; ?>">
                                                             <label class="block mb-2 text-gray-700">New Visitation Date</label>
@@ -598,23 +598,70 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                         </form>
                                                     </div>
                                                 </div>
+                                                <div id="actionSuccessMsg" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[9999] hidden">
+                                                    <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 text-base font-semibold">
+                                                        <i class="fas fa-check-circle"></i>
+                                                        <span id="actionSuccessText">Action successful!</span>
+                                                    </div>
+                                                </div>
                                                 <script>
+                                                function showActionSuccess(msg) {
+                                                    var box = document.getElementById('actionSuccessMsg');
+                                                    var text = document.getElementById('actionSuccessText');
+                                                    if (text) text.textContent = msg;
+                                                    if (box) {
+                                                        box.classList.remove('hidden');
+                                                        setTimeout(function() {
+                                                            box.classList.add('hidden');
+                                                        }, 1200);
+                                                    }
+                                                }
                                                 document.addEventListener('DOMContentLoaded', function() {
+                                                    // Helper to show modal with fade/scale effect
+                                                    function showModal(modalId) {
+                                                        const modal = document.getElementById(modalId);
+                                                        if (!modal) return;
+                                                        modal.classList.remove('hidden');
+                                                        const content = modal.querySelector('.modal-content-custom');
+                                                        if (content) {
+                                                            setTimeout(() => {
+                                                                content.classList.remove('opacity-0', 'scale-95');
+                                                                content.classList.add('opacity-100', 'scale-100');
+                                                                content.style.pointerEvents = 'auto';
+                                                            }, 10);
+                                                        }
+                                                    }
+                                                    // Helper to hide modal with fade/scale effect
+                                                    function hideModal(modalId) {
+                                                        const modal = document.getElementById(modalId);
+                                                        if (!modal) return;
+                                                        const content = modal.querySelector('.modal-content-custom');
+                                                        if (content) {
+                                                            content.classList.remove('opacity-100', 'scale-100');
+                                                            content.classList.add('opacity-0', 'scale-95');
+                                                            content.style.pointerEvents = 'none';
+                                                            setTimeout(() => {
+                                                                modal.classList.add('hidden');
+                                                            }, 200);
+                                                        } else {
+                                                            modal.classList.add('hidden');
+                                                        }
+                                                    }
                                                     // Mark as Done button
-                                                    document.querySelectorAll('.mark-done-btn').forEach(function(btn) {
-                                                        btn.addEventListener('click', function(e) {
-                                                            e.preventDefault();
-                                                            var id = this.getAttribute('data-id');
-                                                            document.getElementById('markDoneModal-' + id).classList.remove('hidden');
-                                                        });
-                                                    });
+        document.querySelectorAll('.mark-done-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var id = this.getAttribute('data-id');
+                showModal('markDoneModal-' + id);
+            });
+        });
                                                     // Close Mark as Done modal
-                                                    document.querySelectorAll('.close-mark-done-modal').forEach(function(btn) {
-                                                        btn.addEventListener('click', function() {
-                                                            var id = this.getAttribute('data-id');
-                                                            document.getElementById('markDoneModal-' + id).classList.add('hidden');
-                                                        });
-                                                    });
+        document.querySelectorAll('.close-mark-done-modal').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                hideModal('markDoneModal-' + id);
+            });
+        });
                                                     // Confirm Mark as Done
                                                     document.querySelectorAll('.confirm-mark-done').forEach(function(btn) {
                                                         btn.addEventListener('click', function() {
@@ -634,6 +681,8 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                                     statusSpan.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Completed';
                                                                     document.getElementById('markDoneModal-' + id).classList.add('hidden');
                                                                     document.querySelector('button.mark-done-btn[data-id="'+id+'"], button.reschedule-btn[data-id="'+id+'"], #markDoneModal-'+id).closest('td').querySelectorAll('.mark-done-btn, .reschedule-btn').forEach(function(b){b.remove();});
+                                                                    showActionSuccess('Marked as completed!');
+                                                                    setTimeout(function(){ location.reload(); }, 1300);
                                                                 } else {
                                                                     alert(data.message || 'Failed to update.');
                                                                     button.disabled = false;
@@ -646,20 +695,20 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                         });
                                                     });
                                                     // Reschedule button
-                                                    document.querySelectorAll('.reschedule-btn').forEach(function(btn) {
-                                                        btn.addEventListener('click', function(e) {
-                                                            e.preventDefault();
-                                                            var id = this.getAttribute('data-id');
-                                                            document.getElementById('rescheduleModal-' + id).classList.remove('hidden');
-                                                        });
-                                                    });
+        document.querySelectorAll('.reschedule-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var id = this.getAttribute('data-id');
+                showModal('rescheduleModal-' + id);
+            });
+        });
                                                     // Close Reschedule modal
-                                                    document.querySelectorAll('.close-reschedule-modal').forEach(function(btn) {
-                                                        btn.addEventListener('click', function() {
-                                                            var id = this.getAttribute('data-id');
-                                                            document.getElementById('rescheduleModal-' + id).classList.add('hidden');
-                                                        });
-                                                    });
+        document.querySelectorAll('.close-reschedule-modal').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                hideModal('rescheduleModal-' + id);
+            });
+        });
                                                     // Reschedule form submit
                                                     document.querySelectorAll('.reschedule-form').forEach(function(form) {
                                                         form.addEventListener('submit', function(e) {
@@ -681,6 +730,8 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                                     statusSpan.className = 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit status-badge';
                                                                     statusSpan.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>Rescheduled';
                                                                     document.getElementById('rescheduleModal-' + id).classList.add('hidden');
+                                                                    showActionSuccess('Rescheduled successfully!');
+                                                                    setTimeout(function(){ location.reload(); }, 1300);
                                                                     // Do NOT remove the action buttons for rescheduled status; leave them visible
                                                                 } else {
                                                                     alert(data.message || 'Failed to reschedule.');

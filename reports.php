@@ -1,4 +1,14 @@
 <?php
+// Helper function to convert an image to a Base64 string for embedding
+function imageToBase64($path) {
+    if (!file_exists($path)) {
+        return '';
+    }
+    $type = mime_content_type($path);
+    $data = file_get_contents($path);
+    return 'data:' . $type . ';base64,' . base64_encode($data);
+}
+
 // Consolidated Yield Report Function
 function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
     $html = '';
@@ -225,17 +235,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Function to generate report content
 function generateReportContent($report_type, $start_date, $end_date, $conn) {
-    $html = '<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title></title>';
-    
-    // Include assets separately, not inside the string
+    $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title></title>';
     ob_start();
     include 'includes/assets.php';
     $assets = ob_get_clean();
-    
     $html .= $assets . '<style>
         body { 
             font-family: Arial, sans-serif; 
@@ -709,7 +712,7 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
                 success: function(response) {
                     if (response.success) {
                         document.getElementById("saveStatus").innerHTML = 
-                            "<div class=\"save-success\"><i class=\"fas fa-check-circle\"></i> " + response.message + "</div>";
+                            "<div class=\\"save-success\\"><i class=\\"fas fa-check-circle\\"></i> " + response.message + "</div>";
                         saveBtn.style.display = "none"; // Hide save button after successful save
                         // Refresh saved reports count in parent window if available
                         if (window.opener && typeof window.opener.refreshSavedReportsCount === "function") {
@@ -721,7 +724,7 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
                         setTimeout(function() { window.close(); }, 800);
                     } else {
                         document.getElementById("saveStatus").innerHTML = 
-                            "<div class=\"save-error\"><i class=\"fas fa-exclamation-circle\"></i> " + response.message + "</div>";
+                            "<div class=\\"save-error\\"><i class=\\"fas fa-exclamation-circle\\"></i> " + response.message + "</div>";
                         saveBtn.innerHTML = originalText;
                         saveBtn.disabled = false;
                     }
@@ -764,29 +767,42 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
     
     // Add action buttons
     $html .= '<div class="no-print action-buttons">
-        <button onclick="printReport()" class="btn btn-primary">
-            <i class="fas fa-print"></i> Print Report
-        </button>
-        <button onclick="closeReport()" class="btn btn-secondary">
-            <i class="fas fa-times"></i> Close
-        </button>';
-    
-    $html .= '</div>';
-    
-    // Add save status area
+        <button onclick="printReport()" class="btn btn-primary"><i class="fas fa-print"></i> Print Report</button>
+        <button onclick="closeReport()" class="btn btn-secondary"><i class="fas fa-times"></i> Close</button>
+    </div>';
     $html .= '<div class="no-print" id="saveStatus"></div>';
-    
-    // Show automatic save status
-    $html .= '<div class="no-print save-success">
-        <i class="fas fa-check-circle"></i> This report has been automatically saved to the database
-    </div>';
-    
-    // Header
-    $html .= '<div class="header">
-        <div class="title">Lagonglong FARMS - Agriculture System</div>
-        <div class="subtitle">' . ucfirst(str_replace('_', ' ', $report_type)) . ' Report</div>
-        <div class="report-info">' . date('F d, Y', strtotime($end_date)) . '</div>
-    </div>';
+    $html .= '<div class="no-print save-success"><i class="fas fa-check-circle"></i> This report has been automatically saved to the database</div>';
+
+    // Get the Base64 encoded strings for your logos
+    $logoLeftPath = 'assets/Logo/Lagonglong_seal_SVG.svg.png';
+    $logoRightPath = 'assets/Logo/E1361954-133F-4560-86CA-E4E3A2D916B8-removebg-preview.png';
+    $logoLeftBase64 = function_exists('imageToBase64') ? imageToBase64($logoLeftPath) : '';
+    $logoRightBase64 = function_exists('imageToBase64') ? imageToBase64($logoRightPath) : '';
+
+    // Get the name of the currently logged-in staff
+    $staff_name = '';
+    if (isset($_SESSION['user_id'])) {
+        $staff_id = $_SESSION['user_id'];
+        $staff_query = $conn->prepare("SELECT CONCAT(first_name, ' ', last_name) as full_name FROM mao_staff WHERE staff_id = ? LIMIT 1");
+        $staff_query->bind_param('i', $staff_id);
+        $staff_query->execute();
+        $staff_result = $staff_query->get_result();
+        if ($staff_row = $staff_result->fetch_assoc()) {
+            $staff_name = $staff_row['full_name'];
+        }
+    }
+
+    // Header with embedded logos (match PDF export)
+    $report_title = ($report_type === 'consolidated_yield') ? 'Consolidated Yield Report' : ucfirst(str_replace('_', ' ', $report_type)) . ' Report';
+    $html .= '<div class="header" style="position: relative; min-height: 140px; background: #fff;">'
+        . '<img src="' . $logoLeftBase64 . '" alt="Lagonglong Municipal Seal" style="position: absolute; left: 20px; top: 0; height: 120px; width: auto;">'
+        . '<img src="' . $logoRightBase64 . '" alt="Right Logo" style="position: absolute; right: 20px; top: 0; height: 120px; width: auto;">'
+        . '<div style="position: absolute; left: 0; right: 0; top: 40px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 2;">'
+            . '<div class="title" style="margin: 0 0 4px 0; padding: 0; line-height: 1.3; font-size: 1.7em;"> Lagonglong FARMS</div>'
+            . '<div class="subtitle" style="margin: 0 0 4px 0; padding: 0; line-height: 1.3; font-size: 1.25em;">' . $report_title . '</div>'
+            . '<div class="report-info" style="margin: 0 0 10px 0; padding: 0; line-height: 1.3; font-size: 1.1em;">' . date('F d, Y', strtotime($end_date)) . '</div>'
+        . '</div>'
+    . '</div>';
     
     // Generate content based on report type
     switch ($report_type) {
@@ -821,12 +837,12 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
             $html .= '<p>Invalid report type selected.</p>';
     }
     
-    $html .= '<div class="footer">
-        <p>Generated by: ' . htmlspecialchars($_SESSION['full_name']) . '</p>
-    </div>';
-    $html .= '</div>';
+    // Footer (match PDF export)
+    $html .= '<div class="footer">'
+        . '<div style="margin-top: 8px;">Report generated by: <span style="color:#15803d;font-weight:bold;">' . htmlspecialchars($staff_name) . '</span></div>'
+        . '<div style="margin-top: 5px; font-style: italic;">Confidential - For Official Use Only</div>'
+    . '</div>';
     $html .= '</body></html>';
-    // No redundant parent refresh script here; handled in AJAX success
     return $html;
 }
 
@@ -1455,57 +1471,6 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                             <option value="registration_analytics">📋 Registration Analytics Report</option>
                                             <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
                                             <option value="consolidated_yield">🧮 Consolidated Yield of All Commodities</option>
-// Consolidated Yield Report Function
-function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
-    $html = '';
-    $sql = "SELECT cc.category_name, c.commodity_name, b.barangay_name, SUM(y.yield_amount) as total_yield, y.unit
-            FROM yield_monitoring y
-            INNER JOIN commodities c ON y.commodity_id = c.commodity_id
-            INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
-            INNER JOIN barangays b ON y.barangay_id = b.barangay_id
-            WHERE y.record_date BETWEEN ? AND ?
-            GROUP BY cc.category_name, c.commodity_name, b.barangay_name, y.unit
-            ORDER BY cc.category_name, c.commodity_name, b.barangay_name";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ss', $start_date, $end_date);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $cat = $row['category_name'];
-        $com = $row['commodity_name'];
-        $brgy = $row['barangay_name'];
-        $unit = $row['unit'];
-        $data[$cat][$com]['unit'] = $unit;
-        $data[$cat][$com]['barangays'][$brgy] = $row['total_yield'];
-        if (!isset($data[$cat][$com]['total'])) $data[$cat][$com]['total'] = 0;
-        $data[$cat][$com]['total'] += $row['total_yield'];
-    }
-    $html .= '<div class="summary-box">';
-    $html .= '<h3 style="margin-top: 0; color: #15803d;">🧮 Consolidated Yield of All Commodities</h3>';
-    $html .= '<div class="summary-item"><span class="summary-label">Analysis Period:</span> ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</div>';
-    $html .= '</div>';
-    if (empty($data)) {
-        $html .= '<p style="text-align:center; padding:20px;">No yield data found for the selected period.</p>';
-        return $html;
-    }
-    foreach ($data as $cat => $commodities) {
-        $html .= '<h3 style="color:#166534; margin-top:30px;">' . htmlspecialchars($cat) . '</h3>';
-        foreach ($commodities as $com => $info) {
-            $html .= '<h4 style="margin-bottom:5px;">' . htmlspecialchars($com) . ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($info['unit']) . ')</span></h4>';
-            $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
-            $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">Total Yield</th></tr></thead><tbody>';
-            $grand_total = 0;
-            foreach ($info['barangays'] as $brgy => $yield) {
-                $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($brgy) . '</td><td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($yield, 2) . '</td></tr>';
-                $grand_total += $yield;
-            }
-            $html .= '<tr style="font-weight:bold; background:#f0fdf4;"><td style="border:1px solid #16a34a; padding:8px;">Total</td><td style="border:1px solid #16a34a; padding:8px;">' . number_format($info['total'], 2) . '</td></tr>';
-            $html .= '</tbody></table>';
-        }
-    }
-    return $html;
-}
                                         </select>
                                     </div>
                                     

@@ -27,6 +27,50 @@
                                         <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
                                     </div>
                                 </div>
+                                <script>
+                                // --- Auto-suggest commodities for selected farmer ---
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    // When a farmer is selected (auto-suggest logic assumed to set #farmer_id)
+                                    function fetchFarmerCommodities(farmerId) {
+                                        if (!farmerId) return;
+                                        fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(farmerId))
+                                            .then(res => res.json())
+                                            .then(data => {
+                                                const commoditySelect = document.getElementById('commodity_id');
+                                                if (!commoditySelect) return;
+                                                // Remove all except the first option
+                                                while (commoditySelect.options.length > 1) commoditySelect.remove(1);
+                                                if (data.success && Array.isArray(data.commodities) && data.commodities.length > 0) {
+                                                    data.commodities.forEach(function(commodity) {
+                                                        const opt = document.createElement('option');
+                                                        opt.value = commodity.commodity_id;
+                                                        opt.textContent = commodity.commodity_name;
+                                                        opt.setAttribute('data-category', commodity.category_id);
+                                                        commoditySelect.appendChild(opt);
+                                                    });
+                                                } else {
+                                                    // Optionally, fallback to all commodities (page reload or keep empty)
+                                                }
+                                            });
+                                    }
+
+                                    // Listen for farmer selection (assume auto-suggest sets #farmer_id)
+                                    const farmerInput = document.getElementById('farmer_search');
+                                    const farmerIdInput = document.getElementById('farmer_id');
+                                    if (farmerInput && farmerIdInput) {
+                                        // If auto-suggest sets hidden #farmer_id, listen for changes
+                                        farmerIdInput.addEventListener('change', function() {
+                                            fetchFarmerCommodities(this.value);
+                                        });
+                                        // If auto-suggest sets on blur or selection
+                                        farmerInput.addEventListener('blur', function() {
+                                            setTimeout(function() {
+                                                if (farmerIdInput.value) fetchFarmerCommodities(farmerIdInput.value);
+                                            }, 200);
+                                        });
+                                    }
+                                });
+                                </script>
                                 <div class="col-md-6 mb-3">
                                     <label for="commodity_category_filter" class="form-label">Commodity Category</label>
                                     <select class="form-select" id="commodity_category_filter" onchange="filterCommodities()">
@@ -38,6 +82,14 @@
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <script>
+                                    document.addEventListener('DOMContentLoaded', function() {
+                                        var categorySelect = document.getElementById('commodity_category_filter');
+                                        if (categorySelect) {
+                                            categorySelect.disabled = true;
+                                        }
+                                    });
+                                    </script>
                                     <small class="text-muted">Filter commodities by category</small>
                                 </div>
                             </div>
@@ -53,6 +105,27 @@
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                            <script>
+                            // When a commodity is chosen, auto-select its category
+                            document.addEventListener('DOMContentLoaded', function() {
+                                var commoditySelect = document.getElementById('commodity_id');
+                                var categorySelect = document.getElementById('commodity_category_filter');
+                                if (commoditySelect && categorySelect) {
+                                    commoditySelect.addEventListener('change', function() {
+                                        var selected = commoditySelect.options[commoditySelect.selectedIndex];
+                                        var catId = selected.getAttribute('data-category');
+                                        if (catId) {
+                                            for (var i = 0; i < categorySelect.options.length; i++) {
+                                                if (categorySelect.options[i].value == catId) {
+                                                    categorySelect.selectedIndex = i;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                            </script>
                                 </div>
                                 <div class="col-md-6 mb-3"></div>
                             </div>
