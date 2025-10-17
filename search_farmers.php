@@ -44,7 +44,7 @@ try {
         $result = mysqli_stmt_get_result($stmt);
         
         $farmers = [];
-        while ($row = mysqli_fetch_assoc($result)) {
+    while ($row = $result->fetch_assoc()) {
             $farmers[] = [
                 'farmer_id' => $row['farmer_id'],
                 'first_name' => $row['first_name'],
@@ -57,7 +57,7 @@ try {
             ];
         }
         
-        mysqli_stmt_close($stmt);
+    $stmt->close();
         
         echo json_encode([
             'success' => true,

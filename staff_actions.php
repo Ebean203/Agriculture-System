@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mysqli_stmt_execute($check_stmt);
         $check_result = mysqli_stmt_get_result($check_stmt);
         
-        if (mysqli_num_rows($check_result) > 0) {
+    if ($check_result->num_rows > 0) {
             $_SESSION['error'] = "Username already exists. Please choose a different username.";
             header("Location: staff.php");
             exit();
@@ -51,13 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mysqli_stmt_execute($role_stmt);
         $role_result = mysqli_stmt_get_result($role_stmt);
         
-        if (mysqli_num_rows($role_result) === 0) {
+    if ($role_result->num_rows === 0) {
             $_SESSION['error'] = "Selected role not found.";
             header("Location: staff.php");
             exit();
         }
         
-        $role_data = mysqli_fetch_assoc($role_result);
+    $role_data = $role_result->fetch_assoc();
         
         // Hash password
         $password_hash = password_hash($password, PASSWORD_DEFAULT);

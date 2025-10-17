@@ -6,7 +6,10 @@ require_once 'check_session.php';
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'barangays') {
     header('Content-Type: application/json');
     $barangays = [];
-    $result = $conn->query("SELECT barangay_name FROM barangays ORDER BY barangay_name ASC");
+    // Use prepared statement for AJAX endpoint
+    $stmt = $conn->prepare("SELECT barangay_name FROM barangays ORDER BY barangay_name ASC");
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $barangays[] = $row['barangay_name'];
@@ -15,6 +18,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'barangays') {
     } else {
         echo json_encode(["error" => "Query failed: " . $conn->error]);
     }
+    $stmt->close();
     exit;
 }
 
@@ -39,87 +43,122 @@ $recent_activities = [];
 
 // Get dashboard statistics using procedural MySQL
 // Count total farmers
+// Count total farmers
 $query = "SELECT COUNT(*) as total_farmers FROM farmers WHERE archived = 0";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $total_farmers = $row['total_farmers'];
 }
+$stmt->close();
 
 // Count RSBSA registered farmers
+// Count RSBSA registered farmers
+// Count RSBSA registered farmers
 $query = "SELECT COUNT(*) as rsbsa_registered FROM farmers WHERE is_rsbsa = 1 AND archived = 0";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $rsbsa_registered = $row['rsbsa_registered'];
 }
+$stmt->close();
 
 // Count NCFRS registered farmers
+// Count NCFRS registered farmers
+// Count NCFRS registered farmers
 $query = "SELECT COUNT(*) as ncfrs_registered FROM farmers WHERE is_ncfrs = 1 AND archived = 0";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $ncfrs_registered = $row['ncfrs_registered'];
 }
+$stmt->close();
 
 // Count Fisherfolk registered farmers
+// Count Fisherfolk registered farmers
 $query = "SELECT COUNT(*) as fisherfolk_registered FROM farmers WHERE is_fisherfolk = 1 AND archived = 0";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $fisherfolk_registered = $row['fisherfolk_registered'];
 }
+$stmt->close();
 
 // Count farmers with boats
+// Count farmers with boats
 $query = "SELECT COUNT(*) as total_boats FROM farmers WHERE is_boat = 1 AND archived = 0";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $total_boats = $row['total_boats'];
 }
+$stmt->close();
 
 // Count total commodities
+// Count total commodities
 $query = "SELECT COUNT(*) as total_commodities FROM commodities";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $total_commodities = $row['total_commodities'];
 }
+$stmt->close();
 
 // Count total inventory items in stock
+// Count total inventory items in stock
 $query = "SELECT SUM(quantity_on_hand) as total_inventory FROM mao_inventory WHERE quantity_on_hand > 0";
-$result = mysqli_query($conn, $query);
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
 $total_inventory = 0;
-if ($result && $row = mysqli_fetch_assoc($result)) {
+if ($result && ($row = $result->fetch_assoc())) {
     $total_inventory = $row['total_inventory'] ? $row['total_inventory'] : 0;
 }
+$stmt->close();
 
 // Count recent yield records (last 30 days)
+// Count recent yield records (last 30 days)
 $query = "SELECT COUNT(*) as recent_yields FROM yield_monitoring WHERE record_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
-$result = mysqli_query($conn, $query);
-if ($result && $row = mysqli_fetch_assoc($result)) {
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
     $recent_yields = $row['recent_yields'];
 }
+$stmt->close();
 
 // Get recent activities from activity logs
-$query = "
-    SELECT al.*, s.first_name, s.last_name, al.timestamp
-    FROM activity_logs al
-    LEFT JOIN mao_staff s ON al.staff_id = s.staff_id
-    ORDER BY al.timestamp DESC
-    LIMIT 10
-";
-$result = mysqli_query($conn, $query);
+// Get recent activities from activity logs
+$query = "SELECT al.*, s.first_name, s.last_name, al.timestamp FROM activity_logs al LEFT JOIN mao_staff s ON al.staff_id = s.staff_id ORDER BY al.timestamp DESC LIMIT 10";
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
 if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
+    while ($row = $result->fetch_assoc()) {
         $recent_activities[] = $row;
     }
 }
+$stmt->close();
 
 // Get barangays for filter dropdown
 function getBarangays($conn) {
     $query = "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name";
-    $result = mysqli_query($conn, $query);
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $result = $stmt->get_result();
     $data = [];
     if ($result) {
-        while ($row = mysqli_fetch_assoc($result)) {
+        while ($row = $result->fetch_assoc()) {
             $data[] = $row;
         }
     }
+    $stmt->close();
     return $data;
 }
 // Get barangays for filter dropdown
@@ -133,12 +172,15 @@ $query = "SELECT b.barangay_name, COUNT(ym.yield_id) AS record_count
           JOIN barangays b ON f.barangay_id = b.barangay_id
           GROUP BY b.barangay_name
           ORDER BY b.barangay_name ASC";
-$result = mysqli_query($conn, $query);
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
 if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
+    while ($row = $result->fetch_assoc()) {
         $yield_records_per_barangay[] = $row;
     }
 }
+$stmt->close();
 ?>
 <?php $pageTitle = 'Lagonglong FARMS - Dashboard'; include 'includes/layout_start.php'; ?>
     <!-- Success/Error Messages -->
@@ -318,10 +360,11 @@ if ($result) {
                                 <i class="fas fa-user-plus text-white text-2xl mr-3"></i>
                                 <span class="font-medium text-base leading-tight">Add New Farmer</span>
                             </button>
-                            <button onclick="navigateTo('distribute_input.php')" class="w-full flex items-center p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300">
+                            <button onclick="openModal('distributeModal')" class="w-full flex items-center p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300">
                                 <i class="fas fa-truck text-white text-2xl mr-3"></i>
                                 <span class="font-medium text-base leading-tight">Distribute Inputs</span>
                             </button>
+<?php include 'includes/distribute_modal.php'; ?>
                             <button onclick="openYieldModal()" class="w-full flex items-center p-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-300">
                                 <i class="fas fa-clipboard-list text-white text-2xl mr-3"></i>
                                 <span class="font-medium text-base leading-tight">Record Yield</span>
@@ -499,6 +542,34 @@ if ($result) {
             const modal = new bootstrap.Modal(document.getElementById('farmerRegistrationModal'));
             modal.show();
         }
+
+            // Modal functions (Tailwind logic, same as mao_inventory.php)
+            function openModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+            }
+
+            function closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            }
+
+            // Close modal when clicking outside
+            document.addEventListener('click', function(event) {
+                const modals = ['distributeModal'];
+                modals.forEach(modalId => {
+                    const modal = document.getElementById(modalId);
+                    if (event.target === modal) {
+                        closeModal(modalId);
+                    }
+                });
+            });
 
         // Yield Modal Functions
         function openYieldModal() {

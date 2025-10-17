@@ -60,23 +60,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             farmer_id, commodity_id, season, yield_amount, record_date, recorded_by_staff_id
         ) VALUES (?, ?, ?, ?, NOW(), ?)";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "sisii",
+            $stmt->bind_param("sisii",
                 $farmer_id, $commodity_id, $season, $yield_amount, $_SESSION['user_id']
             );
 
-            if (mysqli_stmt_execute($stmt)) {
+            if ($stmt->execute()) {
                 $_SESSION['success_message'] = "Yield record added successfully!";
                 // Redirect to prevent form resubmission on refresh
                 header("Location: yield_monitoring.php");
                 exit();
             } else {
-                $errors[] = "Error recording yield: " . mysqli_error($conn);
+                $errors[] = "Error recording yield: " . $stmt->error;
             }
-            mysqli_stmt_close($stmt);
+            $stmt->close();
         } else {
-            $errors[] = "Database error: " . mysqli_error($conn);
+            $errors[] = "Database error: " . $conn->error;
         }
     }
 }
@@ -432,9 +432,10 @@ include 'includes/layout_start.php';
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">Search Farmer</label>
                     <div class="relative">
-                        <input type="text" name="farmer_search" placeholder="Search by farmer name..." 
+                        <input type="text" name="farmer_search" autocomplete="off" placeholder="Search by farmer name..." 
                                value="<?php echo htmlspecialchars($_GET['farmer_search'] ?? ''); ?>"
                                class="search-input w-full px-4 py-2 pl-10 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                        <input type="hidden" name="farmer_id" value="<?php echo htmlspecialchars($_GET['farmer_id'] ?? ''); ?>">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
                     </div>
                 </div>
@@ -472,7 +473,7 @@ include 'includes/layout_start.php';
 
     <!-- Data Table Section -->
     <div class="bg-white rounded-lg shadow-md p-6">
-        <?php if ($total_records > 0): ?>
+    <?php if ($total_records > 0 && !empty($_GET['farmer_id'])): ?>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -558,12 +559,12 @@ include 'includes/layout_start.php';
             </div>
         <?php else: ?>
             <div class="text-center py-12">
-                <i class="fas fa-chart-line text-gray-300 text-6xl mb-4"></i>
-                <h3 class="text-xl font-semibold text-gray-600 mb-2">No yield records found</h3>
-                <p class="text-gray-500">Start by recording your first visit to track agricultural yield</p>
+                <i class="fas fa-info-circle text-3xl mb-3"></i>
+                <p>No yield records found for the selected farmer.</p>
             </div>
         <?php endif; ?>
     </div>
+    <script src="assets/js/yield_monitoring_search.js"></script>
     </main>
 
 

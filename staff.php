@@ -12,8 +12,10 @@ if ($_SESSION['role'] !== 'admin') {
 $staff_query = "SELECT s.*, r.role as role_name FROM mao_staff s LEFT JOIN roles r ON s.role_id = r.role_id ORDER BY s.role_id ASC, s.position ASC, s.last_name ASC";
 $stmt = mysqli_prepare($conn, $staff_query);
 mysqli_stmt_execute($stmt);
-$staff_result = mysqli_stmt_get_result($stmt);
-mysqli_stmt_close($stmt);
+if ($stmt) {
+    $staff_result = $stmt->get_result();
+    $stmt->close();
+}
 ?>
 <?php $pageTitle = 'MAO Staff Directory - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
