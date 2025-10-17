@@ -12,102 +12,121 @@ $barangay_filter = isset($_POST['barangay_filter']) ? $_POST['barangay_filter'] 
 // Get barangays for filter dropdown
 function getBarangays($conn) {
     $query = "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name";
-    $result = mysqli_query($conn, $query);
+    $stmt = mysqli_prepare($conn, $query);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $data = [];
     if ($result) {
         while ($row = mysqli_fetch_assoc($result)) {
             $data[] = $row;
         }
     }
+    mysqli_stmt_close($stmt);
     return $data;
 }
 
 // Function to get farmer registrations over time
 function getFarmerRegistrations($conn, $start_date, $end_date, $barangay_filter = '') {
-    $barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
-    $query = "
-        SELECT DATE(registration_date) as date, COUNT(*) as count
-        FROM farmers f
-        WHERE DATE(registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
-        GROUP BY DATE(registration_date)
-        ORDER BY date
-    ";
-    $result = mysqli_query($conn, $query);
-    $data = [];
-    if ($result) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $data[] = $row;
+    $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
+    $query = "SELECT DATE(registration_date) as date, COUNT(*) as count FROM farmers f WHERE DATE(registration_date) BETWEEN ? AND ? $barangay_condition GROUP BY DATE(registration_date) ORDER BY date";
+    if ($stmt = mysqli_prepare($conn, $query)) {
+        if ($barangay_filter) {
+            mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+        } else {
+            mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
         }
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $data = [];
+        if ($result) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                $data[] = $row;
+            }
+        }
+        mysqli_stmt_close($stmt);
+        return $data;
     }
-    return $data;
+    return [];
 }
 
 // Function to get yield monitoring data
 function getYieldData($conn, $start_date, $end_date, $barangay_filter = '') {
-    $barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
-    $query = "
-        SELECT DATE(ym.record_date) as date, SUM(ym.yield_amount) as total_yield
-        FROM yield_monitoring ym
-        JOIN farmers f ON ym.farmer_id = f.farmer_id
-        WHERE DATE(ym.record_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
-        GROUP BY DATE(ym.record_date)
-        ORDER BY date
-    ";
-    $result = mysqli_query($conn, $query);
-    $data = [];
-    if ($result) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $data[] = $row;
+    $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
+    $query = "SELECT DATE(ym.record_date) as date, SUM(ym.yield_amount) as total_yield FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id WHERE DATE(ym.record_date) BETWEEN ? AND ? $barangay_condition GROUP BY DATE(ym.record_date) ORDER BY date";
+    if ($stmt = mysqli_prepare($conn, $query)) {
+        if ($barangay_filter) {
+            mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+        } else {
+            mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
         }
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $data = [];
+        if ($result) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                $data[] = $row;
+            }
+        }
+        mysqli_stmt_close($stmt);
+        return $data;
     }
-    return $data;
+    return [];
 }
 
 // Function to get commodity distribution
 function getCommodityDistribution($conn, $start_date, $end_date, $barangay_filter = '') {
-    $barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
-    $query = "
-        SELECT c.commodity_name, COUNT(DISTINCT f.farmer_id) as farmer_count
-        FROM farmers f
-        JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
-        JOIN commodities c ON fc.commodity_id = c.commodity_id
-        WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
-        GROUP BY c.commodity_name
-        ORDER BY farmer_count DESC
-    ";
-    $result = mysqli_query($conn, $query);
+    $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
+    $query = "SELECT c.commodity_name, COUNT(DISTINCT f.farmer_id) as farmer_count FROM farmers f JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id JOIN commodities c ON fc.commodity_id = c.commodity_id WHERE DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition GROUP BY c.commodity_name ORDER BY farmer_count DESC";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $data = [];
     if ($result) {
         while ($row = mysqli_fetch_assoc($result)) {
             $data[] = $row;
         }
     }
+    mysqli_stmt_close($stmt);
     return $data;
 }
 
 // Function to get registration status comparison
 function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter = '') {
-    $barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
+    $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
     $total_farmers = 0;
     $rsbsa_count = 0;
     $ncfrs_count = 0;
     $fisherfolk_count = 0;
     $registered_count = 0;
-    
     // Get total farmers in date range
-    $query = "SELECT COUNT(*) as count FROM farmers f WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
-    $result = mysqli_query($conn, $query);
+    $query = "SELECT COUNT(*) as count FROM farmers f WHERE DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "ss" . "s", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && $row = mysqli_fetch_assoc($result)) {
         $total_farmers = $row['count'];
     }
-    
+    mysqli_stmt_close($stmt);
     // Get RSBSA registered farmers
-    $query = "
-        SELECT COUNT(*) as count 
-        FROM farmers f 
-        WHERE f.is_rsbsa = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
-    ";
-    $result = mysqli_query($conn, $query);
+    $query = "SELECT COUNT(*) as count FROM farmers f WHERE f.is_rsbsa = 1 AND DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "ss" . "s", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && $row = mysqli_fetch_assoc($result)) {
         $rsbsa_count = $row['count'];
     }
@@ -118,10 +137,19 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
         FROM farmers f 
         WHERE f.is_ncfrs = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
     ";
-    $result = mysqli_query($conn, $query);
+    $query = "SELECT COUNT(*) as count FROM farmers f WHERE f.is_ncfrs = 1 AND DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && $row = mysqli_fetch_assoc($result)) {
         $ncfrs_count = $row['count'];
     }
+    mysqli_stmt_close($stmt);
     
     // Get Fisherfolk registered farmers
     $fisherfolk_count = 0;
@@ -130,10 +158,19 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
         FROM farmers f 
         WHERE f.is_fisherfolk = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
     ";
-    $result = mysqli_query($conn, $query);
+    $query = "SELECT COUNT(*) as count FROM farmers f WHERE f.is_fisherfolk = 1 AND DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && $row = mysqli_fetch_assoc($result)) {
         $fisherfolk_count = $row['count'] ?? 0;
     }
+    mysqli_stmt_close($stmt);
     
     // Get count of farmers registered in at least one category (to avoid negative values)
     $query = "
@@ -142,10 +179,19 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
         WHERE (f.is_rsbsa = 1 OR f.is_ncfrs = 1 OR f.is_fisherfolk = 1) 
         AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
     ";
-    $result = mysqli_query($conn, $query);
+    $query = "SELECT COUNT(*) as count FROM farmers f WHERE (f.is_rsbsa = 1 OR f.is_ncfrs = 1 OR f.is_fisherfolk = 1) AND DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && $row = mysqli_fetch_assoc($result)) {
         $registered_count = $row['count'];
     }
+    mysqli_stmt_close($stmt);
     
     // Calculate not registered (ensure it's not negative)
     $not_registered_count = max(0, $total_farmers - $registered_count);
@@ -160,64 +206,89 @@ function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter =
 
 // Function to get barangay distribution
 function getBarangayDistribution($conn, $start_date, $end_date, $barangay_filter = '') {
-    $barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
-    $query = "
-        SELECT b.barangay_name, COUNT(f.farmer_id) as farmer_count
-        FROM farmers f
-        JOIN barangays b ON f.barangay_id = b.barangay_id
-        WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
-        GROUP BY b.barangay_name
-        ORDER BY farmer_count DESC
-        LIMIT 10
-    ";
-    $result = mysqli_query($conn, $query);
+    $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
+    $query = "SELECT b.barangay_name, COUNT(f.farmer_id) as farmer_count FROM farmers f JOIN barangays b ON f.barangay_id = b.barangay_id WHERE DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition GROUP BY b.barangay_name ORDER BY farmer_count DESC LIMIT 10";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($barangay_filter) {
+        mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+    }
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     $data = [];
     if ($result) {
         while ($row = mysqli_fetch_assoc($result)) {
             $data[] = $row;
         }
     }
+    mysqli_stmt_close($stmt);
     return $data;
 }
 
 // Get summary statistics
+
 $total_farmers = 0;
 $total_yield = 0;
 $total_boats = 0;
 $total_commodities = 0;
-$barangay_condition = $barangay_filter ? "AND f.barangay_id = '$barangay_filter'" : '';
+$barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
 
-$query = "SELECT COUNT(*) as count FROM farmers f WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
-$result = mysqli_query($conn, $query);
+$query = "SELECT COUNT(*) as count FROM farmers f WHERE DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+$stmt = mysqli_prepare($conn, $query);
+if ($barangay_filter) {
+    mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+} else {
+    mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+}
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_farmers = $row['count'];
 }
+mysqli_stmt_close($stmt);
 
-$query = "
-    SELECT SUM(ym.yield_amount) as total 
-    FROM yield_monitoring ym
-    JOIN farmers f ON ym.farmer_id = f.farmer_id
-    WHERE DATE(ym.record_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition
-";
-$result = mysqli_query($conn, $query);
+$query = "SELECT SUM(ym.yield_amount) as total FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id WHERE DATE(ym.record_date) BETWEEN ? AND ? $barangay_condition";
+$stmt = mysqli_prepare($conn, $query);
+if ($barangay_filter) {
+    mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+} else {
+    mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+}
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_yield = $row['total'] ?? 0;
 }
+mysqli_stmt_close($stmt);
 
-$query = "SELECT COUNT(*) as count FROM farmers f WHERE f.is_boat = 1 AND DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
-$result = mysqli_query($conn, $query);
+$query = "SELECT COUNT(*) as count FROM farmers f WHERE f.is_boat = 1 AND DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+$stmt = mysqli_prepare($conn, $query);
+if ($barangay_filter) {
+    mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+} else {
+    mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+}
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_boats = $row['count'];
 }
+mysqli_stmt_close($stmt);
 
-$query = "SELECT COUNT(DISTINCT c.commodity_id) as count FROM commodities c 
-          JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id 
-          JOIN farmers f ON fc.farmer_id = f.farmer_id 
-          WHERE DATE(f.registration_date) BETWEEN '$start_date' AND '$end_date' $barangay_condition";
-$result = mysqli_query($conn, $query);
+$query = "SELECT COUNT(DISTINCT c.commodity_id) as count FROM commodities c JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id JOIN farmers f ON fc.farmer_id = f.farmer_id WHERE DATE(f.registration_date) BETWEEN ? AND ? $barangay_condition";
+$stmt = mysqli_prepare($conn, $query);
+if ($barangay_filter) {
+    mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+} else {
+    mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+}
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 if ($result && $row = mysqli_fetch_assoc($result)) {
     $total_commodities = $row['count'];
 }
+mysqli_stmt_close($stmt);
 
 // Get barangays for dropdown
 $barangays = getBarangays($conn);

@@ -149,11 +149,15 @@ $activities_result = $activities_stmt->get_result();
 
 // Get all staff for dropdowns
 $staff_query = "SELECT staff_id, CONCAT(first_name, ' ', last_name) as full_name FROM mao_staff ORDER BY first_name, last_name";
-$staff_result = mysqli_query($conn, $staff_query);
+$staff_stmt = $conn->prepare($staff_query);
+$staff_stmt->execute();
+$staff_result = $staff_stmt->get_result();
 
 // Get distinct activity types for filter
 $types_query = "SELECT DISTINCT activity_type FROM mao_activities ORDER BY activity_type";
-$types_result = mysqli_query($conn, $types_query);
+$types_stmt = $conn->prepare($types_query);
+$types_stmt->execute();
+$types_result = $types_stmt->get_result();
 ?>
 <?php $pageTitle = 'MAO Activities Management - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

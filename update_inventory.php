@@ -37,7 +37,12 @@ if ($_POST['action'] == 'add_stock') {
     
     // Verify input exists
     $input_exists = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-    $input_check = mysqli_query($conn, $input_exists);
+    $input_exists = "SELECT input_name FROM input_categories WHERE input_id = ?";
+    $stmt = mysqli_prepare($conn, $input_exists);
+    mysqli_stmt_bind_param($stmt, "s", $input_id);
+    mysqli_stmt_execute($stmt);
+    $input_check = mysqli_stmt_get_result($stmt);
+    mysqli_stmt_close($stmt);
     
     if (!$input_check || mysqli_num_rows($input_check) == 0) {
         $_SESSION['error'] = "Selected input does not exist!";
@@ -47,37 +52,52 @@ if ($_POST['action'] == 'add_stock') {
     
     // Check if inventory record exists
     $check_query = "SELECT * FROM mao_inventory WHERE input_id = '$input_id'";
-    $check_result = mysqli_query($conn, $check_query);
+    $check_query = "SELECT * FROM mao_inventory WHERE input_id = ?";
+    $stmt = mysqli_prepare($conn, $check_query);
+    mysqli_stmt_bind_param($stmt, "s", $input_id);
+    mysqli_stmt_execute($stmt);
+    $check_result = mysqli_stmt_get_result($stmt);
+    mysqli_stmt_close($stmt);
     
     if (mysqli_num_rows($check_result) > 0) {
         // Update existing record
         $update_query = "UPDATE mao_inventory 
-                        SET quantity_on_hand = quantity_on_hand + $quantity,
+                        SET quantity_on_hand = quantity_on_hand + ?,
                             last_updated = NOW()
-                        WHERE input_id = '$input_id'";
-        
-        if (mysqli_query($conn, $update_query)) {
+                        WHERE input_id = ?";
+        $stmt = mysqli_prepare($conn, $update_query);
+        mysqli_stmt_bind_param($stmt, "ds", $quantity, $input_id);
+        $success = mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        if ($success) {
             // Get input name for logging
-            $input_query = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-            $input_result = mysqli_query($conn, $input_query);
+            $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
+            $stmt = mysqli_prepare($conn, $input_query);
+            mysqli_stmt_bind_param($stmt, "s", $input_id);
+            mysqli_stmt_execute($stmt);
+            $input_result = mysqli_stmt_get_result($stmt);
             $input_data = mysqli_fetch_assoc($input_result);
-            
+            mysqli_stmt_close($stmt);
             // Log activity
             logActivity($conn, "Added $quantity units to {$input_data['input_name']} inventory (Stock Replenishment)", 'input', "Input ID: $input_id, Quantity Added: $quantity");
-            
             $_SESSION['success'] = "Stock added successfully!";
         } else {
             $_SESSION['error'] = "Error adding stock: " . mysqli_error($conn);
         }
     } else {
         // Insert new record
-        $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) 
-                        VALUES ('$input_id', '$quantity', NOW())";
-        
-        if (mysqli_query($conn, $insert_query)) {
+        $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) VALUES (?, ?, NOW())";
+        $stmt = mysqli_prepare($conn, $insert_query);
+        mysqli_stmt_bind_param($stmt, "sd", $input_id, $quantity);
+        $success = mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        if ($success) {
             // Get input name for logging
-            $input_query = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-            $input_result = mysqli_query($conn, $input_query);
+            $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
+            $stmt = mysqli_prepare($conn, $input_query);
+            mysqli_stmt_bind_param($stmt, "s", $input_id);
+            mysqli_stmt_execute($stmt);
+            $input_result = mysqli_stmt_get_result($stmt);
             $input_data = mysqli_fetch_assoc($input_result);
             
             // Log activity
@@ -120,66 +140,78 @@ if ($_POST['action'] == 'update_stock') {
     }
     
     $input_id = mysqli_real_escape_string($conn, $input_id);
-    $new_quantity = mysqli_real_escape_string($conn, $new_quantity);
-    
     // Verify input exists
-    $input_exists = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-    $input_check = mysqli_query($conn, $input_exists);
-    
-    if (!$input_check || mysqli_num_rows($input_check) == 0) {
+    $input_exists = "SELECT input_name FROM input_categories WHERE input_id = ?";
+    $input_check_stmt = $conn->prepare($input_exists);
+    $input_check_stmt->bind_param("s", $input_id);
+    $input_check_stmt->execute();
+    $input_check_result = $input_check_stmt->get_result();
+    if (!$input_check_result || $input_check_result->num_rows == 0) {
         $_SESSION['error'] = "Selected input does not exist!";
         header("Location: mao_inventory.php");
         exit();
     }
-    
+    $input_check_stmt->close();
+
     // Get current quantity for logging
-    $current_query = "SELECT quantity_on_hand FROM mao_inventory WHERE input_id = '$input_id'";
-    $current_result = mysqli_query($conn, $current_query);
-    $current_data = mysqli_fetch_assoc($current_result);
+    $current_query = "SELECT quantity_on_hand FROM mao_inventory WHERE input_id = ?";
+    $current_stmt = $conn->prepare($current_query);
+    $current_stmt->bind_param("s", $input_id);
+    $current_stmt->execute();
+    $current_result = $current_stmt->get_result();
+    $current_data = $current_result->fetch_assoc();
     $old_quantity = $current_data ? $current_data['quantity_on_hand'] : 0;
-    
+    $current_stmt->close();
+
     // Check if inventory record exists
-    $check_query = "SELECT * FROM mao_inventory WHERE input_id = '$input_id'";
-    $check_result = mysqli_query($conn, $check_query);
-    
-    if (mysqli_num_rows($check_result) > 0) {
+    $check_query = "SELECT * FROM mao_inventory WHERE input_id = ?";
+    $check_stmt = $conn->prepare($check_query);
+    $check_stmt->bind_param("s", $input_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+
+    if ($check_result->num_rows > 0) {
         // Update existing record
-        $update_query = "UPDATE mao_inventory 
-                        SET quantity_on_hand = '$new_quantity',
-                            last_updated = NOW()
-                        WHERE input_id = '$input_id'";
-        
-        if (mysqli_query($conn, $update_query)) {
+        $update_query = "UPDATE mao_inventory SET quantity_on_hand = ?, last_updated = NOW() WHERE input_id = ?";
+        $update_stmt = $conn->prepare($update_query);
+        $update_stmt->bind_param("is", $new_quantity, $input_id);
+        if ($update_stmt->execute()) {
             // Get input name for logging
-            $input_query = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-            $input_result = mysqli_query($conn, $input_query);
-            $input_data = mysqli_fetch_assoc($input_result);
-            
+            $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
+            $input_stmt = $conn->prepare($input_query);
+            $input_stmt->bind_param("s", $input_id);
+            $input_stmt->execute();
+            $input_result = $input_stmt->get_result();
+            $input_data = $input_result->fetch_assoc();
+            $input_stmt->close();
             // Log activity
             logActivity($conn, "Adjusted {$input_data['input_name']} inventory from $old_quantity to $new_quantity units (Stock Correction)", 'input', "Input ID: $input_id, Old Quantity: $old_quantity, New Quantity: $new_quantity");
-            
             $_SESSION['success'] = "Stock updated successfully!";
         } else {
-            $_SESSION['error'] = "Error updating stock: " . mysqli_error($conn);
+            $_SESSION['error'] = "Error updating stock: " . $update_stmt->error;
         }
+        $update_stmt->close();
     } else {
         // Insert new record
-        $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) 
-                        VALUES ('$input_id', '$new_quantity', NOW())";
-        
-        if (mysqli_query($conn, $insert_query)) {
+        $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) VALUES (?, ?, NOW())";
+        $insert_stmt = $conn->prepare($insert_query);
+        $insert_stmt->bind_param("si", $input_id, $new_quantity);
+        if ($insert_stmt->execute()) {
             // Get input name for logging
-            $input_query = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-            $input_result = mysqli_query($conn, $input_query);
-            $input_data = mysqli_fetch_assoc($input_result);
-            
+            $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
+            $input_stmt = $conn->prepare($input_query);
+            $input_stmt->bind_param("s", $input_id);
+            $input_stmt->execute();
+            $input_result = $input_stmt->get_result();
+            $input_data = $input_result->fetch_assoc();
+            $input_stmt->close();
             // Log activity
             logActivity($conn, "Initialized {$input_data['input_name']} inventory with $new_quantity units", 'input', "Input ID: $input_id, Initial Quantity: $new_quantity");
-            
             $_SESSION['success'] = "Stock updated successfully!";
         } else {
-            $_SESSION['error'] = "Error updating stock: " . mysqli_error($conn);
+            $_SESSION['error'] = "Error updating stock: " . $insert_stmt->error;
         }
+        $insert_stmt->close();
     }
 }
 

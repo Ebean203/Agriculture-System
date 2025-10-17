@@ -13,11 +13,14 @@ $date_to = isset($_GET['date_to']) ? trim($_GET['date_to']) : '';
 
 // Get distinct activity types for filter dropdown
 $activity_types_query = "SELECT DISTINCT action_type FROM activity_logs ORDER BY action_type";
-$activity_types_result = mysqli_query($conn, $activity_types_query);
+$stmt = mysqli_prepare($conn, $activity_types_query);
+mysqli_stmt_execute($stmt);
+$activity_types_result = mysqli_stmt_get_result($stmt);
 $activity_types = [];
 while ($row = mysqli_fetch_assoc($activity_types_result)) {
     $activity_types[] = $row['action_type'];
 }
+mysqli_stmt_close($stmt);
 
 // Function to build URL with current filters
 function buildFilterUrl($new_params = []) {
@@ -283,7 +286,9 @@ function buildFilterUrl($new_params = []) {
                     mysqli_stmt_execute($count_stmt);
                     $count_result = mysqli_stmt_get_result($count_stmt);
                 } else {
-                    $count_result = mysqli_query($conn, $count_query);
+                    $count_stmt = mysqli_prepare($conn, $count_query);
+                    mysqli_stmt_execute($count_stmt);
+                    $count_result = mysqli_stmt_get_result($count_stmt);
                 }
                 
                 $total_activities = mysqli_fetch_assoc($count_result)['total'];
@@ -312,7 +317,9 @@ function buildFilterUrl($new_params = []) {
                     mysqli_stmt_execute($stmt);
                     $result = mysqli_stmt_get_result($stmt);
                 } else {
-                    $result = mysqli_query($conn, $query);
+                    $stmt = mysqli_prepare($conn, $query);
+                    mysqli_stmt_execute($stmt);
+                    $result = mysqli_stmt_get_result($stmt);
                 }
                 
                 if ($result && mysqli_num_rows($result) > 0):

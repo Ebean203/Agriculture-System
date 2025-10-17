@@ -75,8 +75,12 @@ $visitation_date = mysqli_real_escape_string($conn, $visitation_date);
 $input_check = "SELECT ic.input_id, ic.input_name, COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand 
                 FROM input_categories ic 
                 LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id 
-                WHERE ic.input_id = '$input_id'";
-$input_result = mysqli_query($conn, $input_check);
+                WHERE ic.input_id = ?";
+$stmt = mysqli_prepare($conn, $input_check);
+mysqli_stmt_bind_param($stmt, "s", $input_id);
+mysqli_stmt_execute($stmt);
+$input_result = mysqli_stmt_get_result($stmt);
+mysqli_stmt_close($stmt);
 
 if (!$input_result || mysqli_num_rows($input_result) == 0) {
     $_SESSION['error'] = "Selected input does not exist!";
@@ -88,8 +92,13 @@ $input_data = mysqli_fetch_assoc($input_result);
 $current_stock = floatval($input_data['quantity_on_hand']); // Handle case where no inventory record exists yet
 
 // Verify farmer exists
-$farmer_check = "SELECT farmer_id, first_name, last_name FROM farmers WHERE farmer_id = '$farmer_id'";
-$farmer_result = mysqli_query($conn, $farmer_check);
+
+$farmer_check = "SELECT farmer_id, first_name, last_name FROM farmers WHERE farmer_id = ?";
+$stmt = mysqli_prepare($conn, $farmer_check);
+mysqli_stmt_bind_param($stmt, "s", $farmer_id);
+mysqli_stmt_execute($stmt);
+$farmer_result = mysqli_stmt_get_result($stmt);
+mysqli_stmt_close($stmt);
 
 if (!$farmer_result || mysqli_num_rows($farmer_result) == 0) {
     $_SESSION['error'] = "Selected farmer does not exist!";
@@ -107,8 +116,13 @@ if ($current_stock < floatval($quantity_distributed)) {
 }
 
 // Validate farmer exists using the farmer_id from dropdown
-$farmer_check = "SELECT first_name, last_name FROM farmers WHERE farmer_id = '$farmer_id'";
-$farmer_result = mysqli_query($conn, $farmer_check);
+
+$farmer_check = "SELECT first_name, last_name FROM farmers WHERE farmer_id = ?";
+$stmt = mysqli_prepare($conn, $farmer_check);
+mysqli_stmt_bind_param($stmt, "s", $farmer_id);
+mysqli_stmt_execute($stmt);
+$farmer_result = mysqli_stmt_get_result($stmt);
+mysqli_stmt_close($stmt);
 
 if (mysqli_num_rows($farmer_result) == 0) {
     $_SESSION['error'] = "Selected farmer not found!";
@@ -124,27 +138,31 @@ mysqli_begin_transaction($conn);
 
 try {
     // Record distribution - visitation_date is now always required
-    $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) 
-                          VALUES ('$farmer_id', '$input_id', '$quantity_distributed', '$date_given', '$visitation_date')";
-    
-    if (!mysqli_query($conn, $distribution_query)) {
+    $distribution_query = "INSERT INTO mao_distribution_log (farmer_id, input_id, quantity_distributed, date_given, visitation_date) VALUES (?, ?, ?, ?, ?)";
+    $stmt = mysqli_prepare($conn, $distribution_query);
+    mysqli_stmt_bind_param($stmt, "sssss", $farmer_id, $input_id, $quantity_distributed, $date_given, $visitation_date);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    if (!$success) {
         throw new Exception("Error recording distribution: " . mysqli_error($conn));
     }
-    
     // Update inventory
-    $update_inventory = "UPDATE mao_inventory 
-                        SET quantity_on_hand = quantity_on_hand - $quantity_distributed,
-                            last_updated = NOW()
-                        WHERE input_id = '$input_id'";
-    
-    if (!mysqli_query($conn, $update_inventory)) {
+    $update_inventory = "UPDATE mao_inventory SET quantity_on_hand = quantity_on_hand - ?, last_updated = NOW() WHERE input_id = ?";
+    $stmt = mysqli_prepare($conn, $update_inventory);
+    mysqli_stmt_bind_param($stmt, "ds", $quantity_distributed, $input_id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    if (!$success) {
         throw new Exception("Error updating inventory: " . mysqli_error($conn));
     }
-    
     // Get input name for logging
-    $input_query = "SELECT input_name FROM input_categories WHERE input_id = '$input_id'";
-    $input_result = mysqli_query($conn, $input_query);
+    $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
+    $stmt = mysqli_prepare($conn, $input_query);
+    mysqli_stmt_bind_param($stmt, "s", $input_id);
+    mysqli_stmt_execute($stmt);
+    $input_result = mysqli_stmt_get_result($stmt);
     $input_data = mysqli_fetch_assoc($input_result);
+    mysqli_stmt_close($stmt);
     
     // Log activity with visitation info
     $activity_details = "Input ID: $input_id, Farmer ID: $farmer_id, Quantity: $quantity_distributed, Date: $date_given, Visitation Date: $visitation_date";

@@ -33,7 +33,6 @@ function getVisitationNotifications($conn, $today) {
     
     // Calculate the date 5 days from now
     $reminder_date = date('Y-m-d', strtotime($today . ' + 5 days'));
-
     // Query for upcoming and overdue visitations from mao_distribution_log table
     $query = "
         SELECT 
@@ -59,24 +58,24 @@ function getVisitationNotifications($conn, $today) {
             mdl.quantity_distributed,
             mdl.log_id,
             mdl.status,
-            DATEDIFF(mdl.visitation_date, '$today') as days_until_visit
+            DATEDIFF(mdl.visitation_date, ?) as days_until_visit
         FROM mao_distribution_log mdl
         JOIN farmers f ON mdl.farmer_id = f.farmer_id
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
         LEFT JOIN input_categories ic ON mdl.input_id = ic.input_id
         WHERE mdl.visitation_date IS NOT NULL
-        AND mdl.visitation_date <= '$reminder_date'
+        AND mdl.visitation_date <= ?
         AND (mdl.status = 'pending' OR mdl.status = 'rescheduled')
         ORDER BY mdl.visitation_date ASC
     ";
-    
-    $result = mysqli_query($conn, $query);
-    
+    $stmt = mysqli_prepare($conn, $query);
+    mysqli_stmt_bind_param($stmt, "ss", $today, $reminder_date);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && mysqli_num_rows($result) > 0) {
         while ($row = mysqli_fetch_assoc($result)) {
             $days_until = $row['days_until_visit'];
             $formatted_date = date('M j, Y', strtotime($row['visitation_date']));
-
             if ($days_until < 0) {
                 $message = "OVERDUE Visitation (was " . $formatted_date . ") for " . $row['farmer_name'] . " in " . $row['barangay_name'] . " - " . $row['purpose'] . " follow-up";
                 $priority = 0; // Highest priority
@@ -138,13 +137,12 @@ function getStockNotifications($conn) {
         HAVING current_stock <= minimum_level
         ORDER BY (current_stock / minimum_level) ASC
     ";
-    
-    $result = mysqli_query($conn, $query);
-    
+    $stmt = mysqli_prepare($conn, $query);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
     if ($result && mysqli_num_rows($result) > 0) {
         while ($row = mysqli_fetch_assoc($result)) {
             $stock_percentage = ($row['current_stock'] / $row['minimum_level']) * 100;
-            
             if ($row['current_stock'] == 0) {
                 $message = "OUT OF STOCK: " . $row['item_name'];
                 $priority = 1; // Highest priority
@@ -161,7 +159,6 @@ function getStockNotifications($conn) {
                 // Skip info level notifications - only show warning and urgent
                 continue;
             }
-            
             // Only add warning and urgent notifications
             if ($type === 'warning' || $type === 'urgent') {
                 $notifications[] = [
@@ -178,6 +175,7 @@ function getStockNotifications($conn) {
             }
         }
     }
+    mysqli_stmt_close($stmt);
     
     return $notifications;
 }
@@ -215,18 +213,17 @@ function getUnreadNotificationCount($conn) {
         return count($notifications);
     }
     
+    $stmt = $conn->prepare("SELECT id FROM notification_reads WHERE user_id = ? AND notification_id = ?");
     foreach ($notifications as $notification) {
-        // Check if this notification is read by this user (only if table exists)
-        $notification_id = mysqli_real_escape_string($conn, $notification['id']);
-        $query = "SELECT id FROM notification_reads 
-                  WHERE user_id = $user_id AND notification_id = '$notification_id'";
-        $result = mysqli_query($conn, $query);
-        
-        if (!$result || mysqli_num_rows($result) == 0) {
+        $notification_id = $notification['id'];
+        $stmt->bind_param("is", $user_id, $notification_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if (!$result || $result->num_rows == 0) {
             $unread_count++;
         }
     }
-    
+    $stmt->close();
     return $unread_count;
 }
 ?>

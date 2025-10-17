@@ -4,21 +4,29 @@ require_once 'conn.php';
 
 // Fetch barangays for the barangay select
 $barangays = [];
-$bq = mysqli_query($conn, "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name");
+$query = "SELECT barangay_id, barangay_name FROM barangays ORDER BY barangay_name";
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_execute($stmt);
+$bq = mysqli_stmt_get_result($stmt);
 if ($bq) {
     while ($row = mysqli_fetch_assoc($bq)) {
         $barangays[] = $row;
     }
 }
+mysqli_stmt_close($stmt);
 
 // Fetch commodities for primary commodity select
 $commodities = [];
-$cq = mysqli_query($conn, "SELECT commodity_id, commodity_name FROM commodities ORDER BY commodity_name");
+$query = "SELECT commodity_id, commodity_name FROM commodities ORDER BY commodity_name";
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_execute($stmt);
+$cq = mysqli_stmt_get_result($stmt);
 if ($cq) {
     while ($row = mysqli_fetch_assoc($cq)) {
         $commodities[] = $row;
     }
 }
+mysqli_stmt_close($stmt);
 
 // Fetch commodities for the selected farmer (for edit)
 $farmer_commodities = [];

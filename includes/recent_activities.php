@@ -14,12 +14,15 @@ $query = "
     LIMIT 5
 ";
 $recent_activities = [];
-$result = mysqli_query($conn, $query);
+$stmt = mysqli_prepare($conn, $query);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         $recent_activities[] = $row;
     }
 }
+mysqli_stmt_close($stmt);
 ?>
 
 <div class="bg-white rounded-lg shadow-md p-6">

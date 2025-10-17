@@ -6,31 +6,40 @@ require_once 'conn.php';
 $pageTitle = 'Yield Monitoring - Lagonglong FARMS';
 
 // Check if yield_monitoring table exists
-$table_check = mysqli_query($conn, "SHOW TABLES LIKE 'yield_monitoring'");
-if (mysqli_num_rows($table_check) == 0) {
+$table_check_stmt = $conn->prepare("SHOW TABLES LIKE 'yield_monitoring'");
+$table_check_stmt->execute();
+$table_check_result = $table_check_stmt->get_result();
+if ($table_check_result->num_rows == 0) {
     die("Error: yield_monitoring table does not exist. Please import the yield_monitoring.sql file first.");
 }
+$table_check_stmt->close();
 
 // Get commodity categories for filter dropdown
 $commodity_categories = [];
-$categories_query = mysqli_query($conn, "SELECT category_id, category_name FROM commodity_categories ORDER BY category_name");
-if ($categories_query) {
-    while ($row = mysqli_fetch_assoc($categories_query)) {
+$categories_stmt = $conn->prepare("SELECT category_id, category_name FROM commodity_categories ORDER BY category_name");
+$categories_stmt->execute();
+$categories_result = $categories_stmt->get_result();
+if ($categories_result) {
+    while ($row = $categories_result->fetch_assoc()) {
         $commodity_categories[] = $row;
     }
 }
+$categories_stmt->close();
 
 // Get commodities with their categories for dropdown
 $commodities = [];
-$commodities_query = mysqli_query($conn, "SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name 
+$commodities_stmt = $conn->prepare("SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name 
                                           FROM commodities c 
                                           LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id 
                                           ORDER BY cc.category_name, c.commodity_name");
-if ($commodities_query) {
-    while ($row = mysqli_fetch_assoc($commodities_query)) {
+$commodities_stmt->execute();
+$commodities_result = $commodities_stmt->get_result();
+if ($commodities_result) {
+    while ($row = $commodities_result->fetch_assoc()) {
         $commodities[] = $row;
     }
 }
+$commodities_stmt->close();
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'record_visit') {
@@ -91,10 +100,13 @@ $total_records = 0;
 
 try {
     // Check if yield_monitoring table exists
-    $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'yield_monitoring'");
-    if (mysqli_num_rows($table_check) == 0) {
+    $table_check_stmt2 = $conn->prepare("SHOW TABLES LIKE 'yield_monitoring'");
+    $table_check_stmt2->execute();
+    $table_check_result2 = $table_check_stmt2->get_result();
+    if ($table_check_result2->num_rows == 0) {
         die("Error: yield_monitoring table does not exist. Please create the table first.");
     }
+    $table_check_stmt2->close();
     
     // Build query with filters
     $where_clause = "WHERE 1=1";
@@ -205,10 +217,13 @@ try {
         $yield_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
         mysqli_stmt_close($stmt);
     } else {
-        $result = mysqli_query($conn, $query);
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result) {
-            $yield_records = mysqli_fetch_all($result, MYSQLI_ASSOC);
+            $yield_records = $result->fetch_all(MYSQLI_ASSOC);
         }
+        $stmt->close();
     }
     
     $total_records = count($yield_records);

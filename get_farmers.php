@@ -72,8 +72,9 @@ try {
     } else {
         // Original functionality - get all farmers
         $query = "SELECT farmer_id, first_name, last_name FROM farmers ORDER BY first_name, last_name";
-        $result = mysqli_query($conn, $query);
-        
+        $stmt = mysqli_prepare($conn, $query);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
         $farmers = [];
         if ($result) {
             while ($row = mysqli_fetch_assoc($result)) {
@@ -84,7 +85,7 @@ try {
                 ];
             }
         }
-        
+        mysqli_stmt_close($stmt);
         echo json_encode($farmers);
     }
     

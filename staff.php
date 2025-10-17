@@ -9,11 +9,11 @@ if ($_SESSION['role'] !== 'admin') {
 }
 
 // Get all staff members with their roles
-$staff_query = "SELECT s.*, r.role as role_name 
-                FROM mao_staff s 
-                LEFT JOIN roles r ON s.role_id = r.role_id 
-                ORDER BY s.role_id ASC, s.position ASC, s.last_name ASC";
-$staff_result = mysqli_query($conn, $staff_query);
+$staff_query = "SELECT s.*, r.role as role_name FROM mao_staff s LEFT JOIN roles r ON s.role_id = r.role_id ORDER BY s.role_id ASC, s.position ASC, s.last_name ASC";
+$stmt = mysqli_prepare($conn, $staff_query);
+mysqli_stmt_execute($stmt);
+$staff_result = mysqli_stmt_get_result($stmt);
+mysqli_stmt_close($stmt);
 ?>
 <?php $pageTitle = 'MAO Staff Directory - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -324,12 +324,15 @@ $staff_result = mysqli_query($conn, $staff_query);
                                 <?php
                                 // Fetch roles
                                 $roles_query = "SELECT role_id, role FROM roles ORDER BY role";
-                                $roles_result = mysqli_query($conn, $roles_query);
+                                $roles_stmt = $conn->prepare($roles_query);
+                                $roles_stmt->execute();
+                                $roles_result = $roles_stmt->get_result();
                                 if ($roles_result) {
-                                    while ($role = mysqli_fetch_assoc($roles_result)) {
+                                    while ($role = $roles_result->fetch_assoc()) {
                                         echo "<option value='{$role['role_id']}'>{$role['role']}</option>";
                                     }
                                 }
+                                $roles_stmt->close();
                                 ?>
                             </select>
                         </div>
