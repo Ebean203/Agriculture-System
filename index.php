@@ -360,11 +360,10 @@ $stmt->close();
                                 <i class="fas fa-user-plus text-white text-2xl mr-3"></i>
                                 <span class="font-medium text-base leading-tight">Add New Farmer</span>
                             </button>
-                            <button onclick="openModal('distributeModal')" class="w-full flex items-center p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300">
+                            <button onclick="navigateTo('mao_inventory.php')" class="w-full flex items-center p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300">
                                 <i class="fas fa-truck text-white text-2xl mr-3"></i>
                                 <span class="font-medium text-base leading-tight">Distribute Inputs</span>
                             </button>
-<?php include 'includes/distribute_modal.php'; ?>
                             <button onclick="openYieldModal()" class="w-full flex items-center p-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-300">
                                 <i class="fas fa-clipboard-list text-white text-2xl mr-3"></i>
                                 <span class="font-medium text-base leading-tight">Record Yield</span>
