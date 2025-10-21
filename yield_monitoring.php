@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once 'check_session.php';
@@ -47,28 +46,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $commodity_id = $_POST['commodity_id'] ?? '';
     $season = $_POST['season'] ?? '';
     $yield_amount = $_POST['yield_amount'] ?? '';
-    // Validate required fields
+    $distributed_input = $_POST['distributed_input'] ?? null;
+    $visit_date = $_POST['visit_date'] ?? null;
+    $unit = $_POST['unit'] ?? null;
+    $quality_grade = $_POST['quality_grade'] ?? null;
+    $growth_stage = $_POST['growth_stage'] ?? null;
+    $field_conditions = $_POST['field_conditions'] ?? null;
+    $visit_notes = $_POST['visit_notes'] ?? null;
     $errors = [];
+    $staff_id = $_SESSION['staff_id'] ?? null;
     if (empty($farmer_id)) $errors[] = 'Farmer selection is required';
     if (empty($commodity_id)) $errors[] = 'Commodity selection is required';
     if (empty($season)) $errors[] = 'Season is required';
     if (empty($yield_amount)) $errors[] = 'Yield amount is required';
+    if (empty($staff_id)) $errors[] = 'Staff ID is missing. Please log in again.';
 
     if (empty($errors)) {
-        // Insert into database using original yield_monitoring table structure
         $sql = "INSERT INTO yield_monitoring (
-            farmer_id, commodity_id, season, yield_amount, record_date, recorded_by_staff_id
-        ) VALUES (?, ?, ?, ?, NOW(), ?)";
-
+            farmer_id, commodity_id, season, yield_amount, record_date, recorded_by_staff_id,
+            distributed_input, visit_date, unit, quality_grade, growth_stage, field_conditions, visit_notes
+        ) VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
         if ($stmt) {
-            $stmt->bind_param("sisii",
-                $farmer_id, $commodity_id, $season, $yield_amount, $_SESSION['user_id']
+            $stmt->bind_param(
+                "ssssisssssss",
+                $farmer_id,
+                $commodity_id,
+                $season,
+                $yield_amount,
+                $staff_id,
+                $distributed_input,
+                $visit_date,
+                $unit,
+                $quality_grade,
+                $growth_stage,
+                $field_conditions,
+                $visit_notes
             );
-
             if ($stmt->execute()) {
                 $_SESSION['success_message'] = "Yield record added successfully!";
-                // Redirect to prevent form resubmission on refresh
                 header("Location: yield_monitoring.php");
                 exit();
             } else {
@@ -79,6 +95,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $errors[] = "Database error: " . $conn->error;
         }
     }
+}
+
+// Handle AJAX edit submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_record') {
+    $response = ['success' => false, 'message' => 'Unknown error'];
+    $record_id = $_POST['record_id'] ?? '';
+    $commodity_id = $_POST['commodity_id'] ?? null;
+    $season = $_POST['season'] ?? null;
+    $yield_amount = $_POST['yield_amount'] ?? null;
+    $distributed_input = $_POST['distributed_input'] ?? null;
+    $visit_date = $_POST['visit_date'] ?? null;
+    $unit = $_POST['unit'] ?? null;
+    $quality_grade = $_POST['quality_grade'] ?? null;
+    $growth_stage = $_POST['growth_stage'] ?? null;
+    $field_conditions = $_POST['field_conditions'] ?? null;
+    $visit_notes = $_POST['visit_notes'] ?? null;
+
+    if (empty($record_id)) {
+        $response['message'] = 'Record ID is required.';
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit;
+    }
+
+    // Prepare update statement
+    $update_sql = "UPDATE yield_monitoring SET commodity_id = ?, season = ?, yield_amount = ?, distributed_input = ?, visit_date = ?, unit = ?, quality_grade = ?, growth_stage = ?, field_conditions = ?, visit_notes = ? WHERE yield_id = ?";
+    $stmt_upd = $conn->prepare($update_sql);
+    if ($stmt_upd) {
+        // Bind types: commodity_id (i), season (s), yield_amount (d), distributed_input (s), visit_date (s), unit (s), quality_grade (s), growth_stage (s), field_conditions (s), visit_notes (s), record_id (i)
+        $yield_amount_val = is_numeric($yield_amount) ? (float)$yield_amount : null;
+        $stmt_upd->bind_param("isdsssssssi",
+            $commodity_id,
+            $season,
+            $yield_amount_val,
+            $distributed_input,
+            $visit_date,
+            $unit,
+            $quality_grade,
+            $growth_stage,
+            $field_conditions,
+            $visit_notes,
+            $record_id
+        );
+
+        if ($stmt_upd->execute()) {
+            // Fetch updated record to return to client
+            $fetch_sql = "SELECT ym.*, f.first_name, f.last_name, c.commodity_name, cc.category_id, cc.category_name FROM yield_monitoring ym LEFT JOIN farmers f ON ym.farmer_id = f.farmer_id LEFT JOIN commodities c ON ym.commodity_id = c.commodity_id LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id WHERE ym.yield_id = ? LIMIT 1";
+            $stmt_fetch = $conn->prepare($fetch_sql);
+            if ($stmt_fetch) {
+                $stmt_fetch->bind_param('i', $record_id);
+                $stmt_fetch->execute();
+                $result_fetch = $stmt_fetch->get_result();
+                $updated_record = $result_fetch ? $result_fetch->fetch_assoc() : null;
+                $stmt_fetch->close();
+
+                $response['success'] = true;
+                $response['message'] = 'Record updated successfully.';
+                $response['record'] = $updated_record;
+            } else {
+                $response['success'] = true;
+                $response['message'] = 'Record updated, but failed to fetch updated data.';
+            }
+        } else {
+            $response['message'] = 'Database error: ' . $stmt_upd->error;
+        }
+        $stmt_upd->close();
+    } else {
+        $response['message'] = 'Database error: ' . $conn->error;
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
 }
 
 // Get messages from session and clear them
@@ -473,7 +562,7 @@ include 'includes/layout_start.php';
 
     <!-- Data Table Section -->
     <div class="bg-white rounded-lg shadow-md p-6">
-    <?php if ($total_records > 0 && !empty($_GET['farmer_id'])): ?>
+        <?php if ($total_records > 0): ?>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -488,7 +577,7 @@ include 'includes/layout_start.php';
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php foreach ($yield_records as $record): ?>
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50" data-record-id="<?php echo htmlspecialchars($record['yield_id'] ?? $record['id'] ?? ''); ?>">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -523,14 +612,13 @@ include 'includes/layout_start.php';
                                     <?php echo date('M d, Y', strtotime($record['record_date'])); ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button class="text-agri-green hover:text-agri-dark mr-3" title="View Details">
+                                    <!-- View button: opens readonly details modal -->
+                                    <button type="button" class="text-agri-green hover:text-agri-dark mr-3 btn-view-record" title="View Details" data-bs-toggle="modal" data-bs-target="#viewRecordModal" data-record='<?php echo htmlspecialchars(json_encode($record), ENT_QUOTES); ?>'>
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button class="text-blue-600 hover:text-blue-800 mr-3" title="Edit">
+                                    <!-- Edit button: opens edit modal pre-filled -->
+                                    <button type="button" class="text-blue-600 hover:text-blue-800 mr-3 btn-edit-record" title="Edit" data-bs-toggle="modal" data-bs-target="#editRecordModal" data-record='<?php echo htmlspecialchars(json_encode($record), ENT_QUOTES); ?>'>
                                         <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="text-red-600 hover:text-red-800" title="Delete">
-                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -564,7 +652,6 @@ include 'includes/layout_start.php';
             </div>
         <?php endif; ?>
     </div>
-    <script src="assets/js/yield_monitoring_search.js"></script>
     </main>
 
 
@@ -677,6 +764,39 @@ function searchFarmers(query) {
                         document.getElementById('farmer_search').value = farmer.full_name;
                         document.getElementById('farmer_id').value = farmer.farmer_id;
                         suggestions.classList.add('hidden');
+                        // Fetch and populate categories and commodities for selected farmer
+                        fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(farmer.farmer_id))
+                            .then(response => response.json())
+                            .then(data => {
+                                const categoryFilter = document.getElementById('commodity_category_filter');
+                                const commoditySelect = document.getElementById('commodity_id');
+                                categoryFilter.disabled = false;
+                                categoryFilter.innerHTML = '<option value="">Select Category</option>';
+                                let categories = [];
+                                let farmerCommodities = [];
+                                if (data.success && data.commodities) {
+                                    // Collect unique categories and all commodities for this farmer
+                                    data.commodities.forEach(c => {
+                                        let catName = c.category_name || c.category;
+                                        if (catName && !categories.includes(catName)) {
+                                            categories.push(catName);
+                                            categoryFilter.innerHTML += `<option value="${catName}">${catName}</option>`;
+                                        }
+                                        farmerCommodities.push({
+                                            id: c.commodity_id,
+                                            name: c.commodity_name,
+                                            category: catName
+                                        });
+                                    });
+                                    // Store commodities for later filtering
+                                    categoryFilter.farmerCommodities = farmerCommodities;
+                                }
+                                // Auto-select first category and filter commodities
+                                if (categories.length > 0) {
+                                    categoryFilter.value = categories[0];
+                                    filterCommodities();
+                                }
+                            });
                     });
                     
                     suggestions.appendChild(item);
@@ -702,41 +822,30 @@ function filterCommodities() {
     const categoryFilter = document.getElementById('commodity_category_filter');
     const commoditySelect = document.getElementById('commodity_id');
     const selectedCategory = categoryFilter.value;
-    
-    // Get all commodity options
-    const allOptions = commoditySelect.querySelectorAll('option');
-    
-    // Reset commodity selection when category changes
-    commoditySelect.value = '';
-    
-    // Show/hide options based on selected category
-    allOptions.forEach(option => {
-        if (option.value === '') {
-            // Always show the "Select Commodity" option
-            option.style.display = 'block';
-        } else {
-            const optionCategory = option.getAttribute('data-category');
-            if (selectedCategory === '' || optionCategory === selectedCategory) {
-                option.style.display = 'block';
-            } else {
-                option.style.display = 'none';
-            }
+    // Get commodities for selected farmer
+    const farmerCommodities = categoryFilter.farmerCommodities || [];
+    // Reset commodity dropdown
+    commoditySelect.innerHTML = '<option value="">Select Commodity</option>';
+    // Add only commodities matching selected category
+    farmerCommodities.forEach(c => {
+        if (selectedCategory === '' || c.category === selectedCategory) {
+            commoditySelect.innerHTML += `<option value="${c.id}" data-category="${c.category}">${c.name}</option>`;
         }
     });
+    commoditySelect.value = '';
 }
 
 // Initialize commodity filter when modal opens
 document.getElementById('addVisitModal').addEventListener('shown.bs.modal', function() {
-    // Set default filter to Agronomic Crops and apply filter
+    // When modal is shown, select first available category and filter commodities
     const categoryFilter = document.getElementById('commodity_category_filter');
-    
-    // Find Agronomic Crops option by text content
-    const options = categoryFilter.querySelectorAll('option');
-    for (let option of options) {
-        if (option.textContent.includes('Agronomic Crops')) {
-            categoryFilter.value = option.value;
-            filterCommodities();
-            break;
+    if (!categoryFilter.disabled && categoryFilter.options.length > 1) {
+        for (let option of categoryFilter.options) {
+            if (option.value !== '') {
+                categoryFilter.value = option.value;
+                filterCommodities();
+                break;
+            }
         }
     }
 });

@@ -44,6 +44,7 @@
                     if (password_verify($password, $row['password'])) {
                         // Password is correct, create session
                         $_SESSION['user_id'] = $row['staff_id'];
+                        $_SESSION['staff_id'] = $row['staff_id']; // Ensure staff_id is set for yield monitoring
                         $_SESSION['username'] = $row['username'];
                         $_SESSION['role'] = $row['role'];
                         $_SESSION['full_name'] = $row['first_name'] . ' ' . $row['last_name'];

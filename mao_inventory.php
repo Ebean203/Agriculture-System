@@ -381,66 +381,32 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <!-- Reset result pointer for main inventory grid -->
                 <?php mysqli_data_seek($result, 0); ?>
 
-                <!-- Segregated Inventory Sections -->
-                <?php if (count($critical_items) > 0): ?>
+                <!-- Unified Inventory Grid: All cards same size, color indicates status -->
                 <div class="mb-8">
-                    <div class="bg-red-50 rounded-xl p-6 border-2 border-red-200">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-xl font-bold text-red-800 flex items-center">
-                                <i class="fas fa-fire text-red-600 mr-3 animate-pulse"></i>
-                                🚨 CRITICAL ITEMS - Immediate Action Required
-                            </h3>
-                            <span class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold">
-                                <?php echo count($critical_items); ?> Items
-                            </span>
+                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
+                        <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+                            <div class="flex gap-2 items-center">
+                                <label for="statusFilter" class="font-medium text-gray-700">Filter:</label>
+                                <select id="statusFilter" class="form-select py-2 px-3 rounded-lg border border-gray-300">
+                                    <option value="all">All</option>
+                                    <option value="urgent">Critical</option>
+                                    <option value="warning">Warning</option>
+                                    <option value="normal">Normal</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 items-center" style="min-width: 0; flex: 0 1 500px; max-width: 500px;">
+                                <label for="searchInput" class="font-medium text-gray-700">Search:</label>
+                                <input type="text" id="searchInput" class="form-control py-2 px-3 rounded-lg border border-gray-300 w-full" placeholder="Search MAO input..." style="max-width: 350px; min-width: 180px;">
+                            </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div id="inventoryCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <?php 
                             foreach ($critical_items as $row) {
                                 renderInventoryCard($row, $distributions, 'urgent', $notification_lookup);
                             }
-                            ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (count($warning_items) > 0): ?>
-                <div class="mb-8">
-                    <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-xl font-bold text-yellow-800 flex items-center">
-                                <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
-                                ⚠️ WARNING ITEMS - Restock Soon
-                            </h3>
-                            <span class="bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold">
-                                <?php echo count($warning_items); ?> Items
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <?php 
                             foreach ($warning_items as $row) {
                                 renderInventoryCard($row, $distributions, 'warning', $notification_lookup);
                             }
-                            ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <div class="mb-8">
-                    <div class="bg-green-50 rounded-xl p-6 border-2 border-green-200">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-xl font-bold text-green-800 flex items-center">
-                                <i class="fas fa-check-circle text-green-600 mr-3"></i>
-                                ✅ NORMAL STOCK ITEMS
-                            </h3>
-                            <span class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">
-                                <?php echo count($normal_items); ?> Items
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <?php 
                             foreach ($normal_items as $row) {
                                 renderInventoryCard($row, $distributions, 'normal', $notification_lookup);
                             }
@@ -448,6 +414,35 @@ while ($row = mysqli_fetch_assoc($result)) {
                         </div>
                     </div>
                 </div>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const statusFilter = document.getElementById('statusFilter');
+                    const searchInput = document.getElementById('searchInput');
+                    const grid = document.getElementById('inventoryCardsGrid');
+                    function filterCards() {
+                        const status = statusFilter.value;
+                        const search = searchInput.value.toLowerCase();
+                        const cards = grid.querySelectorAll('.inventory-card');
+                        cards.forEach(card => {
+                            let show = true;
+                            if (status !== 'all') {
+                                if (!card.classList.contains('border-' + (status === 'urgent' ? 'red' : status === 'warning' ? 'yellow' : 'green') + '-500')) {
+                                    show = false;
+                                }
+                            }
+                            if (search) {
+                                const name = card.querySelector('h3')?.textContent?.toLowerCase() || '';
+                                if (!name.includes(search)) {
+                                    show = false;
+                                }
+                            }
+                            card.style.display = show ? '' : 'none';
+                        });
+                    }
+                    statusFilter.addEventListener('change', filterCards);
+                    searchInput.addEventListener('input', filterCards);
+                });
+                </script>
 
                 <?php
                 // Function to render inventory cards with status-specific styling
@@ -1385,6 +1380,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         <?php endif; ?>
     </script>
     
+                <!-- Unified Inventory Section -->
     <!-- Notification-based Navigation Handler -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {

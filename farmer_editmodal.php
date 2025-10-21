@@ -301,9 +301,7 @@ function renderEditCommodities(commodities) {
                             ${window.editCommodityOptions}
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3">
-                        <input type="number" step="0.01" min="0" class="form-control text-center" name="commodities[${idx}][land_area_hectares]" value="${commodity.land_area_hectares}" placeholder="0.00" required>
-                    </div>
+                    <!-- Land area input removed; now stored in farmers table -->
                     <div class="col-md-2 mb-3">
                         <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${idx}][years_farming]" value="${commodity.years_farming}" placeholder="0" required>
                     </div>

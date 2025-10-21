@@ -60,26 +60,49 @@ try {
         throw new Exception('Photo size must be less than 5MB');
     }
     
-    // Create unique filename
-    $file_extension = pathinfo($photo['name'], PATHINFO_EXTENSION);
-    $filename = $farmer_id . '_' . date('Ymd_His') . '.' . $file_extension;
+    // Use original filename with farmer ID prefix for uniqueness
+    $original_filename = basename($photo['name']);
+    $file_extension = pathinfo($original_filename, PATHINFO_EXTENSION);
+    $filename = $farmer_id . '_' . $original_filename;
     $upload_path = 'uploads/farmer_photos/' . $filename;
     $relative_path = $upload_path; // Store relative path in database
-    
+
     // Ensure upload directory exists
     if (!file_exists('uploads/farmer_photos')) {
         mkdir('uploads/farmer_photos', 0755, true);
     }
-    
+
+    // Delete previous photo with same name for this farmer (if exists)
+    $prev_stmt = $conn->prepare("SELECT file_path FROM farmer_photos WHERE farmer_id = ? AND file_path = ?");
+    $prev_stmt->bind_param("ss", $farmer_id, $relative_path);
+    $prev_stmt->execute();
+    $prev_result = $prev_stmt->get_result();
+    if ($prev_result && $prev_result->num_rows > 0) {
+        $prev_photo = $prev_result->fetch_assoc();
+        if (file_exists($prev_photo['file_path'])) {
+            unlink($prev_photo['file_path']);
+        }
+        // Remove previous DB record
+        $del_stmt = $conn->prepare("DELETE FROM farmer_photos WHERE farmer_id = ? AND file_path = ?");
+        $del_stmt->bind_param("ss", $farmer_id, $relative_path);
+        $del_stmt->execute();
+    }
+
     // Move uploaded file
     if (!move_uploaded_file($photo['tmp_name'], $upload_path)) {
-        throw new Exception('Failed to save uploaded photo');
+        $error = error_get_last();
+        $msg = 'Failed to save uploaded photo.';
+        if ($error) {
+            $msg .= ' System error: ' . $error['message'];
+        }
+        $msg .= ' Check folder permissions and file type.';
+        throw new Exception($msg);
     }
-    
+
     // Insert photo record into database
     $stmt = $conn->prepare("INSERT INTO farmer_photos (farmer_id, file_path, uploaded_at) VALUES (?, ?, NOW())");
     $stmt->bind_param("ss", $farmer_id, $relative_path);
-    
+
     if (!$stmt->execute()) {
         // If database insert fails, remove the uploaded file
         unlink($upload_path);
