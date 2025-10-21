@@ -45,50 +45,57 @@ function handleFarmerEdit($conn, $post_data) {
         // Start transaction
         $conn->autocommit(false);
         
-        // Update farmers table (without commodity fields)
+        // Update farmers table (now includes land_area_hectares)
         $stmt = $conn->prepare("UPDATE farmers SET 
             first_name = ?, middle_name = ?, last_name = ?, suffix = ?, 
             birth_date = ?, gender = ?, contact_number = ?, barangay_id = ?, 
-            address_details = ?, is_member_of_4ps = ?, is_ip = ?, is_rsbsa = ?, is_ncfrs = ?, is_boat = ?, is_fisherfolk = ?, other_income_source = ?
+            address_details = ?, is_member_of_4ps = ?, is_ip = ?, is_rsbsa = ?, is_ncfrs = ?, is_boat = ?, is_fisherfolk = ?, other_income_source = ?, land_area_hectares = ?
             WHERE farmer_id = ?");
         
         if (!$stmt) {
             throw new Exception("Failed to prepare UPDATE statement: " . $conn->error);
         }
         
-        $stmt->bind_param("sssssssisiiiiiiss", 
+        $stmt->bind_param("sssssssisiiiiiisds", 
             $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'],
             $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'],
-            $validated['address_details'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk'], $validated['other_income_source'],
-            $validated['farmer_id']);
+            $validated['address_details'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], 
+            $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk'], $validated['other_income_source'], 
+            $validated['land_area_hectares'], $validated['farmer_id']);
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to execute UPDATE: " . $stmt->error);
         }
+        
+        $farmers_updated = $stmt->affected_rows > 0;
         
         // --- Update multiple commodities ---
         $submitted_commodities = $post_data['commodities'] ?? [];
         if (!is_array($submitted_commodities) || count($submitted_commodities) === 0) {
             throw new Exception("At least one commodity is required.");
         }
+        
         // Remove all existing commodities for this farmer (will re-insert)
         $conn->query("DELETE FROM farmer_commodities WHERE farmer_id = '" . $conn->real_escape_string($validated['farmer_id']) . "'");
+        
         $commodity_updated = false;
         $primary_commodity_index = isset($post_data['primary_commodity_index']) ? intval($post_data['primary_commodity_index']) : 0;
+        
         foreach ($submitted_commodities as $idx => $comm) {
             $is_primary = ($primary_commodity_index == $idx) ? 1 : 0;
             $commodity_id = $comm['commodity_id'] ?? '';
-            $land_area = $comm['land_area_hectares'] ?? 0;
             $years = $comm['years_farming'] ?? 0;
+            
             if (!$commodity_id) continue;
-            $ins_stmt = $conn->prepare("INSERT INTO farmer_commodities (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) VALUES (?, ?, ?, ?, ?)");
-            $ins_stmt->bind_param("sidii", $validated['farmer_id'], $commodity_id, $land_area, $years, $is_primary);
+            
+            $ins_stmt = $conn->prepare("INSERT INTO farmer_commodities (farmer_id, commodity_id, years_farming, is_primary) VALUES (?, ?, ?, ?)");
+            $ins_stmt->bind_param("siii", $validated['farmer_id'], $commodity_id, $years, $is_primary);
+            
             if (!$ins_stmt->execute()) {
                 throw new Exception("Failed to update commodity data: " . $ins_stmt->error);
             }
             $commodity_updated = true;
         }
-        $farmers_updated = $stmt->affected_rows > 0;
         
         // Update or insert household_info
         $household_stmt = $conn->prepare("SELECT id FROM household_info WHERE farmer_id = ?");
@@ -130,118 +137,50 @@ function handleFarmerEdit($conn, $post_data) {
             }
             
             $insert_household->bind_param("sssiss", 
-                $validated['farmer_id'], $validated['civil_status'], $validated['spouse_name'], $validated['household_size'], 
-                $validated['education_level'], $validated['occupation']);
+                $validated['farmer_id'], $validated['civil_status'], $validated['spouse_name'], 
+                $validated['household_size'], $validated['education_level'], $validated['occupation']);
             
             if (!$insert_household->execute()) {
                 throw new Exception("Failed to execute household INSERT: " . $insert_household->error);
             }
             $household_updated = $insert_household->affected_rows > 0;
         }
-        
+
+        // --- Photo upload logic (mirroring registration) ---
+        $photo_uploaded = false;
+        if (isset($_FILES['farmer_photo']) && $_FILES['farmer_photo']['error'] === UPLOAD_ERR_OK) {
+            $farmer_id = $validated['farmer_id'];
+            $photo_dir = 'uploads/farmer_photos/';
+            $original_name = basename($_FILES['farmer_photo']['name']);
+            $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+            $new_filename = $farmer_id . '_' . time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '', $original_name);
+            $target_path = $photo_dir . $new_filename;
+            
+            if (move_uploaded_file($_FILES['farmer_photo']['tmp_name'], $target_path)) {
+                // Insert photo record
+                $ins_photo = $conn->prepare("INSERT INTO farmer_photos (farmer_id, file_path, uploaded_at) VALUES (?, ?, NOW())");
+                $ins_photo->bind_param("ss", $farmer_id, $target_path);
+                if ($ins_photo->execute()) {
+                    $photo_uploaded = true;
+                }
+            }
+        }
+
         // Commit transaction
         $conn->commit();
         $conn->autocommit(true);
         
         // Check if any data was actually updated
-        if ($farmers_updated || $commodity_updated || $household_updated) {
+        if ($farmers_updated || $commodity_updated || $household_updated || $photo_uploaded) {
             return ['success' => true, 'message' => 'Farmer updated successfully!'];
         } else {
             return ['success' => false, 'message' => 'No changes were made. The farmer data may be identical to what was already saved.'];
         }
+        
     } catch (Exception $e) {
         $conn->rollback();
         $conn->autocommit(true);
         return ['success' => false, 'message' => 'Error updating farmer: ' . $e->getMessage()];
-    }
-}
-
-
-
-// Function to handle farmer registration
-function handleFarmerRegistration($conn, $post_data) {
-    // Generate unique farmer ID - format: FMR + date + random number
-    do {
-        $date_part = date('Ymd'); // YYYYMMDD format
-        $random_part = str_pad(rand(1, 9999), 3, '0', STR_PAD_LEFT);
-        $farmer_id = 'FMR' . $date_part . $random_part;
-        
-        // Check if this ID already exists
-        $check_stmt = $conn->prepare("SELECT farmer_id FROM farmers WHERE farmer_id = ?");
-        $check_stmt->bind_param("s", $farmer_id);
-        $check_stmt->execute();
-        $check_result = $check_stmt->get_result();
-    } while ($check_result->num_rows > 0);
-    
-    try {
-        // Validate all input data using validation functions
-        $validated = validateFarmerData($post_data); // removed isEdit parameter
-        
-        $conn->begin_transaction();
-        
-        // Insert farmer with all fields matching new schema (including land_area_hectares)
-        $stmt = $conn->prepare("INSERT INTO farmers 
-            (farmer_id, first_name, middle_name, last_name, suffix, birth_date, gender, 
-             contact_number, barangay_id, address_details, 
-             other_income_source, land_area_hectares, is_member_of_4ps, is_ip, is_rsbsa, is_ncfrs, is_boat, is_fisherfolk, registration_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        
-        $stmt->bind_param("ssssssssissdiiiiii", 
-            $farmer_id, $validated['first_name'], $validated['middle_name'], $validated['last_name'], $validated['suffix'], 
-            $validated['birth_date'], $validated['gender'], $validated['contact_number'], $validated['barangay_id'], $validated['address_details'], 
-            $validated['other_income_source'], $validated['land_area_hectares'], $validated['is_member_of_4ps'], $validated['is_ip'], $validated['is_rsbsa'], $validated['is_ncfrs'], $validated['is_boat'], $validated['is_fisherfolk']);
-        $stmt->execute();
-        
-        // Insert commodity relationship into junction table
-        if (isset($post_data['commodities']) && is_array($post_data['commodities'])) {
-            $primary_commodity_index = isset($post_data['primary_commodity_index']) ? intval($post_data['primary_commodity_index']) : 0;
-            
-            foreach ($post_data['commodities'] as $index => $commodity_data) {
-                if (!empty($commodity_data['commodity_id']) && isset($commodity_data['years_farming'])) {
-                    $is_primary = ($index == $primary_commodity_index) ? 1 : 0;
-                    
-                    // Store values in variables for bind_param (required for pass by reference)
-                    $commodity_id = intval($commodity_data['commodity_id']);
-                    $years_farming = intval($commodity_data['years_farming']);
-                    
-                    $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
-                        (farmer_id, commodity_id, years_farming, is_primary) 
-                        VALUES (?, ?, ?, ?)");
-                    $commodity_stmt->bind_param("siii", 
-                        $farmer_id, 
-                        $commodity_id, 
-                        $years_farming,
-                        $is_primary
-                    );
-                    $commodity_stmt->execute();
-                }
-            }
-        } else {
-            // Fallback for single commodity (backward compatibility)
-            if (isset($validated['primary_commodity'])) {
-                $commodity_stmt = $conn->prepare("INSERT INTO farmer_commodities 
-                    (farmer_id, commodity_id, land_area_hectares, years_farming, is_primary) 
-                    VALUES (?, ?, ?, ?, 1)");
-                $commodity_stmt->bind_param("sidi", 
-                    $farmer_id, $validated['primary_commodity'], $validated['land_area_hectares'], $validated['years_farming']);
-                $commodity_stmt->execute();
-            }
-        }
-        
-        // Insert household info
-        $household_stmt = $conn->prepare("INSERT INTO household_info 
-            (farmer_id, civil_status, spouse_name, household_size, education_level, occupation) 
-            VALUES (?, ?, ?, ?, ?, ?)");
-        $household_stmt->bind_param("sssiss", 
-            $farmer_id, $validated['civil_status'], $validated['spouse_name'], $validated['household_size'], 
-            $validated['education_level'], $validated['occupation']);
-        $household_stmt->execute();
-        
-        $conn->commit();
-        return ['success' => true, 'message' => "Farmer registered successfully! Farmer ID: " . $farmer_id];
-    } catch (Exception $e) {
-        $conn->rollback();
-        return ['success' => false, 'message' => "Error registering farmer: " . $e->getMessage()];
     }
 }
 
@@ -429,22 +368,26 @@ function generateFarmerViewHTML($farmer) {
         $html .= '</div>';
         $html .= '<div class="card-body">';
         $html .= '<div class="row g-2">';
-        
+
         foreach ($farmer['photos'] as $index => $photo) {
             $photoPath = $photo['file_path'];
+            $isLatest = ($index === 0); // First photo is the latest due to DESC order
             $html .= '<div class="col-md-3 col-sm-4 col-6">';
             $html .= '<div class="position-relative">';
             $html .= '<img src="' . htmlspecialchars($photoPath) . '" class="img-fluid rounded shadow-sm farmer-photo" alt="Farmer Photo" style="width: 100%; height: 200px; object-fit: cover; cursor: pointer;" onclick="viewPhotoModal(\'' . htmlspecialchars($photoPath) . '\', \'' . htmlspecialchars($photo['uploaded_at']) . '\')">';
-            
+
             // Photo info overlay
             $html .= '<div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white p-2 rounded-bottom">';
             $html .= '<small class="d-block"><i class="fas fa-calendar me-1"></i>' . date('M j, Y', strtotime($photo['uploaded_at'])) . '</small>';
+            if ($isLatest) {
+                $html .= '<span class="badge bg-success ms-2">Current Photo</span>';
+            }
             $html .= '</div>';
-            
+
             $html .= '</div>';
             $html .= '</div>';
         }
-        
+
         $html .= '</div>';
         $html .= '</div>';
         $html .= '</div>';
@@ -1241,6 +1184,15 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                     alert('Error loading farmer details');
                 });
         }
+
+        // Listen for custom event to refresh view modal after photo update
+        // Listen for custom event to refresh view modal after photo update
+        document.addEventListener('refreshFarmerView', function(e) {
+            if (e.detail && e.detail.farmerId) {
+                // Always reload the modal content to show the latest photo
+                viewFarmer(e.detail.farmerId);
+            }
+        });
 
         // Function to view photo in modal
         function viewPhotoModal(photoPath, uploadDate) {
