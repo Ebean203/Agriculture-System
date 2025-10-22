@@ -358,38 +358,32 @@ function generateFarmerViewHTML($farmer) {
     $html .= '</div>';
     $html .= '</div>';
     
-    // Farmer Photos Section (if photos exist)
+    // Farmer Photo Section (show only the most recent photo)
     if (isset($farmer['photos']) && !empty($farmer['photos'])) {
+        $latestPhoto = $farmer['photos'][0]; // photos expected ORDER BY uploaded_at DESC
+        $photoPath = $latestPhoto['file_path'];
+        $uploadedAt = $latestPhoto['uploaded_at'];
+
         $html .= '<div class="row g-3 mb-3">';
         $html .= '<div class="col-12">';
         $html .= '<div class="card border-0 shadow-sm">';
         $html .= '<div class="card-header bg-light border-0">';
-        $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-camera me-2"></i>Farmer Photos (' . count($farmer['photos']) . ')</h6>';
+        $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-camera me-2"></i>Farmer Photo</h6>';
         $html .= '</div>';
         $html .= '<div class="card-body">';
         $html .= '<div class="row g-2">';
-
-        foreach ($farmer['photos'] as $index => $photo) {
-            $photoPath = $photo['file_path'];
-            $isLatest = ($index === 0); // First photo is the latest due to DESC order
-            $html .= '<div class="col-md-3 col-sm-4 col-6">';
-            $html .= '<div class="position-relative">';
-            $html .= '<img src="' . htmlspecialchars($photoPath) . '" class="img-fluid rounded shadow-sm farmer-photo" alt="Farmer Photo" style="width: 100%; height: 200px; object-fit: cover; cursor: pointer;" onclick="viewPhotoModal(\'' . htmlspecialchars($photoPath) . '\', \'' . htmlspecialchars($photo['uploaded_at']) . '\')">';
-
-            // Photo info overlay
-            $html .= '<div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white p-2 rounded-bottom">';
-            $html .= '<small class="d-block"><i class="fas fa-calendar me-1"></i>' . date('M j, Y', strtotime($photo['uploaded_at'])) . '</small>';
-            if ($isLatest) {
-                $html .= '<span class="badge bg-success ms-2">Current Photo</span>';
-            }
-            $html .= '</div>';
-
-            $html .= '</div>';
-            $html .= '</div>';
-        }
-
+        $html .= '<div class="col-12">';
+        // Center the photo and constrain its size so it matches the red-box reference
+        $html .= '<div class="d-flex justify-content-center">';
+        $html .= '<div class="position-relative" style="display:inline-block;">';
+    // Smaller, centered image with ~300x300px size and safe JS quoting for onclick
+    $html .= '<img src="' . htmlspecialchars($photoPath) . '" class="img-fluid rounded shadow-sm farmer-photo" alt="Farmer Photo" style="display:block; width:300px; height:300px; object-fit:contain; cursor:pointer; background:#fff;" onclick="viewPhotoModal(\'' . addslashes($photoPath) . '\', \'" . addslashes($uploadedAt) . "\')">';
+        $html .= '<div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white p-2 rounded-bottom" style="width:100%;">';
+        $html .= '<small class="d-block"><i class="fas fa-calendar me-1"></i>' . date('M j, Y', strtotime($uploadedAt)) . '</small>';
+        $html .= '<span class="badge bg-success ms-2">Current Photo</span>';
         $html .= '</div>';
-        $html .= '</div>';
+        $html .= '</div>'; // .position-relative
+        $html .= '</div>'; // .d-flex
         $html .= '</div>';
         $html .= '</div>';
         $html .= '</div>';
