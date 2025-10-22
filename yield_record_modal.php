@@ -34,23 +34,45 @@
                                     function fetchFarmerCommodities(farmerId) {
                                         if (!farmerId) return;
                                         fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(farmerId))
-                                            .then(res => res.json())
-                                            .then(data => {
+                                            .then(function(res) {
+                                                if (!res.ok) return res.text().then(text => { throw new Error('Network response not ok: ' + res.status + ' - ' + text); });
+                                                return res.text();
+                                            })
+                                            .then(function(text) {
+                                                var data;
+                                                try {
+                                                    data = JSON.parse(text);
+                                                } catch (e) {
+                                                    console.error('Failed to parse JSON from get_farmer_commodities.php', text);
+                                                    data = { success: false, commodities: [] };
+                                                }
+
                                                 const commoditySelect = document.getElementById('commodity_id');
                                                 if (!commoditySelect) return;
                                                 // Remove all except the first option
                                                 while (commoditySelect.options.length > 1) commoditySelect.remove(1);
+
                                                 if (data.success && Array.isArray(data.commodities) && data.commodities.length > 0) {
                                                     data.commodities.forEach(function(commodity) {
+                                                        // Basic sanity check: commodity_name should be a short human friendly name
+                                                        var name = commodity.commodity_name || '';
+                                                        if (typeof name !== 'string') return;
+                                                        // Skip obviously-bad values (e.g., file paths with backslashes)
+                                                        if (/^[A-Za-z]:\\/.test(name) || name.indexOf('\\') !== -1) return;
+
                                                         const opt = document.createElement('option');
                                                         opt.value = commodity.commodity_id;
-                                                        opt.textContent = commodity.commodity_name;
+                                                        opt.textContent = name;
                                                         opt.setAttribute('data-category', commodity.category_id);
                                                         commoditySelect.appendChild(opt);
                                                     });
                                                 } else {
-                                                    // Optionally, fallback to all commodities (page reload or keep empty)
+                                                    // Keep only the default option if no commodities found for farmer
+                                                    commoditySelect.value = '';
                                                 }
+                                            })
+                                            .catch(function(err) {
+                                                console.error('Error fetching farmer commodities:', err);
                                             });
                                     }
 

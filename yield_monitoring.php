@@ -765,38 +765,58 @@ function searchFarmers(query) {
                         document.getElementById('farmer_id').value = farmer.farmer_id;
                         suggestions.classList.add('hidden');
                         // Fetch and populate categories and commodities for selected farmer
-                        fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(farmer.farmer_id))
-                            .then(response => response.json())
-                            .then(data => {
-                                const categoryFilter = document.getElementById('commodity_category_filter');
-                                const commoditySelect = document.getElementById('commodity_id');
-                                categoryFilter.disabled = false;
-                                categoryFilter.innerHTML = '<option value="">Select Category</option>';
-                                let categories = [];
-                                let farmerCommodities = [];
-                                if (data.success && data.commodities) {
-                                    // Collect unique categories and all commodities for this farmer
-                                    data.commodities.forEach(c => {
-                                        let catName = c.category_name || c.category;
-                                        if (catName && !categories.includes(catName)) {
-                                            categories.push(catName);
-                                            categoryFilter.innerHTML += `<option value="${catName}">${catName}</option>`;
+                                fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(farmer.farmer_id))
+                                    .then(function(response) {
+                                        if (!response.ok) return response.text().then(text => { throw new Error('Network error: ' + response.status + ' - ' + text); });
+                                        return response.text();
+                                    })
+                                    .then(function(text) {
+                                        var data;
+                                        try {
+                                            data = JSON.parse(text);
+                                        } catch (e) {
+                                            console.error('Failed to parse get_farmer_commodities response:', text);
+                                            data = { success: false, commodities: [] };
                                         }
-                                        farmerCommodities.push({
-                                            id: c.commodity_id,
-                                            name: c.commodity_name,
-                                            category: catName
-                                        });
+
+                                        const categoryFilter = document.getElementById('commodity_category_filter');
+                                        const commoditySelect = document.getElementById('commodity_id');
+                                        categoryFilter.disabled = false;
+                                        categoryFilter.innerHTML = '<option value="">Select Category</option>';
+                                        let categories = [];
+                                        let farmerCommodities = [];
+
+                                        if (data.success && Array.isArray(data.commodities)) {
+                                            // Collect unique categories and all commodities for this farmer
+                                            data.commodities.forEach(c => {
+                                                var catName = c.category_name || c.category || '';
+                                                var name = c.commodity_name || '';
+                                                // Basic validation: skip obviously invalid names (file paths etc.)
+                                                if (typeof name !== 'string') return;
+                                                if (/^[A-Za-z]:\\/.test(name) || name.indexOf('\\') !== -1) return;
+
+                                                if (catName && !categories.includes(catName)) {
+                                                    categories.push(catName);
+                                                    categoryFilter.innerHTML += `<option value="${catName}">${catName}</option>`;
+                                                }
+                                                farmerCommodities.push({ id: c.commodity_id, name: name, category: catName });
+                                            });
+                                        }
+                                        // Store commodities for later filtering
+                                        categoryFilter.farmerCommodities = farmerCommodities;
+
+                                        // Auto-select first category and filter commodities
+                                        if (categories.length > 0) {
+                                            categoryFilter.value = categories[0];
+                                            filterCommodities();
+                                        } else {
+                                            // If no categories for this farmer, clear commodity options
+                                            commoditySelect.innerHTML = '<option value="">Select Commodity</option>';
+                                        }
+                                    })
+                                    .catch(function(err) {
+                                        console.error('Error fetching farmer commodities:', err);
                                     });
-                                    // Store commodities for later filtering
-                                    categoryFilter.farmerCommodities = farmerCommodities;
-                                }
-                                // Auto-select first category and filter commodities
-                                if (categories.length > 0) {
-                                    categoryFilter.value = categories[0];
-                                    filterCommodities();
-                                }
-                            });
                     });
                     
                     suggestions.appendChild(item);
