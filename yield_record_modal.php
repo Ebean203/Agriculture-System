@@ -30,66 +30,133 @@
                                 <script>
                                 // --- Auto-suggest commodities for selected farmer ---
                                 document.addEventListener('DOMContentLoaded', function() {
-                                    // When a farmer is selected (auto-suggest logic assumed to set #farmer_id)
+                                    // --- Auto-suggest farmer search and commodities population ---
+                                    const farmerInput = document.getElementById('farmer_search');
+                                    const farmerIdInput = document.getElementById('farmer_id');
+                                    const farmerSuggestionsEl = document.getElementById('farmer_suggestions');
+
+                                    function clearSuggestions() {
+                                        if (farmerSuggestionsEl) {
+                                            farmerSuggestionsEl.innerHTML = '';
+                                            farmerSuggestionsEl.classList.add('hidden');
+                                        }
+                                    }
+
+                                    function renderSuggestions(farmers) {
+                                        if (!farmerSuggestionsEl) return;
+                                        farmerSuggestionsEl.innerHTML = '';
+                                        if (!Array.isArray(farmers) || farmers.length === 0) {
+                                            const no = document.createElement('div');
+                                            no.className = 'px-3 py-2 text-gray-500 text-center';
+                                            no.textContent = 'No farmers found';
+                                            farmerSuggestionsEl.appendChild(no);
+                                            farmerSuggestionsEl.classList.remove('hidden');
+                                            return;
+                                        }
+                                        farmers.forEach(f => {
+                                            const item = document.createElement('div');
+                                            item.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 farmer-suggestion-item';
+                                            item.innerHTML = `
+                                                <div class="font-medium text-gray-900">${f.full_name}</div>
+                                                <div class="text-sm text-gray-600">ID: ${f.farmer_id} | ${f.barangay_name || 'N/A'}</div>
+                                            `;
+                                            item.addEventListener('click', function() {
+                                                farmerInput.value = f.full_name;
+                                                farmerIdInput.value = f.farmer_id;
+                                                clearSuggestions();
+                                                fetchFarmerCommodities(f.farmer_id);
+                                            });
+                                            farmerSuggestionsEl.appendChild(item);
+                                        });
+                                        farmerSuggestionsEl.classList.remove('hidden');
+                                    }
+
+                                    let searchTimeout = null;
+                                    if (farmerInput) {
+                                        farmerInput.addEventListener('input', function() {
+                                            const q = this.value.trim();
+                                            farmerIdInput.value = '';
+                                            if (searchTimeout) clearTimeout(searchTimeout);
+                                            if (q.length < 2) {
+                                                clearSuggestions();
+                                                return;
+                                            }
+                                            searchTimeout = setTimeout(function() {
+                                                fetch('search_farmers.php?query=' + encodeURIComponent(q))
+                                                    .then(res => res.text())
+                                                    .then(text => {
+                                                        let data = { success: false, farmers: [] };
+                                                        try { data = JSON.parse(text); } catch (e) { console.error('Invalid JSON from search_farmers.php', text); }
+                                                        if (data.success && Array.isArray(data.farmers)) {
+                                                            renderSuggestions(data.farmers);
+                                                        } else {
+                                                            renderSuggestions([]);
+                                                        }
+                                                    }).catch(err => {
+                                                        console.error('Error searching farmers:', err);
+                                                        renderSuggestions([]);
+                                                    });
+                                            }, 250);
+                                        });
+
+                                        // Close suggestions when clicking outside
+                                        document.addEventListener('click', function(e) {
+                                            if (!farmerSuggestionsEl) return;
+                                            if (!farmerSuggestionsEl.contains(e.target) && e.target !== farmerInput) {
+                                                clearSuggestions();
+                                            }
+                                        });
+                                    }
+
                                     function fetchFarmerCommodities(farmerId) {
                                         if (!farmerId) return;
                                         fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(farmerId))
-                                            .then(function(res) {
-                                                if (!res.ok) return res.text().then(text => { throw new Error('Network response not ok: ' + res.status + ' - ' + text); });
-                                                return res.text();
-                                            })
+                                            .then(function(res) { if (!res.ok) return res.text().then(t => { throw new Error('Network: ' + res.status + ' ' + t); }); return res.text(); })
                                             .then(function(text) {
-                                                var data;
-                                                try {
-                                                    data = JSON.parse(text);
-                                                } catch (e) {
-                                                    console.error('Failed to parse JSON from get_farmer_commodities.php', text);
-                                                    data = { success: false, commodities: [] };
-                                                }
-
+                                                let data = { success: false, commodities: [] };
+                                                try { data = JSON.parse(text); } catch (e) { console.error('Invalid JSON from get_farmer_commodities.php', text); }
+                                                const categoryFilter = document.getElementById('commodity_category_filter');
                                                 const commoditySelect = document.getElementById('commodity_id');
                                                 if (!commoditySelect) return;
-                                                // Remove all except the first option
-                                                while (commoditySelect.options.length > 1) commoditySelect.remove(1);
+                                                // Reset category filter options (keep 'All Categories')
+                                                if (categoryFilter) {
+                                                    categoryFilter.disabled = false;
+                                                    // keep existing options but clear any attached farmerCommodities
+                                                    categoryFilter.farmerCommodities = [];
+                                                }
+                                                // Clear commodity select except default
+                                                commoditySelect.innerHTML = '<option value="">Select Commodity</option>';
 
                                                 if (data.success && Array.isArray(data.commodities) && data.commodities.length > 0) {
-                                                    data.commodities.forEach(function(commodity) {
-                                                        // Basic sanity check: commodity_name should be a short human friendly name
-                                                        var name = commodity.commodity_name || '';
+                                                    const categories = [];
+                                                    const farmerCommodities = [];
+                                                    data.commodities.forEach(function(c) {
+                                                        const name = c.commodity_name || '';
                                                         if (typeof name !== 'string') return;
-                                                        // Skip obviously-bad values (e.g., file paths with backslashes)
+                                                        // skip suspicious values like file paths
                                                         if (/^[A-Za-z]:\\/.test(name) || name.indexOf('\\') !== -1) return;
-
+                                                        farmerCommodities.push({ id: c.commodity_id, name: name, category: c.category_name || c.category_id });
+                                                        if (categoryFilter) {
+                                                            const catName = c.category_name || c.category_id || '';
+                                                            if (catName && !categories.includes(catName)) {
+                                                                categories.push(catName);
+                                                                const opt = document.createElement('option');
+                                                                opt.value = catName;
+                                                                opt.textContent = catName;
+                                                                categoryFilter.appendChild(opt);
+                                                            }
+                                                        }
+                                                    });
+                                                    if (categoryFilter) categoryFilter.farmerCommodities = farmerCommodities;
+                                                    // Populate commodity select with all farmer commodities
+                                                    farmerCommodities.forEach(function(fc) {
                                                         const opt = document.createElement('option');
-                                                        opt.value = commodity.commodity_id;
-                                                        opt.textContent = name;
-                                                        opt.setAttribute('data-category', commodity.category_id);
+                                                        opt.value = fc.id;
+                                                        opt.textContent = fc.name;
                                                         commoditySelect.appendChild(opt);
                                                     });
-                                                } else {
-                                                    // Keep only the default option if no commodities found for farmer
-                                                    commoditySelect.value = '';
                                                 }
-                                            })
-                                            .catch(function(err) {
-                                                console.error('Error fetching farmer commodities:', err);
-                                            });
-                                    }
-
-                                    // Listen for farmer selection (assume auto-suggest sets #farmer_id)
-                                    const farmerInput = document.getElementById('farmer_search');
-                                    const farmerIdInput = document.getElementById('farmer_id');
-                                    if (farmerInput && farmerIdInput) {
-                                        // If auto-suggest sets hidden #farmer_id, listen for changes
-                                        farmerIdInput.addEventListener('change', function() {
-                                            fetchFarmerCommodities(this.value);
-                                        });
-                                        // If auto-suggest sets on blur or selection
-                                        farmerInput.addEventListener('blur', function() {
-                                            setTimeout(function() {
-                                                if (farmerIdInput.value) fetchFarmerCommodities(farmerIdInput.value);
-                                            }, 200);
-                                        });
+                                            }).catch(function(err) { console.error('Error fetching farmer commodities:', err); });
                                     }
                                 });
                                 </script>
@@ -593,4 +660,76 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+// Compatibility layer for dashboard quick-actions (index.php)
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure alias elements exist for index.php quick-actions code
+    var farmerSearch = document.getElementById('farmer_search');
+    var farmerId = document.getElementById('farmer_id');
+
+    if (!document.getElementById('farmer_name_yield')) {
+        var aliasName = document.createElement('input');
+        aliasName.type = 'hidden';
+        aliasName.id = 'farmer_name_yield';
+        farmerSearch && farmerSearch.parentNode && farmerSearch.parentNode.appendChild(aliasName);
+    }
+    if (!document.getElementById('selected_farmer_id_yield')) {
+        var aliasId = document.createElement('input');
+        aliasId.type = 'hidden';
+        aliasId.id = 'selected_farmer_id_yield';
+        farmerSearch && farmerSearch.parentNode && farmerSearch.parentNode.appendChild(aliasId);
+    }
+    if (!document.getElementById('farmer_suggestions_yield')) {
+        var aliasSug = document.createElement('div');
+        aliasSug.id = 'farmer_suggestions_yield';
+        aliasSug.className = 'absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto';
+        // place after existing suggestions container if present
+        var existing = document.getElementById('farmer_suggestions');
+        if (existing && existing.parentNode) existing.parentNode.appendChild(aliasSug);
+        else farmerSearch && farmerSearch.parentNode && farmerSearch.parentNode.appendChild(aliasSug);
+    }
+
+    // When typing in the modal's search field, prefer index's search function if available
+    if (farmerSearch) {
+        farmerSearch.addEventListener('input', function(e) {
+            var q = (this.value || '').trim();
+            // keep alias in sync
+            var aliasName = document.getElementById('farmer_name_yield');
+            if (aliasName) aliasName.value = q;
+
+            // If the dashboard search function exists, delegate to it so it populates the expected suggestions container
+            if (typeof window.searchFarmersYield === 'function') {
+                try { window.searchFarmersYield(q); } catch (err) { console.error('dashboard searchFarmersYield error', err); }
+            } else {
+                // Fallback: if no dashboard search, do nothing — the modal already has its own search implementation
+            }
+        });
+    }
+
+    // Wrap or augment selectFarmerYield so selecting a suggestion (from dashboard suggestion UI) also updates this modal
+    var originalSelect = window.selectFarmerYield;
+    window.selectFarmerYield = function(farmerIdVal, farmerNameVal) {
+        try {
+            if (typeof originalSelect === 'function') originalSelect(farmerIdVal, farmerNameVal);
+        } catch (e) {
+            console.error('original selectFarmerYield error', e);
+        }
+        try {
+            // Sync values into this modal's fields
+            var farmerSearchEl = document.getElementById('farmer_search');
+            var farmerIdEl = document.getElementById('farmer_id');
+            if (farmerSearchEl) farmerSearchEl.value = farmerNameVal || '';
+            if (farmerIdEl) farmerIdEl.value = farmerIdVal || '';
+            var aliasName = document.getElementById('farmer_name_yield'); if (aliasName) aliasName.value = farmerNameVal || '';
+            var aliasId = document.getElementById('selected_farmer_id_yield'); if (aliasId) aliasId.value = farmerIdVal || '';
+            // Hide suggestions containers
+            var s1 = document.getElementById('farmer_suggestions'); if (s1) s1.classList.add('hidden');
+            var s2 = document.getElementById('farmer_suggestions_yield'); if (s2) s2.classList.add('hidden');
+            // Trigger commodity population for this modal
+            if (typeof fetchFarmerCommodities === 'function') {
+                try { fetchFarmerCommodities(farmerIdVal); } catch (e) { console.error('fetchFarmerCommodities error', e); }
+            }
+        } catch (e) { console.error('selectFarmerYield wrapper error', e); }
+    };
+});
 </script>
