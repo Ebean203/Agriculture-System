@@ -148,11 +148,12 @@
                                                         }
                                                     });
                                                     if (categoryFilter) categoryFilter.farmerCommodities = farmerCommodities;
-                                                    // Populate commodity select with all farmer commodities
+                                                    // Populate commodity select with all farmer commodities (include data-category)
                                                     farmerCommodities.forEach(function(fc) {
                                                         const opt = document.createElement('option');
                                                         opt.value = fc.id;
                                                         opt.textContent = fc.name;
+                                                        if (fc.category !== undefined) opt.setAttribute('data-category', fc.category);
                                                         commoditySelect.appendChild(opt);
                                                     });
                                                 }
@@ -253,8 +254,6 @@
                                         <option value="kg">Kilograms</option>
                                         <option value="bags">Bags</option>
                                         <option value="sacks">Sacks</option>
-                                        <option value="tons">Tons</option>
-                                        <option value="pieces">Pieces</option>
                                         <option value="heads">Heads</option>
                                     </select>
                                 </div>
@@ -428,6 +427,84 @@
                                     <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>"><?php echo htmlspecialchars($commodity['commodity_name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <script>
+                            // Build a map of category_id -> category_name for client-side logic
+                            const categoryMap = {
+                                <?php foreach ($commodity_categories as $cat): ?>
+                                    '<?php echo $cat['category_id']; ?>': '<?php echo addslashes($cat['category_name']); ?>',
+                                <?php endforeach; ?>
+                            };
+
+                            function setSeasonOptionsForCategory(selectEl, categoryName) {
+                                if (!selectEl) return;
+                                // agronomic and high-value: Dry/Wet + First..Fifth Cropping
+                                const agronomicNames = ['Agronomic Crops', 'High Value Crops'];
+                                let options = [];
+                                if (agronomicNames.includes(categoryName)) {
+                                    options = [
+                                        ['', 'Select Season'],
+                                        ['Dry Season','Dry Season'],
+                                        ['Wet Season','Wet Season'],
+                                        ['First Cropping','First Cropping'],
+                                        ['Second Cropping','Second Cropping'],
+                                        ['Third Cropping','Third Cropping'],
+                                        ['Fourth Cropping','Fourth Cropping'],
+                                        ['Fifth Cropping','Fifth Cropping']
+                                    ];
+                                } else {
+                                    // livestock/poultry and other: Batch/Flock 1..3
+                                    options = [
+                                        ['', 'Select Season'],
+                                        ['Batch/Flock 1','Batch/Flock 1 (or Cycle 1)'],
+                                        ['Batch/Flock 2','Batch/Flock 2 (or Cycle 2)'],
+                                        ['Batch/Flock 3','Batch/Flock 3 (or Cycle 3)']
+                                    ];
+                                }
+                                // Replace options
+                                selectEl.innerHTML = '';
+                                options.forEach(function(opt) {
+                                    const el = document.createElement('option');
+                                    el.value = opt[0];
+                                    el.textContent = opt[1];
+                                    selectEl.appendChild(el);
+                                });
+                            }
+
+                            // Watch commodity select change to auto-update season
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const commoditySelect = document.getElementById('commodity_id');
+                                const seasonSelect = document.getElementById('season');
+                                const editCommoditySelect = document.getElementById('edit_commodity_id');
+                                const editSeasonSelect = document.getElementById('edit_season');
+
+                                function updateForSelectedCommodity(sel, seasonSel) {
+                                    if (!sel || !seasonSel) return;
+                                    const opt = sel.options[sel.selectedIndex];
+                                    if (!opt) return;
+                                    const catId = opt.getAttribute('data-category') || '';
+                                    const catName = categoryMap[catId] || '';
+                                    setSeasonOptionsForCategory(seasonSel, catName);
+                                }
+
+                                if (commoditySelect && seasonSelect) {
+                                    commoditySelect.addEventListener('change', function() {
+                                        updateForSelectedCommodity(commoditySelect, seasonSelect);
+                                    });
+                                }
+                                if (editCommoditySelect && editSeasonSelect) {
+                                    editCommoditySelect.addEventListener('change', function() {
+                                        updateForSelectedCommodity(editCommoditySelect, editSeasonSelect);
+                                    });
+                                }
+
+                                // Also ensure when edit modal populates, the edit season options are set appropriately
+                                // This will run whenever edit buttons populate fields (we already set edit_commodity_id value there)
+                                // Listen to a small custom event to refresh edit season
+                                document.addEventListener('refreshEditSeason', function() {
+                                    updateForSelectedCommodity(editCommoditySelect, editSeasonSelect);
+                                });
+                            });
+                            </script>
                         </div>
                     </div>
                     <div class="row">
@@ -453,8 +530,6 @@
                                 <option value="kg">Kilograms</option>
                                 <option value="bags">Bags</option>
                                 <option value="sacks">Sacks</option>
-                                <option value="tons">Tons</option>
-                                <option value="pieces">Pieces</option>
                                 <option value="heads">Heads</option>
                             </select>
                         </div>
@@ -529,8 +604,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('view_farmer').textContent = (record.first_name || '') + ' ' + (record.last_name || '');
             document.getElementById('view_commodity').textContent = record.commodity_name || '';
             document.getElementById('view_season').textContent = record.season || '';
-            document.getElementById('view_yield_amount').textContent = (record.yield_amount !== undefined) ? Number(record.yield_amount).toFixed(2) + ' sacks' : '';
-            document.getElementById('view_unit').textContent = record.unit || '';
+            const viewUnit = record.unit || '';
+            document.getElementById('view_yield_amount').textContent = (record.yield_amount !== undefined) ? Number(record.yield_amount).toFixed(2) + (viewUnit ? ' ' + viewUnit : '') : '';
+            document.getElementById('view_unit').textContent = viewUnit;
             document.getElementById('view_visit_date').textContent = record.visit_date ? new Date(record.visit_date).toLocaleDateString() : '';
             document.getElementById('view_distributed_input').textContent = record.distributed_input || '';
             document.getElementById('view_quality_grade').textContent = record.quality_grade || '';
@@ -555,28 +631,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     const select = document.getElementById('edit_commodity_id');
                     select.innerHTML = '<option value="">Select Commodity</option>';
-                    if (data.success && Array.isArray(data.commodities)) {
+                        if (data.success && Array.isArray(data.commodities)) {
                         data.commodities.forEach(function(commodity) {
                             const opt = document.createElement('option');
                             opt.value = commodity.commodity_id;
                             opt.textContent = commodity.commodity_name;
+                            // preserve category info for client-side season logic
+                            if (commodity.category_id !== undefined) opt.setAttribute('data-category', commodity.category_id);
+                            else if (commodity.category_name !== undefined) opt.setAttribute('data-category', commodity.category_name);
                             select.appendChild(opt);
                         });
                         // Set selected value
                         select.value = record.commodity_id || '';
+                        // Dispatch event so season options update for the selected commodity
+                        document.dispatchEvent(new Event('refreshEditSeason'));
                     } else {
                         // Fallback: show only the current commodity
                         if (record.commodity_id && record.commodity_name) {
                             const opt = document.createElement('option');
                             opt.value = record.commodity_id;
                             opt.textContent = record.commodity_name;
+                            if (record.category_id !== undefined) opt.setAttribute('data-category', record.category_id);
+                            else if (record.category_name !== undefined) opt.setAttribute('data-category', record.category_name);
                             select.appendChild(opt);
                             select.value = record.commodity_id;
                         }
                     }
                 });
 
-            document.getElementById('edit_season').value = record.season || '';
+            // Set season after options have been refreshed. Use a small timeout to allow the refresh handler to run.
+            setTimeout(function() {
+                if (document.getElementById('edit_season')) {
+                    // If the stored season value exists in options, select it; otherwise leave default
+                    var seasonVal = record.season || '';
+                    var seasonSel = document.getElementById('edit_season');
+                    for (var i = 0; i < seasonSel.options.length; i++) {
+                        if (seasonSel.options[i].value === seasonVal) {
+                            seasonSel.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }, 150);
             document.getElementById('edit_yield_amount').value = record.yield_amount || '';
             document.getElementById('edit_unit').value = record.unit || '';
             document.getElementById('edit_visit_date').value = record.visit_date ? record.visit_date.split(' ')[0] : '';
@@ -624,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const seasonCell = row.querySelector('td:nth-child(3) .inline-flex');
                         if (seasonCell && updated.season) seasonCell.textContent = updated.season;
                         const yieldCell = row.querySelector('td:nth-child(4) .text-sm.font-medium');
-                        if (yieldCell && updated.yield_amount !== undefined) yieldCell.textContent = Number(updated.yield_amount).toFixed(2) + ' sacks';
+                        if (yieldCell && updated.yield_amount !== undefined) yieldCell.textContent = Number(updated.yield_amount).toFixed(2) + (updated.unit ? ' ' + updated.unit : '');
                         const dateCell = row.querySelector('td:nth-child(5)');
                         if (dateCell && updated.record_date) dateCell.textContent = new Date(updated.record_date).toLocaleDateString();
                         // Also update the data-record attribute on action buttons so future edits use latest data

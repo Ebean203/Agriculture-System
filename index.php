@@ -792,6 +792,39 @@ $stmt->close();
                 .replace(/'/g, '&#39;');
         }
 
+        // Commodity filtering function used by the modal's category <select> onchange
+        window.filterCommodities = function() {
+            const categoryFilter = document.getElementById('commodity_category_filter');
+            const commoditySelect = document.getElementById('commodity_id');
+            if (!categoryFilter || !commoditySelect) return;
+
+            const selectedCategory = categoryFilter.value;
+            const farmerCommodities = categoryFilter.farmerCommodities || [];
+
+            // Reset commodity dropdown and add default
+            let html = '<option value="">Select Commodity</option>';
+
+            farmerCommodities.forEach(function(c) {
+                // Normalize possible category fields
+                const cCatId = (c.category_id !== undefined) ? String(c.category_id) : '';
+                const cCatName = (c.category_name !== undefined) ? String(c.category_name) : '';
+                const cCatOther = (c.category !== undefined) ? String(c.category) : '';
+
+                const matches = (selectedCategory === '') ||
+                                (cCatId && String(selectedCategory) === cCatId) ||
+                                (cCatName && String(selectedCategory) === cCatName) ||
+                                (cCatOther && String(selectedCategory) === cCatOther);
+
+                if (matches) {
+                    const dataCategory = c.category || c.category_id || c.category_name || '';
+                    html += `<option value="${escapeHtml(c.id)}" data-category="${escapeHtml(dataCategory)}">${escapeHtml(c.name)}</option>`;
+                }
+            });
+
+            commoditySelect.innerHTML = html;
+            commoditySelect.value = '';
+        }
+
         function showSuggestionsYield() {
             const query = document.getElementById('farmer_name_yield').value;
             if (query.length > 0) {

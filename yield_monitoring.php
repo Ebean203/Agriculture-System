@@ -2,6 +2,7 @@
 session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
+require_once __DIR__ . '/includes/yield_helpers.php';
 $pageTitle = 'Yield Monitoring - Lagonglong FARMS';
 
 // Check if yield_monitoring table exists
@@ -459,7 +460,7 @@ include 'includes/layout_start.php';
         </div>
 
         <!-- Average Yield -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
+                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
             <div class="flex items-center">
                 <div class="w-12 h-12 bg-agri-light rounded-lg flex items-center justify-center mr-4">
                     <i class="fas fa-seedling text-agri-green text-xl"></i>
@@ -469,15 +470,46 @@ include 'includes/layout_start.php';
                         if ($total_records > 0) {
                             $total_yield = array_sum(array_column($yield_records, 'yield_amount'));
                             $avg_yield = $total_yield / $total_records;
-                            echo number_format($avg_yield, 1) . ' sacks';
+                                    // Determine unit: if all records share the same unit, show it; otherwise indicate mixed units
+                                    $units = array_filter(array_unique(array_map(function($r){ return $r['unit'] ?? ''; }, $yield_records)));
+                                    $unit_label = '';
+                                    if (count($units) === 1 && $units[0] !== '') {
+                                        $unit_label = ' ' . htmlspecialchars($units[0]);
+                                    } else if (count($units) > 1) {
+                                        $unit_label = ' (mixed units)';
+                                    }
+                                    echo number_format($avg_yield, 1) . $unit_label;
                         } else {
-                            echo '0 sacks';
+                                    echo '0';
                         }
                     ?></h3>
                     <p class="text-gray-600">Average Yield</p>
                 </div>
             </div>
-        </div>
+                    <?php
+                        // Use helper to aggregate totals and normalize unit labels
+                        $totals_by_commodity = aggregate_totals_by_commodity_from_array($yield_records);
+                        if (!empty($totals_by_commodity)) {
+                            echo '<div class="mt-4 text-sm text-gray-700">Totals by commodity:</div>';
+                            echo '<ul class="mt-2 text-sm space-y-1">';
+                            $count = 0;
+                            foreach ($totals_by_commodity as $com => $units) {
+                                $parts = [];
+                                foreach ($units as $unit => $amt) {
+                                    $labelUnit = $unit ? normalize_unit_label($unit) : '';
+                                    $parts[] = number_format($amt, 2) . ($labelUnit ? ' ' . htmlspecialchars($labelUnit) : '');
+                                }
+                                echo '<li>' . htmlspecialchars($com) . ': ' . implode('; ', $parts) . '</li>';
+                                $count++;
+                                if ($count >= 8) {
+                                    echo '<li class="text-gray-500">and more...</li>';
+                                    break;
+                                }
+                            }
+                            echo '</ul>';
+                        }
+                    ?>
+                </div>
     </div>
 
 
@@ -605,7 +637,7 @@ include 'includes/layout_start.php';
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">
-                                        <?php echo number_format($record['yield_amount'], 2); ?> sacks
+                                        <?php echo number_format($record['yield_amount'], 2); ?> <?php echo htmlspecialchars($record['unit'] ?? ''); ?>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -828,11 +860,30 @@ function filterCommodities() {
     commoditySelect.innerHTML = '<option value="">Select Commodity</option>';
     // Add only commodities matching selected category
     farmerCommodities.forEach(c => {
-        if (selectedCategory === '' || c.category === selectedCategory) {
-            commoditySelect.innerHTML += `<option value="${c.id}" data-category="${c.category}">${c.name}</option>`;
+        // Normalize category values coming from different places (category, category_id, category_name)
+        const cCatId = (c.category_id !== undefined) ? String(c.category_id) : '';
+        const cCatName = (c.category_name !== undefined) ? String(c.category_name) : '';
+        const cCatOther = (c.category !== undefined) ? String(c.category) : '';
+        const matches = (selectedCategory === '') ||
+                        (cCatId && String(selectedCategory) === cCatId) ||
+                        (cCatName && String(selectedCategory) === cCatName) ||
+                        (cCatOther && String(selectedCategory) === cCatOther);
+        if (matches) {
+            // Use data-category attribute to preserve whatever category identifier is present
+            const dataCategory = c.category || c.category_id || c.category_name || '';
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            if (dataCategory) opt.setAttribute('data-category', dataCategory);
+            commoditySelect.appendChild(opt);
         }
     });
     commoditySelect.value = '';
+    // If a page-level function exists to update season options, call it for the first option
+    if (typeof setSeasonOptionsForCategory === 'function') {
+        // Trigger update for currently selected commodity (none) so it resets to default agronomic behavior
+        setTimeout(function() { if (document.getElementById('season')) setSeasonOptionsForCategory(document.getElementById('season'), categoryFilter.options[categoryFilter.selectedIndex].textContent || ''); }, 50);
+    }
 }
 
 // Initialize commodity filter when modal opens
@@ -844,6 +895,19 @@ document.getElementById('addVisitModal').addEventListener('shown.bs.modal', func
             if (option.value !== '') {
                 categoryFilter.value = option.value;
                 filterCommodities();
+                // After filtering, ensure season select reflects the first commodity (if any)
+                if (typeof setSeasonOptionsForCategory === 'function') {
+                    setTimeout(function() {
+                        const commoditySel = document.getElementById('commodity_id');
+                        const seasonSel = document.getElementById('season');
+                        if (commoditySel && seasonSel && commoditySel.options.length > 0) {
+                            const opt = commoditySel.options[commoditySel.selectedIndex] || commoditySel.options[0];
+                            const catId = opt ? opt.getAttribute('data-category') : '';
+                            const catName = (typeof categoryMap !== 'undefined' && categoryMap[catId]) ? categoryMap[catId] : '';
+                            setSeasonOptionsForCategory(seasonSel, catName);
+                        }
+                    }, 100);
+                }
                 break;
             }
         }
@@ -947,7 +1011,7 @@ function initializeFilterTabs() {
 }
 
 function handleFilterChange(filterValue) {
-    console.log('Filter changed to:', filterValue);
+    if (window.APP_DEBUG) console.log('Filter changed to:', filterValue);
     
     // Map filter values to category IDs
     const categoryMap = {
@@ -1005,7 +1069,7 @@ function setActiveTab() {
 function updateSummaryCards(filterValue) {
     // This function will update the summary cards based on the selected filter
     // For now, we'll just log the action
-    console.log('Updating summary cards for filter:', filterValue);
+    if (window.APP_DEBUG) console.log('Updating summary cards for filter:', filterValue);
     
     // You can implement actual data filtering here
     // Example: fetch filtered data and update the card values
@@ -1035,7 +1099,7 @@ function filterCommodityDropdown(categoryId) {
 }
 
 function filterDataTable(filterValue) {
-    console.log('Filtering data table for:', filterValue);
+    if (window.APP_DEBUG) console.log('Filtering data table for:', filterValue);
     
     // Get all table rows (assuming there will be a data table with commodity information)
     const tableRows = document.querySelectorAll('tbody tr');

@@ -6,6 +6,43 @@ require_once 'validation_functions.php';
 
 $pageTitle = 'Farmers Management';
 
+// Generate a legacy-style farmer ID matching existing format: FMRYYYYMMNNNN
+function generateFarmerId($conn) {
+    // Build prefix for current year-month
+    $prefix = 'FMR' . date('Y') . str_pad(date('n'), 2, '0', STR_PAD_LEFT);
+
+    // Find the maximum numeric suffix for this prefix
+    $sql = "SELECT farmer_id FROM farmers WHERE farmer_id LIKE ? ORDER BY farmer_id DESC LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $like = $prefix . '%';
+        $stmt->bind_param('s', $like);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res && $res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $existing = $row['farmer_id'];
+            // Extract trailing digits
+            if (preg_match('/^FMR(\d{6})(\d+)$/', $existing, $m)) {
+                $num = intval($m[2]);
+                $next = $num + 1;
+            } else {
+                // If pattern doesn't match, fallback to 1
+                $next = 1;
+            }
+        } else {
+            $next = 1;
+        }
+    } else {
+        // If prepare failed, fallback to timestamp-based numbering
+        $next = time() % 100000;
+    }
+
+    // Pad next to 5 digits for consistency with existing examples
+    $suffix = str_pad((string)$next, 5, '0', STR_PAD_LEFT);
+    return 'FMR' . date('Y') . str_pad(date('n'), 2, '0', STR_PAD_LEFT) . $suffix;
+}
+
 // Function to handle farmer archiving
 function handleFarmerArchive($conn, $farmer_id, $archive_reason = null) {
     $archive_reason = $archive_reason ?? 'Archived by admin';
@@ -181,6 +218,120 @@ function handleFarmerEdit($conn, $post_data) {
         $conn->rollback();
         $conn->autocommit(true);
         return ['success' => false, 'message' => 'Error updating farmer: ' . $e->getMessage()];
+    }
+}
+
+// Function to handle new farmer registration
+function handleFarmerRegistration($conn, $post_data) {
+    try {
+        // Validate incoming data using existing validation functions
+        $validated = validateFarmerData($post_data);
+
+        // Generate a unique farmer_id if not provided
+        $farmer_id = $post_data['farmer_id'] ?? null;
+        if (empty($farmer_id)) {
+            // Use legacy-style IDs to match existing records: FMRYYYYMM#####
+            $farmer_id = generateFarmerId($conn);
+        }
+
+        // Begin transaction
+        $conn->autocommit(false);
+
+        // Insert farmer
+        $stmt = $conn->prepare("INSERT INTO farmers (farmer_id, first_name, middle_name, last_name, suffix, birth_date, gender, contact_number, barangay_id, address_details, other_income_source, registration_date, is_member_of_4ps, is_ip, is_rsbsa, is_ncfrs, is_boat, is_fisherfolk, land_area_hectares) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?)");
+        if (!$stmt) throw new Exception('Failed to prepare INSERT farmer: ' . $conn->error);
+
+        $stmt->bind_param('ssssssssissiiiiisd',
+            $farmer_id,
+            $validated['first_name'],
+            $validated['middle_name'],
+            $validated['last_name'],
+            $validated['suffix'],
+            $validated['birth_date'],
+            $validated['gender'],
+            $validated['contact_number'],
+            $validated['barangay_id'],
+            $validated['address_details'],
+            $validated['other_income_source'],
+            $validated['is_member_of_4ps'],
+            $validated['is_ip'],
+            $validated['is_rsbsa'],
+            $validated['is_ncfrs'],
+            $validated['is_boat'],
+            $validated['is_fisherfolk'],
+            $validated['land_area_hectares']
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to insert farmer: ' . $stmt->error);
+        }
+
+        // Insert household_info if provided
+        $household_stmt = $conn->prepare("INSERT INTO household_info (farmer_id, civil_status, spouse_name, household_size, education_level, occupation) VALUES (?, ?, ?, ?, ?, ?)");
+        if (!$household_stmt) throw new Exception('Failed to prepare household INSERT: ' . $conn->error);
+        $household_stmt->bind_param('sssiss', $farmer_id, $validated['civil_status'], $validated['spouse_name'], $validated['household_size'], $validated['education_level'], $validated['occupation']);
+        if (!$household_stmt->execute()) {
+            throw new Exception('Failed to insert household info: ' . $household_stmt->error);
+        }
+
+        // Insert farmer commodities (support new array structure)
+        $submitted_commodities = $post_data['commodities'] ?? [];
+        if (!is_array($submitted_commodities) || count($submitted_commodities) === 0) {
+            // Fallback to single commodity fields
+            $primary_comm = $post_data['commodity_id'] ?? null;
+            $years = $post_data['years_farming'] ?? 0;
+            if ($primary_comm) {
+                $ins = $conn->prepare("INSERT INTO farmer_commodities (farmer_id, commodity_id, years_farming, is_primary) VALUES (?, ?, ?, 1)");
+                if ($ins) {
+                    $y = is_numeric($years) ? intval($years) : 0;
+                    $ins->bind_param('sii', $farmer_id, $primary_comm, $y);
+                    $ins->execute();
+                }
+            }
+        } else {
+            $primary_index = isset($post_data['primary_commodity_index']) ? intval($post_data['primary_commodity_index']) : 0;
+            foreach ($submitted_commodities as $idx => $comm) {
+                $comm_id = $comm['commodity_id'] ?? null;
+                $yrs = isset($comm['years_farming']) ? intval($comm['years_farming']) : 0;
+                if (!$comm_id) continue;
+                $is_primary = ($idx === $primary_index) ? 1 : 0;
+                $ins = $conn->prepare("INSERT INTO farmer_commodities (farmer_id, commodity_id, years_farming, is_primary) VALUES (?, ?, ?, ?)");
+                if ($ins) {
+                    $ins->bind_param('siii', $farmer_id, $comm_id, $yrs, $is_primary);
+                    if (!$ins->execute()) {
+                        throw new Exception('Failed to insert commodity: ' . $ins->error);
+                    }
+                }
+            }
+        }
+
+        // Handle optional photo upload
+        if (isset($_FILES['farmer_photo']) && $_FILES['farmer_photo']['error'] === UPLOAD_ERR_OK) {
+            $photo_dir = 'uploads/farmer_photos/';
+            if (!is_dir($photo_dir)) @mkdir($photo_dir, 0755, true);
+            $original_name = basename($_FILES['farmer_photo']['name']);
+            $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+            $new_filename = $farmer_id . '_' . time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '', $original_name);
+            $target_path = $photo_dir . $new_filename;
+            if (move_uploaded_file($_FILES['farmer_photo']['tmp_name'], $target_path)) {
+                $ins_photo = $conn->prepare("INSERT INTO farmer_photos (farmer_id, file_path, uploaded_at) VALUES (?, ?, NOW())");
+                if ($ins_photo) {
+                    $ins_photo->bind_param('ss', $farmer_id, $target_path);
+                    $ins_photo->execute();
+                }
+            }
+        }
+
+        $conn->commit();
+        $conn->autocommit(true);
+
+        return ['success' => true, 'message' => 'Farmer registered successfully!', 'farmer_id' => $farmer_id];
+    } catch (Exception $e) {
+        if ($conn) {
+            $conn->rollback();
+            $conn->autocommit(true);
+        }
+        return ['success' => false, 'message' => 'Error registering farmer: ' . $e->getMessage()];
     }
 }
 

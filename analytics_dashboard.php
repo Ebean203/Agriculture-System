@@ -1,6 +1,7 @@
 <?php
 require_once 'conn.php';
 require_once 'check_session.php';
+require_once __DIR__ . '/includes/yield_helpers.php';
 
 // Get date range from request or set defaults
 $start_date = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01')); // First day of current month
@@ -481,6 +482,45 @@ r        .gradient-bg {
                         <i class="fas fa-weight-hanging text-3xl text-green-200"></i>
                     </div>
                 </div>
+                <?php
+                    // Replace Boats card with dynamic unit totals aggregated across all commodities
+                    $agg_all = aggregate_totals_by_commodity_db($conn, $start_date, $end_date, $barangay_filter);
+                    // Sum across commodities per unit
+                    $unit_totals = [];
+                    foreach ($agg_all as $com => $units) {
+                        foreach ($units as $unit => $amt) {
+                            if (!isset($unit_totals[$unit])) $unit_totals[$unit] = 0.0;
+                            $unit_totals[$unit] += $amt;
+                        }
+                    }
+                    // Prepare cards for top N units by amount
+                    arsort($unit_totals);
+                    $maxCards = 4;
+                    $i = 0;
+                    foreach ($unit_totals as $unit => $amt) {
+                        if ($i >= $maxCards) break;
+                        $i++;
+                        $displayUnit = $unit ? htmlspecialchars($unit) : 'Units';
+                        // Choose color set based on index
+                        $bgClasses = ['from-purple-500 to-purple-600', 'from-pink-500 to-pink-600', 'from-teal-500 to-teal-600', 'from-indigo-500 to-indigo-600'];
+                        $iconClasses = ['fas fa-boxes','fas fa-balance-scale','fas fa-seedling','fas fa-box'];
+                        $bg = $bgClasses[$i-1] ?? 'from-gray-500 to-gray-600';
+                        $icon = $iconClasses[$i-1] ?? 'fas fa-box';
+                        ?>
+                        <div class="bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-6 text-white animate-fade-in">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-purple-100 text-sm"><?php echo 'Total ' . $displayUnit; ?></p>
+                                    <p class="text-2xl font-bold"><?php echo number_format($amt, 2); ?></p>
+                                </div>
+                                <i class="<?php echo $icon; ?> text-3xl text-purple-200"></i>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                    // If no unit totals found, render an empty placeholder (previous Boats card)
+                    if ($i === 0) {
+                ?>
                 <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-md p-6 text-white animate-fade-in">
                     <div class="flex items-center justify-between">
                         <div>
@@ -490,6 +530,7 @@ r        .gradient-bg {
                         <i class="fas fa-ship text-3xl text-purple-200"></i>
                     </div>
                 </div>
+                <?php } ?>
                 <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-md p-6 text-white animate-fade-in">
                     <div class="flex items-center justify-between">
                         <div>
@@ -512,11 +553,19 @@ r        .gradient-bg {
                         <label class="block text-sm font-medium text-gray-700 mb-2">Choose a report type...</label>
                         <select name="report_type" id="reportType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent" onchange="updateChartOptions()">
                             <option value="">Select Report Type...</option>
+                            <!-- Keep analytics-specific time-series option -->
                             <option value="farmer_registrations" <?php echo $report_type === 'farmer_registrations' ? 'selected' : ''; ?>>👥 Farmer Registrations Over Time</option>
+
+                            <!-- Mirror reports available on reports.php -->
+                            <option value="farmers_summary" <?php echo $report_type === 'farmers_summary' ? 'selected' : ''; ?>>👥 Farmers Summary Report</option>
+                            <option value="input_distribution" <?php echo $report_type === 'input_distribution' ? 'selected' : ''; ?>>📦 Input Distribution Report</option>
                             <option value="yield_monitoring" <?php echo $report_type === 'yield_monitoring' ? 'selected' : ''; ?>>🌾 Yield Monitoring Report</option>
-                            <option value="commodity_distribution" <?php echo $report_type === 'commodity_distribution' ? 'selected' : ''; ?>>🌽 Commodity Production Report</option>
-                            <option value="barangay_analytics" <?php echo $report_type === 'barangay_analytics' ? 'selected' : ''; ?>>🏘️ Barangay Analytics Report</option>
-                            <option value="registration_status" <?php echo $report_type === 'registration_status' ? 'selected' : ''; ?>>📋 Registration Analytics Report</option>
+                            <option value="inventory_status" <?php echo $report_type === 'inventory_status' ? 'selected' : ''; ?>>📋 Current Inventory Status</option>
+                            <option value="barangay_analytics" <?php echo $report_type === 'barangay_analytics' ? 'selected' : ''; ?>>🗺️ Barangay Analytics Report</option>
+                            <option value="commodity_production" <?php echo $report_type === 'commodity_production' ? 'selected' : ''; ?>>🌱 Commodity Production Report</option>
+                            <option value="registration_analytics" <?php echo $report_type === 'registration_analytics' ? 'selected' : ''; ?>>📋 Registration Analytics Report</option>
+                            <option value="comprehensive_overview" <?php echo $report_type === 'comprehensive_overview' ? 'selected' : ''; ?>>📈 Comprehensive Overview Report</option>
+                            <option value="consolidated_yield" <?php echo $report_type === 'consolidated_yield' ? 'selected' : ''; ?>>🧮 Consolidated Yield of All Commodities</option>
                         </select>
                     </div>
 
@@ -612,6 +661,10 @@ r        .gradient-bg {
                 <div class="chart-container">
                     <canvas id="analyticsChart"></canvas>
                 </div>
+                <div id="noDataMessage" class="hidden text-center mt-6 text-gray-600">
+                    <i class="fas fa-exclamation-circle text-2xl text-gray-400 block mx-auto"></i>
+                    <p class="mt-2">No data available for the selected report and date range.</p>
+                </div>
             </div>
             <?php else: ?>
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
@@ -648,62 +701,99 @@ r        .gradient-bg {
         let analyticsChart = null;
 
         // Chart data from PHP - load data if report_type is selected
-        <?php if($report_type): ?>
-        const chartData = {
-            <?php
-            // Map report_type to the appropriate function
+        <?php if($report_type):
+            // Build a PHP payload and json_encode it. If the selected report_type is not supported for analytics,
+            // $chart_payload will remain null and JS will receive `null` which prevents rendering undefined labels.
+            $chart_payload = null;
             switch($report_type) {
                 case 'farmer_registrations':
                     $data = getFarmerRegistrations($conn, $start_date, $end_date, $barangay_filter);
-                    echo "labels: " . json_encode(array_column($data, 'date')) . ",";
-                    echo "data: " . json_encode(array_column($data, 'count')) . ",";
-                    echo "reportType: 'farmer_registrations',";
-                    echo "label: 'Farmers Registered'";
+                    $chart_payload = [
+                        'labels' => array_column($data, 'date'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'count'))),
+                        'reportType' => 'farmer_registrations',
+                        'label' => 'Farmers Registered'
+                    ];
                     break;
-                    
                 case 'yield_monitoring':
                     $data = getYieldData($conn, $start_date, $end_date, $barangay_filter);
-                    echo "labels: " . json_encode(array_column($data, 'date')) . ",";
-                    echo "data: " . json_encode(array_column($data, 'total_yield')) . ",";
-                    echo "reportType: 'yield_monitoring',";
-                    echo "label: 'Total Yield (kg)'";
+                    $chart_payload = [
+                        'labels' => array_column($data, 'date'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'total_yield'))),
+                        'reportType' => 'yield_monitoring',
+                        'label' => 'Total Yield (kg)'
+                    ];
                     break;
-                    
                 case 'commodity_distribution':
                     $data = getCommodityDistribution($conn, $start_date, $end_date, $barangay_filter);
-                    echo "labels: " . json_encode(array_column($data, 'commodity_name')) . ",";
-                    echo "data: " . json_encode(array_column($data, 'farmer_count')) . ",";
-                    echo "reportType: 'commodity_distribution',";
-                    echo "label: 'Farmers per Commodity'";
+                    $chart_payload = [
+                        'labels' => array_column($data, 'commodity_name'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
+                        'reportType' => 'commodity_distribution',
+                        'label' => 'Farmers per Commodity'
+                    ];
                     break;
-                    
                 case 'barangay_analytics':
                     $data = getBarangayDistribution($conn, $start_date, $end_date, $barangay_filter);
-                    echo "labels: " . json_encode(array_column($data, 'barangay_name')) . ",";
-                    echo "data: " . json_encode(array_column($data, 'farmer_count')) . ",";
-                    echo "reportType: 'barangay_analytics',";
-                    echo "label: 'Farmers per Barangay'";
+                    $chart_payload = [
+                        'labels' => array_column($data, 'barangay_name'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
+                        'reportType' => 'barangay_analytics',
+                        'label' => 'Farmers per Barangay'
+                    ];
                     break;
-                    
                 case 'registration_status':
                     $data = getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter);
-                    echo "labels: " . json_encode(array_column($data, 'status')) . ",";
-                    echo "data: " . json_encode(array_column($data, 'count')) . ",";
-                    echo "reportType: 'registration_status',";
-                    echo "label: 'Registration Status'";
+                    $chart_payload = [
+                        'labels' => array_column($data, 'status'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'count'))),
+                        'reportType' => 'registration_status',
+                        'label' => 'Registration Status'
+                    ];
                     break;
+                // Aliases / additional reports present on reports.php
+                case 'registration_analytics':
+                    // alias for registration_status
+                    $data = getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter);
+                    $chart_payload = [
+                        'labels' => array_column($data, 'status'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'count'))),
+                        'reportType' => 'registration_status',
+                        'label' => 'Registration Status'
+                    ];
+                    break;
+                case 'commodity_production':
+                case 'commodity_distribution':
+                    // alias: commodity production / distribution
+                    $data = getCommodityDistribution($conn, $start_date, $end_date, $barangay_filter);
+                    $chart_payload = [
+                        'labels' => array_column($data, 'commodity_name'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
+                        'reportType' => 'commodity_distribution',
+                        'label' => 'Farmers per Commodity'
+                    ];
+                    break;
+                case 'consolidated_yield':
+                    // Use helper to aggregate totals grouped by commodity+unit and prepare labels/data
+                    $agg = aggregate_totals_by_commodity_db($conn, $start_date, $end_date, $barangay_filter);
+                    $flat = flatten_aggregated_totals_for_chart($agg, 30, false);
+                    $chart_payload = [
+                        'labels' => $flat['labels'],
+                        'data' => $flat['data'],
+                        'reportType' => 'consolidated_yield',
+                        'label' => 'Total Yield by Commodity'
+                    ];
+                    break;
+                // Unsupported report types will result in $chart_payload = null
             }
-            ?>
-        };
-        
-        console.log('Chart data from PHP:', chartData);
-        
-        // Current chart type (default to line)
-        let currentChartType = 'line';
-        <?php else: ?>
+
+            echo "const chartData = " . ($chart_payload ? json_encode($chart_payload) : 'null') . ";\n";
+            echo "let currentChartType = 'line';\n";
+            echo "if (window.APP_DEBUG) console.log('Chart data from PHP:', chartData);\n";
+        else: ?>
         const chartData = null;
         let currentChartType = 'line';
-        console.log('No chart data - report type not selected');
+    if (window.APP_DEBUG) console.log('No chart data - report type not selected');
         <?php endif; ?>
 
         // Function to switch chart type dynamically
@@ -734,14 +824,23 @@ r        .gradient-bg {
         };
 
         function initChart() {
-            console.log('initChart called');
+            if (window.APP_DEBUG) console.log('initChart called');
             
             if (!chartData) {
-                console.log('No chart data available');
+                if (window.APP_DEBUG) console.log('No chart data available');
+                document.getElementById('noDataMessage')?.classList.remove('hidden');
+                document.getElementById('analyticsChart')?.classList.add('hidden');
                 return;
             }
-            
-            console.log('Chart data:', chartData);
+            // If chartData exists but has empty labels or data, treat as no-data
+            if (!Array.isArray(chartData.labels) || chartData.labels.length === 0 || !Array.isArray(chartData.data) || chartData.data.length === 0) {
+                if (window.APP_DEBUG) console.log('Chart data empty');
+                document.getElementById('noDataMessage')?.classList.remove('hidden');
+                document.getElementById('analyticsChart')?.classList.add('hidden');
+                return;
+            }
+
+            if (window.APP_DEBUG) console.log('Chart data:', chartData);
             
             // Check if Chart.js is loaded
             if (typeof Chart === 'undefined') {
@@ -750,6 +849,8 @@ r        .gradient-bg {
             }
             
             const canvas = document.getElementById('analyticsChart');
+            document.getElementById('noDataMessage')?.classList.add('hidden');
+            canvas.classList.remove('hidden');
             if (!canvas) {
                 console.error('Chart canvas element not found');
                 return;
@@ -871,9 +972,9 @@ r        .gradient-bg {
                 }
             };
 
-            console.log('Creating chart with config:', config);
+            if (window.APP_DEBUG) console.log('Creating chart with config:', config);
             analyticsChart = new Chart(ctx, config);
-            console.log('Chart created successfully');
+            if (window.APP_DEBUG) console.log('Chart created successfully');
         }
 
         function downloadChart() {
@@ -896,14 +997,14 @@ r        .gradient-bg {
 
         // Initialize chart when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM Content Loaded');
-            console.log('Chart available?', typeof Chart !== 'undefined');
-            console.log('Chart data?', chartData);
+            if (window.APP_DEBUG) console.log('DOM Content Loaded');
+            if (window.APP_DEBUG) console.log('Chart available?', typeof Chart !== 'undefined');
+            if (window.APP_DEBUG) console.log('Chart data?', chartData);
             
             // Register the datalabels plugin
             if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
                 Chart.register(ChartDataLabels);
-                console.log('ChartDataLabels plugin registered successfully');
+                if (window.APP_DEBUG) console.log('ChartDataLabels plugin registered successfully');
             } else {
                 console.error('ChartDataLabels plugin not available');
             }
@@ -911,13 +1012,13 @@ r        .gradient-bg {
             // Wait a bit for Chart.js to fully load
             setTimeout(function() {
                 if (typeof Chart !== 'undefined') {
-                    console.log('Chart.js loaded successfully');
+                    if (window.APP_DEBUG) console.log('Chart.js loaded successfully');
                     if (chartData) {
-                        console.log('Chart data exists, initializing chart');
+                        if (window.APP_DEBUG) console.log('Chart data exists, initializing chart');
                         // Set default active button
                         switchChartType('line');
                     } else {
-                        console.log('No chart data available');
+                        if (window.APP_DEBUG) console.log('No chart data available');
                     }
                 } else {
                     console.error('Chart.js failed to load');
