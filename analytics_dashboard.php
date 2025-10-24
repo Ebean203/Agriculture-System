@@ -96,6 +96,59 @@ function getCommodityDistribution($conn, $start_date, $end_date, $barangay_filte
     return $data;
 }
 
+// Function to get input distribution totals (by input name) from distribution log
+function getInputDistribution($conn, $start_date, $end_date, $barangay_filter = '') {
+    $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
+    $query = "SELECT i.input_name, SUM(md.quantity_distributed) as total_distributed
+              FROM mao_distribution_log md
+              JOIN input_categories i ON md.input_id = i.input_id
+              LEFT JOIN farmers f ON md.farmer_id = f.farmer_id
+              WHERE DATE(md.date_given) BETWEEN ? AND ? $barangay_condition
+              GROUP BY i.input_name ORDER BY total_distributed DESC";
+    if ($stmt = mysqli_prepare($conn, $query)) {
+        if ($barangay_filter) {
+            mysqli_stmt_bind_param($stmt, "sss", $start_date, $end_date, $barangay_filter);
+        } else {
+            mysqli_stmt_bind_param($stmt, "ss", $start_date, $end_date);
+        }
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $data = [];
+        if ($result) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                $data[] = $row;
+            }
+        }
+        mysqli_stmt_close($stmt);
+        return $data;
+    }
+    return [];
+}
+
+// Function to get current inventory status (snapshot)
+function getInventoryStatus($conn) {
+    // Inventory quantities are stored in `mao_inventory` and the canonical input names live
+    // in `input_categories`. Join them to return readable names with quantities.
+    $query = "SELECT ic.input_name, COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand
+              FROM input_categories ic
+              LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id
+              ORDER BY ic.input_name";
+    $stmt = mysqli_prepare($conn, $query);
+    if ($stmt) {
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $data = [];
+        if ($result) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                $data[] = $row;
+            }
+        }
+        mysqli_stmt_close($stmt);
+        return $data;
+    }
+    return [];
+}
+
 // Function to get registration status comparison
 function getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter = '') {
     $barangay_condition = $barangay_filter ? "AND f.barangay_id = ?" : '';
@@ -784,16 +837,100 @@ r        .gradient-bg {
                         'label' => 'Total Yield by Commodity'
                     ];
                     break;
+                case 'farmers_summary':
+                    // Use barangay distribution as a reasonable farmers summary visualization
+                    $data = getBarangayDistribution($conn, $start_date, $end_date, $barangay_filter);
+                    $chart_payload = [
+                        'labels' => array_column($data, 'barangay_name'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
+                        'reportType' => 'farmers_summary',
+                        'label' => 'Farmers per Barangay'
+                    ];
+                    break;
+                case 'input_distribution':
+                    $data = getInputDistribution($conn, $start_date, $end_date, $barangay_filter);
+                    $chart_payload = [
+                        'labels' => array_column($data, 'input_name'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'total_distributed'))),
+                        'reportType' => 'input_distribution',
+                        'label' => 'Distributed Quantity by Input'
+                    ];
+                    break;
+                case 'inventory_status':
+                    // Inventory is a snapshot; ignore date range and show current quantities
+                    $data = getInventoryStatus($conn);
+                    $chart_payload = [
+                        'labels' => array_column($data, 'input_name'),
+                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):0; }, array_column($data, 'quantity_on_hand'))),
+                        'reportType' => 'inventory_status',
+                        'label' => 'Quantity on Hand'
+                    ];
+                    break;
+                case 'comprehensive_overview':
+                    // Small summary: Farmers, Total Yield, Total Distributed Inputs (sum), Active Commodities
+                    // Total farmers
+                    $q = "SELECT COUNT(*) as cnt FROM farmers WHERE DATE(registration_date) BETWEEN ? AND ?";
+                    $totals = [];
+                    if ($s = mysqli_prepare($conn, $q)) {
+                        mysqli_stmt_bind_param($s, 'ss', $start_date, $end_date);
+                        mysqli_stmt_execute($s);
+                        $r = mysqli_stmt_get_result($s);
+                        $row = $r ? mysqli_fetch_assoc($r) : null;
+                        $totals['farmers'] = $row['cnt'] ?? 0;
+                        mysqli_stmt_close($s);
+                    }
+                    // Total yield
+                    $q = "SELECT SUM(yield_amount) as total_yield FROM yield_monitoring WHERE DATE(record_date) BETWEEN ? AND ?";
+                    if ($s = mysqli_prepare($conn, $q)) {
+                        mysqli_stmt_bind_param($s, 'ss', $start_date, $end_date);
+                        mysqli_stmt_execute($s);
+                        $r = mysqli_stmt_get_result($s);
+                        $row = $r ? mysqli_fetch_assoc($r) : null;
+                        $totals['total_yield'] = $row['total_yield'] ?? 0;
+                        mysqli_stmt_close($s);
+                    }
+                    // Total distributed quantity
+                    $q = "SELECT SUM(quantity_distributed) as total_dist FROM mao_distribution_log WHERE DATE(date_given) BETWEEN ? AND ?";
+                    if ($s = mysqli_prepare($conn, $q)) {
+                        mysqli_stmt_bind_param($s, 'ss', $start_date, $end_date);
+                        mysqli_stmt_execute($s);
+                        $r = mysqli_stmt_get_result($s);
+                        $row = $r ? mysqli_fetch_assoc($r) : null;
+                        $totals['total_distributed'] = $row['total_dist'] ?? 0;
+                        mysqli_stmt_close($s);
+                    }
+                    // Active commodities count
+                    $q = "SELECT COUNT(DISTINCT c.commodity_id) as cnt FROM commodities c JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id";
+                    if ($s = mysqli_prepare($conn, $q)) {
+                        mysqli_stmt_execute($s);
+                        $r = mysqli_stmt_get_result($s);
+                        $row = $r ? mysqli_fetch_assoc($r) : null;
+                        $totals['active_commodities'] = $row['cnt'] ?? 0;
+                        mysqli_stmt_close($s);
+                    }
+
+                    $chart_payload = [
+                        'labels' => ['Farmers', 'Total Yield', 'Total Distributed', 'Active Commodities'],
+                        'data' => [ (0+$totals['farmers']), (0+$totals['total_yield']), (0+$totals['total_distributed']), (0+$totals['active_commodities']) ],
+                        'reportType' => 'comprehensive_overview',
+                        'label' => 'Comprehensive Overview'
+                    ];
+                    break;
                 // Unsupported report types will result in $chart_payload = null
             }
 
-            echo "const chartData = " . ($chart_payload ? json_encode($chart_payload) : 'null') . ";\n";
+            // Encode payload and expose whether chart data is available for the selected report
+            $encoded = $chart_payload ? json_encode($chart_payload) : 'null';
+            $chartAvailable = ($chart_payload !== null) ? 'true' : 'false';
+            echo "const chartData = {$encoded};\n";
+            echo "const chartAvailable = {$chartAvailable};\n";
             echo "let currentChartType = 'line';\n";
-            echo "if (window.APP_DEBUG) console.log('Chart data from PHP:', chartData);\n";
+            echo "if (window.APP_DEBUG) console.log('Chart data from PHP:', chartData, 'chartAvailable=', chartAvailable);\n";
         else: ?>
         const chartData = null;
+        const chartAvailable = false;
         let currentChartType = 'line';
-    if (window.APP_DEBUG) console.log('No chart data - report type not selected');
+    if (window.APP_DEBUG) console.log('No chart data - report type not selected or not chartable');
         <?php endif; ?>
 
         // Function to switch chart type dynamically
@@ -826,6 +963,22 @@ r        .gradient-bg {
         function initChart() {
             if (window.APP_DEBUG) console.log('initChart called');
             
+            // If the selected report type is not chartable, show a clear message and disable chart controls
+            if (typeof chartAvailable !== 'undefined' && !chartAvailable) {
+                if (window.APP_DEBUG) console.log('Selected report type is not chartable');
+                const noDataEl = document.getElementById('noDataMessage');
+                if (noDataEl) {
+                    noDataEl.classList.remove('hidden');
+                    noDataEl.innerHTML = '<i class="fas fa-exclamation-circle text-2xl text-gray-400 block mx-auto"></i>' +
+                        '<p class="mt-2">The selected report type does not produce chartable data. Please choose one of the chartable report types: Farmer Registrations, Yield Monitoring, Commodity Distribution, Barangay Analytics, Registration Status, or Consolidated Yield.</p>';
+                }
+                const canvasEl = document.getElementById('analyticsChart');
+                if (canvasEl) canvasEl.classList.add('hidden');
+                // Disable chart type buttons
+                document.querySelectorAll('.chart-type-btn').forEach(btn => btn.disabled = true);
+                return;
+            }
+
             if (!chartData) {
                 if (window.APP_DEBUG) console.log('No chart data available');
                 document.getElementById('noDataMessage')?.classList.remove('hidden');
