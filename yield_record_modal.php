@@ -217,11 +217,11 @@
                                     <label for="season" class="form-label">Season <span class="text-danger">*</span></label>
                                     <select class="form-select" id="season" name="season" required>
                                         <option value="">Select Season</option>
-                                        <option value="Dry Season">Dry Season</option>
-                                        <option value="Wet Season">Wet Season</option>
                                         <option value="First Cropping">First Cropping</option>
                                         <option value="Second Cropping">Second Cropping</option>
                                         <option value="Third Cropping">Third Cropping</option>
+                                        <option value="Fourth Cropping">Fourth Cropping</option>
+                                        <option value="Fifth Cropping">Fifth Cropping</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -443,11 +443,9 @@
                                 const isLivestock = name.includes('poultry') || name.includes('livestock') || name.includes('animal') || name.includes('pigg') || name.includes('swine') || name.includes('goat') || name.includes('sheep');
                                 let options = [];
                                 if (isAgronomic) {
-                                    // agronomic and high-value: Dry/Wet + First..Fifth Cropping
+                                    // agronomic and high-value: First..Fifth Cropping
                                     options = [
                                         ['', 'Select Season'],
-                                        ['Dry Season','Dry Season'],
-                                        ['Wet Season','Wet Season'],
                                         ['First Cropping','First Cropping'],
                                         ['Second Cropping','Second Cropping'],
                                         ['Third Cropping','Third Cropping'],
@@ -463,11 +461,9 @@
                                         ['Batch/Flock 3','Batch/Flock 3 (or Cycle 3)']
                                     ];
                                 } else {
-                                    // Default: prefer agronomic-style (more options) but keep Dry/Wet + First..Third
+                                    // Default: prefer agronomic-style (First..Third)
                                     options = [
                                         ['', 'Select Season'],
-                                        ['Dry Season','Dry Season'],
-                                        ['Wet Season','Wet Season'],
                                         ['First Cropping','First Cropping'],
                                         ['Second Cropping','Second Cropping'],
                                         ['Third Cropping','Third Cropping']
@@ -526,11 +522,11 @@
                             <label class="form-label">Season</label>
                             <select class="form-select" id="edit_season" name="season">
                                 <option value="">Select Season</option>
-                                <option value="Dry Season">Dry Season</option>
-                                <option value="Wet Season">Wet Season</option>
                                 <option value="First Cropping">First Cropping</option>
                                 <option value="Second Cropping">Second Cropping</option>
                                 <option value="Third Cropping">Third Cropping</option>
+                                <option value="Fourth Cropping">Fourth Cropping</option>
+                                <option value="Fifth Cropping">Fifth Cropping</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
