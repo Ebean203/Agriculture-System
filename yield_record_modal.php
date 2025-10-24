@@ -437,10 +437,13 @@
 
                             function setSeasonOptionsForCategory(selectEl, categoryName) {
                                 if (!selectEl) return;
-                                // agronomic and high-value: Dry/Wet + First..Fifth Cropping
-                                const agronomicNames = ['Agronomic Crops', 'High Value Crops'];
+                                const name = String(categoryName || '').toLowerCase();
+                                // Decide agronomic vs livestock/poultry by name heuristics (case-insensitive)
+                                const isAgronomic = name.includes('agronom') || name.includes('crop') || name.includes('cropping') || name.includes('high value');
+                                const isLivestock = name.includes('poultry') || name.includes('livestock') || name.includes('animal') || name.includes('pigg') || name.includes('swine') || name.includes('goat') || name.includes('sheep');
                                 let options = [];
-                                if (agronomicNames.includes(categoryName)) {
+                                if (isAgronomic) {
+                                    // agronomic and high-value: Dry/Wet + First..Fifth Cropping
                                     options = [
                                         ['', 'Select Season'],
                                         ['Dry Season','Dry Season'],
@@ -451,13 +454,23 @@
                                         ['Fourth Cropping','Fourth Cropping'],
                                         ['Fifth Cropping','Fifth Cropping']
                                     ];
-                                } else {
-                                    // livestock/poultry and other: Batch/Flock 1..3
+                                } else if (isLivestock) {
+                                    // livestock/poultry: Batch/Flock 1..3
                                     options = [
                                         ['', 'Select Season'],
                                         ['Batch/Flock 1','Batch/Flock 1 (or Cycle 1)'],
                                         ['Batch/Flock 2','Batch/Flock 2 (or Cycle 2)'],
                                         ['Batch/Flock 3','Batch/Flock 3 (or Cycle 3)']
+                                    ];
+                                } else {
+                                    // Default: prefer agronomic-style (more options) but keep Dry/Wet + First..Third
+                                    options = [
+                                        ['', 'Select Season'],
+                                        ['Dry Season','Dry Season'],
+                                        ['Wet Season','Wet Season'],
+                                        ['First Cropping','First Cropping'],
+                                        ['Second Cropping','Second Cropping'],
+                                        ['Third Cropping','Third Cropping']
                                     ];
                                 }
                                 // Replace options
@@ -482,7 +495,8 @@
                                     const opt = sel.options[sel.selectedIndex];
                                     if (!opt) return;
                                     const catId = opt.getAttribute('data-category') || '';
-                                    const catName = categoryMap[catId] || '';
+                                    // categoryMap maps id -> name; if data-category already contains a name, use it as fallback
+                                    const catName = (typeof categoryMap !== 'undefined' && categoryMap[catId]) ? categoryMap[catId] : (catId || '');
                                     setSeasonOptionsForCategory(seasonSel, catName);
                                 }
 
