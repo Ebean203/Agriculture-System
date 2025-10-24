@@ -756,7 +756,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-// Compatibility layer for dashboard quick-actions (index.php)
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Ensure alias elements exist for index.php quick-actions code
