@@ -6,6 +6,20 @@ A PHP/MySQL web application for Municipal Agriculture Office operations: farmer 
 
 This repository contains the Lagonglong FARMS system used by the MAO to manage end‑to‑end agricultural operations. Core pages live at the project root (PHP) and shared UI/logic is under `includes/`. Assets (CSS/JS/fonts) are under `assets/`. Generated reports are saved to `reports/`, and uploaded farmer photos to `uploads/farmer_photos/`.
 
+## Recent changes (Oct 2025)
+
+These notes summarize recent updates made to the codebase (committed to `main`):
+
+- Modal parity: the Quick Actions "Record Yield" modal on the dashboard was aligned with the behavior on `yield_monitoring.php` — autosuggest farmer search, farmer-specific commodity population, category-aware season selection, and robust option creation (programmatic `<option>` elements now include `data-category`). Files touched: `yield_record_modal.php`, `yield_monitoring.php`.
+- Analytics & charts: chart data emission was refactored to use a single JSON payload from PHP (`$chart_payload`) to avoid fragile inline PHP/JS fragments and prevent `undefined` labels/data in Chart.js initializations. See `analytics_dashboard.php` and `get_report_data.php` usages.
+- Yield helpers: added `includes/yield_helpers.php` which centralizes unit normalization, aggregation, and flattening helpers used by analytics and yield monitoring charts and summary cards.
+- Farmer ID generation: restored legacy farmer ID format by adding a DB-aware generator `generateFarmerId($conn)` that produces `FMRYYYYMM#####`-style IDs. The registration flow now uses `generateFarmerId()` in `farmers.php`.
+- Runtime console suppression: the noisy Tailwind CDN production warning and other console noise are suppressed at runtime (non-destructively) when `APP_DEBUG` is falsy via a small guard in `includes/assets.php`. Editing the minified Tailwind bundle was avoided as brittle — replace with a PostCSS-built production CSS for a long-term fix.
+- Notifications & MAO activities: added on-the-fly activity reminders and flash-message support — recent activity notifications now include MAO activities that are approaching within the next 5 days (implemented in `includes/notification_system.php` / `get_notifications.php` with client hooks in `includes/notification_complete.php`). `mao_activities.php` now supports session-based flash messages after create/update operations.
+
+If you want these behavior changes reverted or made persistent (e.g., generating stored notification rows via a scheduled job), see the "Operations & cron" notes below.
+
+
 Key entrypoints:
 - `login.php` — authentication for MAO staff with roles
 - `index.php` — main dashboard (stats, charts, quick actions, activities)
