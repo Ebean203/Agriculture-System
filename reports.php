@@ -103,132 +103,51 @@ if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'staff') {
 }
 
 // Handle report saving (from generated report)
+// NOTE: Saving of generated reports has been disabled. Replies with an informational message.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_generated_report') {
-    $report_type = $_POST['report_type'];
-    $start_date = $_POST['start_date'];
-    $end_date = $_POST['end_date'];
-    $report_content = $_POST['report_content'];
-    
-    // Generate unique filename
-    $timestamp = date('Y-m-d_H-i-s');
-    $filename = "report_{$report_type}_{$timestamp}.html";
-    $file_path = "reports/{$filename}";
-    
-    // Create reports directory if it doesn't exist
-    if (!is_dir('reports')) {
-        mkdir('reports', 0755, true);
-    }
-    
-    // Save report file
-    file_put_contents($file_path, $report_content);
-    
-    // Check if generated_reports table exists and has correct structure
-    $table_check = $conn->query("SHOW TABLES LIKE 'generated_reports'");
-    if ($table_check->num_rows == 0) {
-        // Create the table if it doesn't exist
-        $create_table_sql = "CREATE TABLE `generated_reports` (
-            `report_id` int(11) NOT NULL AUTO_INCREMENT,
-            `report_type` varchar(100) NOT NULL,
-            `start_date` date NOT NULL,
-            `end_date` date NOT NULL,
-            `file_path` varchar(255) NOT NULL,
-            `staff_id` int(11) NOT NULL,
-            `timestamp` datetime NOT NULL DEFAULT current_timestamp(),
-            PRIMARY KEY (`report_id`),
-            KEY `staff_id` (`staff_id`),
-            CONSTRAINT `generated_reports_ibfk_1` FOREIGN KEY (`staff_id`) REFERENCES `mao_staff` (`staff_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-        $conn->query($create_table_sql);
-    }
-    
-    // Save to database
-    try {
-        $stmt = $conn->prepare("INSERT INTO generated_reports (report_type, start_date, end_date, file_path, staff_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssi", $report_type, $start_date, $end_date, $file_path, $_SESSION['user_id']);
-        $stmt->execute();
-        
-        // Log activity
-        $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
-        $action = "Saved {$report_type} report";
-        $details = "Report Period: {$start_date} to {$end_date}, File: {$filename}";
-        $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
-        $stmt_log->execute();
-        
-        echo json_encode(['success' => true, 'message' => 'Report saved successfully!', 'filename' => $filename]);
-    } catch (mysqli_sql_exception $e) {
-        echo json_encode(['success' => false, 'message' => 'Error saving report: ' . $e->getMessage()]);
-    }
+    // Return a consistent JSON response so client-side code can handle it gracefully
+    echo json_encode(['success' => false, 'message' => 'Saving generated reports has been disabled by the administrator. You may still generate and print reports.']);
     exit;
 }
 
 // Handle report generation
+// Saving of generated reports to the database or file system has been disabled.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'generate_report') {
     $report_type = $_POST['report_type'];
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
-    
-    // Generate unique filename
-    $timestamp = date('Y-m-d_H-i-s');
-    $filename = "report_{$report_type}_{$timestamp}.html";
-    $file_path = "reports/{$filename}";
-    
-    // Create reports directory if it doesn't exist
-    if (!is_dir('reports')) {
-        mkdir('reports', 0755, true);
-    }
-    
-    // Generate report content based on type
+
+    // Generate report content based on type and stream it to the browser (no file or DB writes)
     $report_content = generateReportContent($report_type, $start_date, $end_date, $conn);
-    
-    // Always save all reports to database and file system
-    // Save report file
-    file_put_contents($file_path, $report_content);
-    
-    // Check if generated_reports table exists and has correct structure
-    $table_check = $conn->query("SHOW TABLES LIKE 'generated_reports'");
-    if ($table_check->num_rows == 0) {
-        // Create the table if it doesn't exist
-        $create_table_sql = "CREATE TABLE `generated_reports` (
-            `report_id` int(11) NOT NULL AUTO_INCREMENT,
-            `report_type` varchar(100) NOT NULL,
-            `start_date` date NOT NULL,
-            `end_date` date NOT NULL,
-            `file_path` varchar(255) NOT NULL,
-            `staff_id` int(11) NOT NULL,
-            `timestamp` datetime NOT NULL DEFAULT current_timestamp(),
-            PRIMARY KEY (`report_id`),
-            KEY `staff_id` (`staff_id`),
-            CONSTRAINT `generated_reports_ibfk_1` FOREIGN KEY (`staff_id`) REFERENCES `mao_staff` (`staff_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-        $conn->query($create_table_sql);
-    }
-    
-    // Save to database
-    try {
-        $stmt = $conn->prepare("INSERT INTO generated_reports (report_type, start_date, end_date, file_path, staff_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssi", $report_type, $start_date, $end_date, $file_path, $_SESSION['user_id']);
-        $stmt->execute();
-        
-        // Log activity
-        $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'farmer', ?)");
-        $action = "Generated and saved {$report_type} report";
-        $details = "Report Period: {$start_date} to {$end_date}, File: {$filename}";
-        $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
-        $stmt_log->execute();
-        
-        $success_message = "Report generated and automatically saved to database!";
-    } catch (mysqli_sql_exception $e) {
-        // If there's still an error, try to describe the table structure
-        $columns = $conn->query("DESCRIBE generated_reports");
-        $error_details = "Database error: " . $e->getMessage() . "\nTable structure: ";
-        while ($col = $columns->fetch_assoc()) {
-            $error_details .= $col['Field'] . " (" . $col['Type'] . "), ";
+
+    // Optionally log the generation action to activity_logs only (not the generated_reports table)
+    if (isset($_SESSION['user_id'])) {
+        try {
+            $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'system', ?)");
+            $action = "Generated {$report_type} report (not saved)";
+            $details = "Period: {$start_date} to {$end_date}";
+            $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
+            $stmt_log->execute();
+        } catch (Exception $e) {
+            // Swallow logging errors to avoid breaking report generation
         }
-        error_log($error_details);
-        $success_message = "Report generated but could not be saved to database: " . $e->getMessage();
     }
-    
-    // Output report for viewing/printing
+
+    // Store recent report in session so UI can show "Recent Reports" without DB/files
+    if (!isset($_SESSION['recent_reports']) || !is_array($_SESSION['recent_reports'])) {
+        $_SESSION['recent_reports'] = [];
+    }
+    $recent_item = [
+        'report_type' => $report_type,
+        'start_date' => $start_date,
+        'end_date' => $end_date,
+        'timestamp' => date('Y-m-d H:i:s'),
+        'staff_name' => isset($_SESSION['user_id']) ? (isset($_SESSION['user_name']) ? $_SESSION['user_name'] : '') : ''
+    ];
+    // prepend and keep only last 10
+    array_unshift($_SESSION['recent_reports'], $recent_item);
+    $_SESSION['recent_reports'] = array_slice($_SESSION['recent_reports'], 0, 10);
+
     echo $report_content;
     exit;
 }
@@ -1292,12 +1211,20 @@ function generateComprehensiveOverviewReport($start_date, $end_date, $conn) {
 }
 
 // Get saved reports for history
-$saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_date, r.file_path, r.timestamp,
-                      s.first_name, s.last_name
-                      FROM generated_reports r
-                      INNER JOIN mao_staff s ON r.staff_id = s.staff_id
-                      ORDER BY r.timestamp DESC";
-$saved_reports_result = $conn->query($saved_reports_sql);
+// Get saved reports for history (only if the table exists)
+$saved_reports_result = false;
+$table_check = $conn->query("SHOW TABLES LIKE 'generated_reports'");
+if ($table_check && $table_check->num_rows > 0) {
+    $saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_date, r.file_path, r.timestamp,
+                          s.first_name, s.last_name
+                          FROM generated_reports r
+                          INNER JOIN mao_staff s ON r.staff_id = s.staff_id
+                          ORDER BY r.timestamp DESC";
+    $saved_reports_result = $conn->query($saved_reports_sql);
+} else {
+    // Feature disabled - no saved reports
+    $saved_reports_result = false;
+}
 ?>
 
 <?php $pageTitle = 'Reports System - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
@@ -1416,9 +1343,10 @@ $saved_reports_result = $conn->query($saved_reports_sql);
                                     </div>
                                 </div>
                             </div>
-                            <div class="bg-gradient-to-r from-agri-green to-agri-dark p-6 rounded-xl text-white text-center">
-                                <div class="text-3xl font-bold"><span id="savedReportsCount"><?php echo $saved_reports_result->num_rows; ?></span></div>
-                                <div class="text-sm opacity-90">Saved Reports</div>
+                            <!-- Saved reports/auto-save has been disabled to reduce storage usage -->
+                            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                                <div class="text-sm text-yellow-800 font-medium">Saved reports feature disabled</div>
+                                <div class="text-xs text-yellow-700">Reports are generated on demand and are not stored on the server to conserve storage.</div>
                             </div>
                         </div>
                     </div>
