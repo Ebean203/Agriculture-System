@@ -278,24 +278,6 @@ $types_result = $types_stmt->get_result();
                 </div>
             </div>
 
-            <!-- Flash messages -->
-            <?php if (!empty($success_message) || !empty($error_message)): ?>
-                <div class="mb-6">
-                    <?php if (!empty($success_message)): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <?php echo htmlspecialchars($success_message); ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($error_message)): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <?php echo htmlspecialchars($error_message); ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-
             <!-- Search and Filter Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <form method="GET" class="space-y-4">

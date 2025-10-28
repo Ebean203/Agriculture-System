@@ -9,10 +9,6 @@ function getNotifications($conn) {
     // Get visitation reminders (10 days before visitation date)
     $visitation_notifications = getVisitationNotifications($conn, $today);
     $notifications = array_merge($notifications, $visitation_notifications);
-
-    // Get MAO activity reminders (5 days before activity date)
-    $activity_notifications = getActivityNotifications($conn, $today);
-    $notifications = array_merge($notifications, $activity_notifications);
     
     // Get low stock alerts
     $stock_notifications = getStockNotifications($conn);
@@ -112,87 +108,6 @@ function getVisitationNotifications($conn, $today) {
         }
     }
     
-    return $notifications;
-}
-
-/**
- * Get MAO activity notifications.
- * Shows overdue/today/tomorrow/upcoming activities (within 5 days).
- */
-function getActivityNotifications($conn, $today) {
-    $notifications = [];
-
-    // Calculate the date 5 days from now
-    $reminder_date = date('Y-m-d', strtotime($today . ' + 5 days'));
-
-    $query = "
-        SELECT
-            ma.activity_id,
-            ma.staff_id,
-            CONCAT(ms.first_name, ' ', ms.last_name) as staff_name,
-            ma.activity_type,
-            ma.title,
-            ma.description,
-            ma.location,
-            ma.activity_date,
-            DATEDIFF(ma.activity_date, ?) as days_until_activity
-        FROM mao_activities ma
-        LEFT JOIN mao_staff ms ON ma.staff_id = ms.staff_id
-        WHERE ma.activity_date IS NOT NULL
-        AND ma.activity_date <= ?
-        ORDER BY ma.activity_date ASC
-    ";
-
-    $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "ss", $today, $reminder_date);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-
-    if ($result && mysqli_num_rows($result) > 0) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $days_until = (int) $row['days_until_activity'];
-            $formatted_date = date('M j, Y', strtotime($row['activity_date']));
-            if ($days_until < 0) {
-                $message = "OVERDUE Activity (was " . $formatted_date . ") - " . $row['title'] . " at " . $row['location'] . " (" . $row['staff_name'] . ")";
-                $priority = 0;
-                $type = 'urgent';
-            } elseif ($days_until == 0) {
-                $message = "Activity TODAY (" . $formatted_date . ") - " . $row['title'] . " at " . $row['location'] . " (" . $row['staff_name'] . ")";
-                $priority = 1;
-                $type = 'urgent';
-            } elseif ($days_until == 1) {
-                $message = "Activity TOMORROW (" . $formatted_date . ") - " . $row['title'] . " at " . $row['location'] . " (" . $row['staff_name'] . ")";
-                $priority = 2;
-                $type = 'warning';
-            } else {
-                $message = "Activity scheduled for " . $formatted_date . " (" . $days_until . " days) - " . $row['title'] . " at " . $row['location'] . " (" . $row['staff_name'] . ")";
-                $priority = 3;
-                $type = 'info';
-            }
-
-            $notifications[] = [
-                'id' => 'activity_' . $row['activity_id'],
-                'type' => $type,
-                'category' => 'activity',
-                'title' => ($days_until < 0 ? 'Overdue Activity' : 'Upcoming Activity'),
-                'message' => $message,
-                'date' => $row['activity_date'] ?? '',
-                'priority' => $priority,
-                'icon' => 'fas fa-calendar-alt',
-                // Normalize data fields so the client-side dropdown can reuse existing keys
-                'data' => [
-                    'activity_id' => $row['activity_id'],
-                    'title' => $row['title'],
-                    'staff_name' => $row['staff_name'],
-                    'staff_id' => $row['staff_id'],
-                    'location' => $row['location'],
-                    'activity_type' => $row['activity_type']
-                ]
-            ];
-        }
-    }
-
-    mysqli_stmt_close($stmt);
     return $notifications;
 }
 

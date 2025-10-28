@@ -12,38 +12,19 @@ $labels = [];
 try {
 switch ($type) {
     case 'activities':
-        // Monthly activities count from mao_activities table
-        $query = "SELECT MONTH(activity_date) as month, YEAR(activity_date) as year, COUNT(*) as total_activities FROM mao_activities WHERE 1";
-        $params = [];
-        $types = '';
-        if ($month) {
-            $query .= " AND MONTH(activity_date) = ?";
-            $params[] = $month;
-            $types .= 's';
-        }
-        if ($year) {
-            $query .= " AND YEAR(activity_date) = ?";
-            $params[] = $year;
-            $types .= 's';
-        }
-        $query .= " GROUP BY year, month ORDER BY year, month ASC";
-        $stmt = mysqli_prepare($conn, $query);
-        if (!empty($params)) {
-            mysqli_stmt_bind_param($stmt, $types, ...$params);
-        }
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        if (!$result) throw new Exception(mysqli_error($conn));
-        while ($row = mysqli_fetch_assoc($result)) {
-            $label = $row['year'] . '-' . str_pad($row['month'], 2, '0', STR_PAD_LEFT);
-            $labels[] = $label;
-            $data[] = (int)$row['total_activities'];
-        }
-        mysqli_stmt_close($stmt);
+        // ...existing code...
         break;
     case 'yield':
-        $query = "SELECT record_date, SUM(yield_amount) as total_yield FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id WHERE 1 GROUP BY record_date ORDER BY record_date ASC";
-        $stmt = mysqli_prepare($conn, $query);
+        $commodity = isset($_GET['commodity']) ? trim($_GET['commodity']) : '';
+        if ($commodity !== '') {
+            // Filter by commodity name
+            $query = "SELECT ym.record_date, SUM(ym.yield_amount) as total_yield FROM yield_monitoring ym JOIN commodities c ON ym.commodity_id = c.commodity_id WHERE c.commodity_name = ? GROUP BY ym.record_date ORDER BY ym.record_date ASC";
+            $stmt = mysqli_prepare($conn, $query);
+            mysqli_stmt_bind_param($stmt, 's', $commodity);
+        } else {
+            $query = "SELECT record_date, SUM(yield_amount) as total_yield FROM yield_monitoring ym JOIN farmers f ON ym.farmer_id = f.farmer_id WHERE 1 GROUP BY record_date ORDER BY record_date ASC";
+            $stmt = mysqli_prepare($conn, $query);
+        }
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
         if (!$result) throw new Exception(mysqli_error($conn));

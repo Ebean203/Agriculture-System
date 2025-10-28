@@ -49,9 +49,17 @@
                         $_SESSION['role'] = $row['role'];
                         $_SESSION['full_name'] = $row['first_name'] . ' ' . $row['last_name'];
                         
-                        // Log the login activity
+
+                        // Log the login activity with user name and role
                         require_once 'includes/activity_logger.php';
-                        logActivity($conn, 'User logged in', 'login');
+                        $userLabel = trim($row['first_name'] . ' ' . $row['last_name']);
+                        $roleLabel = isset($row['role']) ? $row['role'] : '';
+                        $activityMsg = $userLabel;
+                        if ($roleLabel) {
+                            $activityMsg .= " (" . $roleLabel . ")";
+                        }
+                        $activityMsg .= " logged in";
+                        logActivity($conn, $activityMsg, 'login');
                         
                         // Redirect to dashboard
                         header("Location: index.php");

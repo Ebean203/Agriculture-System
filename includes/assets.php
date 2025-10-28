@@ -1,7 +1,7 @@
 <?php
 // Asset configuration - Set to true for offline mode, false for CDN mode
 $offline_mode = true;
-
+$offline_mode = false;
 if ($offline_mode) {
     // Local assets
     echo '<link href="assets/css/bootstrap.min.css" rel="stylesheet">';
@@ -21,11 +21,9 @@ if ($offline_mode) {
             console.debug = function(){};
         }
     </script>';
-    // Provide Tailwind configuration BEFORE loading the bundle so it initializes
-    // with our custom theme values (this ordering is required for the runtime to
-    // pick up the config correctly when using the tailwind CDN/runtime script).
+    echo '<script src="assets/js/tailwind-cdn.js"></script>';
+    // Tailwind config should be set after the bundle loads
     echo '<script>
-        window.tailwind = window.tailwind || {};
         tailwind.config = {
             theme: {
                 extend: {
@@ -38,10 +36,6 @@ if ($offline_mode) {
             }
         }
     </script>';
-    // Use a precompiled Tailwind CSS file for offline mode so the UI works
-    // without the runtime. `assets/css/tailwind-custom.css` is included in
-    // the repository and contains the needed Tailwind utilities.
-    echo '<link href="assets/css/tailwind-custom.css" rel="stylesheet">';
     echo '<link href="assets/css/custom.css" rel="stylesheet">';
     echo '<script src="assets/js/jquery.min.js"></script>';
     echo '<script src="assets/js/bootstrap.bundle.min.js"></script>';
@@ -61,10 +55,8 @@ if ($offline_mode) {
             console.debug = function(){};
         }
     </script>';
-    // Provide Tailwind configuration BEFORE loading the CDN bundle so our
-    // theme overrides initialize when the script runs.
+    echo '<script src="https://cdn.tailwindcss.com"></script>';
     echo '<script>
-        window.tailwind = window.tailwind || {};
         tailwind.config = {
             theme: {
                 extend: {
@@ -77,7 +69,6 @@ if ($offline_mode) {
             }
         }
     </script>';
-    echo '<script src="https://cdn.tailwindcss.com"></script>';
     echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>';
     echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>';
 }

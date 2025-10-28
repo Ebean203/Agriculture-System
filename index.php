@@ -2,6 +2,33 @@
 require_once 'conn.php';
 require_once 'check_session.php';
 
+// Provide commodity data for the yield record modal and dashboard chart
+$commodity_categories = [];
+$stmt_cat = $conn->prepare("SELECT category_id, category_name FROM commodity_categories ORDER BY category_name");
+if ($stmt_cat) {
+    $stmt_cat->execute();
+    $res_cat = $stmt_cat->get_result();
+    if ($res_cat) {
+        while ($r = $res_cat->fetch_assoc()) {
+            $commodity_categories[] = $r;
+        }
+    }
+    $stmt_cat->close();
+}
+
+$commodities = [];
+$stmt_com = $conn->prepare("SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name FROM commodities c LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id ORDER BY cc.category_name, c.commodity_name");
+if ($stmt_com) {
+    $stmt_com->execute();
+    $res_com = $stmt_com->get_result();
+    if ($res_com) {
+        while ($r = $res_com->fetch_assoc()) {
+            $commodities[] = $r;
+        }
+    }
+    $stmt_com->close();
+}
+
 // AJAX endpoint for barangay list
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'barangays') {
     header('Content-Type: application/json');
@@ -206,7 +233,7 @@ $stmt->close();
                 <div class="relative">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="heading-xl mb-2">Welcome to Lagonglong FARMS</h2>
+                            <h1 class="heading-xl mb-2 text-3xl lg:text-4xl font-bold">Welcome to Lagonglong FARMS</h1>
                             <p class="text-base text-green-100 mb-3">Empowering the agriculture office of Lagonglong to better serve its farmers through comprehensive agricultural services and resources</p>
                             <div class="flex items-center text-green-200">
                                 <i class="fas fa-calendar-alt mr-2"></i>
@@ -224,7 +251,7 @@ $stmt->close();
             <!-- Dashboard Main Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
                 <!-- Farmers -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='farmers.php'" title="View Farmers">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-user-friends text-agri-green text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">FARMERS</span>
@@ -232,7 +259,7 @@ $stmt->close();
                     <div class="text-2xl font-bold text-agri-green"><?php echo number_format($total_farmers); ?></div>
                 </div>
                 <!-- RSBSA -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='rsbsa_records.php'" title="View RSBSA Records">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-shield-alt text-blue-600 text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">RSBSA</span>
@@ -240,31 +267,64 @@ $stmt->close();
                     <div class="text-2xl font-bold text-blue-600"><?php echo number_format($rsbsa_registered); ?></div>
                 </div>
                 <!-- NCFRS -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='ncfrs_records.php'" title="View NCFRS Records">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-file-alt text-purple-600 text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">NCFRS</span>
                     </div>
                     <div class="text-2xl font-bold text-purple-600"><?php echo number_format($ncfrs_registered); ?></div>
                 </div>
-                <!-- Weather (wider card) -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center xl:row-span-2 xl:h-[352px] h-[352px] xl:col-span-1 xl:w-full" style="min-width:0;">
-                    <div class="flex items-center mb-2">
-                        <i class="fas fa-cloud-sun text-gray-500 text-2xl mr-2"></i>
-                        <span class="font-semibold text-gray-700">Weather Today <span class="text-xs text-gray-400">Lagonglong</span></span>
+                    <!-- Calendar (replaces Weather) -->
+                    <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center xl:row-span-2 xl:h-[352px] h-[352px] xl:col-span-1 xl:w-full" style="min-width:0;">
+                        <div class="w-full flex flex-col items-center">
+                            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                                <i class="fas fa-calendar-alt text-agri-green mr-2"></i>Calendar
+                            </h3>
+                            <div id="dashboardCalendar" class="w-full"></div>
+                        </div>
+                        <script>
+                        // Simple calendar generator for current month
+                        function renderDashboardCalendar() {
+                            const calendarEl = document.getElementById('dashboardCalendar');
+                            if (!calendarEl) return;
+                            const today = new Date();
+                            const year = today.getFullYear();
+                            const month = today.getMonth();
+                            const monthNames = [
+                                'January', 'February', 'March', 'April', 'May', 'June',
+                                'July', 'August', 'September', 'October', 'November', 'December'
+                            ];
+                            // First day of the month
+                            const firstDay = new Date(year, month, 1);
+                            // Last day of the month
+                            const lastDay = new Date(year, month + 1, 0);
+                            // Day of week for first day (0=Sun, 6=Sat)
+                            const startDay = firstDay.getDay();
+                            // Number of days in month
+                            const daysInMonth = lastDay.getDate();
+                            let html = `<div class="text-center font-semibold text-lg mb-2">${monthNames[month]} ${year}</div>`;
+                            html += '<div class="grid grid-cols-7 gap-1 text-xs text-gray-500 mb-1">';
+                            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+                                html += `<div class="text-center font-bold">${d}</div>`;
+                            });
+                            html += '</div>';
+                            html += '<div class="grid grid-cols-7 gap-1">';
+                            // Empty cells for days before the 1st
+                            for (let i = 0; i < startDay; i++) {
+                                html += '<div></div>';
+                            }
+                            for (let d = 1; d <= daysInMonth; d++) {
+                                const isToday = d === today.getDate();
+                                html += `<div class="text-center py-1 rounded ${isToday ? 'bg-agri-green text-white font-bold' : 'hover:bg-gray-100'} cursor-pointer">${d}</div>`;
+                            }
+                            html += '</div>';
+                            calendarEl.innerHTML = html;
+                        }
+                        document.addEventListener('DOMContentLoaded', renderDashboardCalendar);
+                        </script>
                     </div>
-                    <div class="text-3xl font-bold text-gray-700">31°C</div>
-                    <div class="text-sm text-gray-500 mb-2">Partly Cloudy</div>
-                    <div class="flex space-x-2 text-xs text-gray-400">
-                        <div>Mon<br>32°/25°</div>
-                        <div>Tue<br>30°/24°</div>
-                        <div>Wed<br>28°/23°</div>
-                        <div>Thu<br>31°/25°</div>
-                        <div>Fri<br>33°/26°</div>
-                    </div>
-                </div>
                 <!-- Commodities -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='mao_inventory.php'" title="View Commodities">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-box-open text-orange-500 text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">COMMODITIES</span>
@@ -272,7 +332,7 @@ $stmt->close();
                     <div class="text-2xl font-bold text-orange-500"><?php echo number_format($total_commodities); ?></div>
                 </div>
                 <!-- Registered Boats -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='boat_records.php'" title="View Registered Boats">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-ship text-yellow-600 text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">REGISTERED BOATS</span>
@@ -280,7 +340,7 @@ $stmt->close();
                     <div class="text-2xl font-bold text-yellow-600"><?php echo number_format($total_boats); ?></div>
                 </div>
                 <!-- Inventory -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='mao_inventory.php'" title="View Inventory">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-cube text-agri-green text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">INVENTORY</span>
@@ -299,23 +359,41 @@ $stmt->close();
                             <i class="fas fa-chart-line text-agri-green mr-2"></i><span id="chartTitle">Yield Monitoring</span>
                         </h3>
                         <canvas id="yieldChart" height="120"></canvas>
+                        <div class="flex flex-col items-center mt-4">
+                            <div id="categoryButtons" class="flex flex-wrap gap-2 mb-2 justify-center">
+                                <button type="button" class="category-btn px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 flex items-center gap-1 text-sm shadow-sm hover:bg-agri-green hover:text-white transition active" data-category="">All Categories</button>
+                                <?php foreach ($commodity_categories as $cat): ?>
+                                    <button type="button" class="category-btn px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 flex items-center gap-1 text-sm shadow-sm hover:bg-agri-green hover:text-white transition" data-category="<?php echo htmlspecialchars($cat['category_id']); ?>">
+                                        <i class="fas fa-leaf"></i> <?php echo htmlspecialchars($cat['category_name']); ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                            <input type="text" id="commoditySearch" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-agri-green focus:border-agri-green w-full max-w-xs" placeholder="Search commodity...">
+                        </div>
                         <script>
-                        // Show yearly yield per barangay using a line graph
-                        document.addEventListener('DOMContentLoaded', function() {
-                            fetch('get_report_data.php?type=yield_per_barangay')
+                        let yieldChartInstance = null;
+                        let currentCategory = '';
+                        let currentCommodity = '';
+                        // Prepare commodity data for search (from PHP)
+                        const allCommodities = <?php echo json_encode($commodities); ?>;
+                        // Fetch and update chart for a specific commodity
+                        function fetchAndUpdateYieldChart(commodity) {
+                            let url = 'get_report_data.php?type=yield';
+                            if (commodity) {
+                                url += '&commodity=' + encodeURIComponent(commodity);
+                            }
+                            fetch(url)
                                 .then(res => res.json())
                                 .then(data => {
-                                    updateYieldChart(data.labels, data.data);
+                                    updateYieldChart(data.labels, data.data, commodity);
                                 });
-                        });
-
-                        let yieldChartInstance = null;
-                        function updateYieldChart(labels, chartData) {
+                        }
+                        function updateYieldChart(labels, chartData, commodity) {
                             const ctx = document.getElementById('yieldChart').getContext('2d');
                             if (yieldChartInstance) {
                                 yieldChartInstance.destroy();
                             }
-                            let chartLabel = 'Yearly Yield per Barangay';
+                            let chartLabel = commodity ? ('Yield for ' + commodity) : 'Yearly Yield per Barangay';
                             yieldChartInstance = new Chart(ctx, {
                                 type: 'line',
                                 data: {
@@ -346,6 +424,56 @@ $stmt->close();
                                 }
                             });
                         }
+                        // Category button and search logic
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const categoryBtns = document.querySelectorAll('.category-btn');
+                            const commoditySearch = document.getElementById('commoditySearch');
+                            // Helper: get filtered commodities
+                            function getFilteredCommodities() {
+                                const searchTerm = commoditySearch.value.trim().toLowerCase();
+                                return allCommodities.filter(com => {
+                                    let matchCat = !currentCategory || com.category_id == currentCategory;
+                                    let matchSearch = !searchTerm || com.commodity_name.toLowerCase().includes(searchTerm);
+                                    return matchCat && matchSearch;
+                                });
+                            }
+                            // On category button click
+                            categoryBtns.forEach(btn => {
+                                btn.addEventListener('click', function() {
+                                    categoryBtns.forEach(b => b.classList.remove('active', 'bg-agri-green', 'text-white'));
+                                    btn.classList.add('active', 'bg-agri-green', 'text-white');
+                                    currentCategory = btn.getAttribute('data-category');
+                                    // If search is empty, show first commodity in this category, else filter by search
+                                    const filtered = getFilteredCommodities();
+                                    if (filtered.length > 0) {
+                                        currentCommodity = filtered[0].commodity_name;
+                                        fetchAndUpdateYieldChart(currentCommodity);
+                                    } else {
+                                        // No commodity, show all
+                                        currentCommodity = '';
+                                        fetchAndUpdateYieldChart('');
+                                    }
+                                });
+                            });
+                            // On search input
+                            commoditySearch.addEventListener('input', function() {
+                                const filtered = getFilteredCommodities();
+                                if (filtered.length > 0) {
+                                    currentCommodity = filtered[0].commodity_name;
+                                    fetchAndUpdateYieldChart(currentCommodity);
+                                } else {
+                                    currentCommodity = '';
+                                    fetchAndUpdateYieldChart('');
+                                }
+                            });
+                            // Initial chart: first commodity or all
+                            if (allCommodities.length > 0) {
+                                currentCommodity = allCommodities[0].commodity_name;
+                                fetchAndUpdateYieldChart(currentCommodity);
+                            } else {
+                                fetchAndUpdateYieldChart('');
+                            }
+                        });
                         </script>
                     </div>
                 </div>
@@ -394,7 +522,6 @@ $stmt->close();
                                             // Determine icon based on activity type
                                             $icon = 'fas fa-info-circle';
                                             $icon_color = 'text-agri-green';
-                                            
                                             switch (strtolower($activity['action_type'])) {
                                                 case 'farmer':
                                                     $icon = 'fas fa-user-plus';
@@ -428,11 +555,6 @@ $stmt->close();
                                             <i class="<?php echo $icon . ' ' . $icon_color; ?> mr-2"></i>
                                             <span class="text-sm">
                                                 <?php echo htmlspecialchars($activity['action']); ?>
-                                                <?php if (!empty($activity['first_name'])): ?>
-                                                    <span class="text-gray-600 text-xs">
-                                                        by <?php echo htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']); ?>
-                                                    </span>
-                                                <?php endif; ?>
                                             </span>
                                         </span>
                                         <span class="text-xs text-gray-400">
@@ -530,36 +652,7 @@ $stmt->close();
     <?php include 'farmer_regmodal.php'; ?>
     
     <!-- Include the yield record modal -->
-    <?php
-    // Provide commodity data for the yield record modal when included on the dashboard
-    $commodity_categories = [];
-    $stmt_cat = $conn->prepare("SELECT category_id, category_name FROM commodity_categories ORDER BY category_name");
-    if ($stmt_cat) {
-        $stmt_cat->execute();
-        $res_cat = $stmt_cat->get_result();
-        if ($res_cat) {
-            while ($r = $res_cat->fetch_assoc()) {
-                $commodity_categories[] = $r;
-            }
-        }
-        $stmt_cat->close();
-    }
-
-    $commodities = [];
-    $stmt_com = $conn->prepare("SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name FROM commodities c LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id ORDER BY cc.category_name, c.commodity_name");
-    if ($stmt_com) {
-        $stmt_com->execute();
-        $res_com = $stmt_com->get_result();
-        if ($res_com) {
-            while ($r = $res_com->fetch_assoc()) {
-                $commodities[] = $r;
-            }
-        }
-        $stmt_com->close();
-    }
-
-    include 'yield_record_modal.php';
-    ?>
+    <?php include 'yield_record_modal.php'; ?>
 
     <script>
         function navigateTo(url) {

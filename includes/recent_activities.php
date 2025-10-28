@@ -48,10 +48,6 @@ mysqli_stmt_close($stmt);
                     </div>
                     <div class="flex-1">
                         <p class="text-sm font-medium text-gray-900">
-                            <?php echo htmlspecialchars($activity['staff_name']); ?>
-                            <span class="text-xs text-gray-500 ml-1">(<?php echo htmlspecialchars($activity['staff_role']); ?>)</span>
-                        </p>
-                        <p class="text-xs text-gray-600">
                             <?php echo htmlspecialchars($activity['action']); ?>
                         </p>
                         <p class="text-xs text-gray-400">

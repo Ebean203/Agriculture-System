@@ -12,21 +12,31 @@ function imageToBase64($path) {
 // Consolidated Yield Report Function
 function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
     $html = '';
-    // Poultry/Livestock categories
+    // Poultry/Livestock categories (category names used in DB)
     $head_categories = ['Livestocks', 'Poultry'];
-    // Get all categories in desired order
-    $category_order = ['Agronomic Crops', 'High Value Crops', 'Livestocks', 'Poultry'];
+    // Desired category order (user-requested)
+    $category_order = ['Agronomic Crops', 'High Value Crops', 'Poultry', 'Livestocks'];
+    // Load categories as id => name map
     $categories = [];
     $cat_res = $conn->query("SELECT category_id, category_name FROM commodity_categories");
     while ($row = $cat_res->fetch_assoc()) {
-        $categories[$row['category_name']] = $row['category_id'];
+        $categories[(int)$row['category_id']] = $row['category_name'];
     }
-    // Get all commodities by category
+    // Build commodities keyed by category_id
     $commodities = [];
-    $com_res = $conn->query("SELECT commodity_id, commodity_name, category_id FROM commodities");
+    $com_res = $conn->query("SELECT commodity_id, commodity_name, category_id FROM commodities ORDER BY commodity_name");
     while ($row = $com_res->fetch_assoc()) {
-        $cat_name = array_search($row['category_id'], $categories) ?: array_search($row['category_id'], array_flip($categories));
-        $commodities[$cat_name][$row['commodity_name']] = $row['commodity_id'];
+        $cat_id = (int)$row['category_id'];
+        $commodities[$cat_id][$row['commodity_name']] = $row['commodity_id'];
+    }
+    // Build a map of commodity_id => unit (if the column exists)
+    $commodity_units = [];
+    $col_check = $conn->query("SHOW COLUMNS FROM commodities LIKE 'unit'");
+    if ($col_check && $col_check->num_rows > 0) {
+        $unit_res = $conn->query("SELECT commodity_id, COALESCE(unit,'') AS unit FROM commodities");
+        while ($ur = $unit_res->fetch_assoc()) {
+            $commodity_units[(int)$ur['commodity_id']] = $ur['unit'];
+        }
     }
     // Get all barangays
     $barangays = [];
@@ -36,7 +46,7 @@ function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
     }
     // Get all yield data in the range
     $sql = "SELECT cc.category_name, c.commodity_name, b.barangay_name, b.barangay_id, y.unit,
-                SUM(y.yield_amount) as total_yield
+                SUM(y.yield_amount) as total_yield, COALESCE(MAX(y.unit),'') AS unit
             FROM yield_monitoring y
             INNER JOIN commodities c ON y.commodity_id = c.commodity_id
             INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
@@ -55,6 +65,10 @@ function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
         $com = $row['commodity_name'];
         $brgy = $row['barangay_name'];
         $unit = $row['unit'];
+        // If unit not provided in yield record, attempt to get from commodities table map
+        if (empty($unit) && isset($commodity_units[$com]) && !empty($commodity_units[$com])) {
+            $unit = $commodity_units[$com];
+        }
         $is_head = in_array($cat, $head_categories);
         $label = $is_head ? 'Number of Heads' : 'Total Yield';
         $yield_data[$cat][$com][$brgy] = [
@@ -68,26 +82,65 @@ function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
     $html .= '<h3 style="margin-top: 0; color: #15803d;">🧮 Consolidated Yield of All Commodities</h3>';
     $html .= '<div class="summary-item"><span class="summary-label">Analysis Period:</span> ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</div>';
     $html .= '</div>';
-    foreach ($category_order as $cat) {
-        if (!isset($commodities[$cat])) continue;
-        $html .= '<h3 style="color:#166534; margin-top:30px;">' . htmlspecialchars($cat) . '</h3>';
-        foreach ($commodities[$cat] as $com => $com_id) {
+    // Build name=>id map so we can iterate requested category names and find their IDs
+    $category_name_to_id = array_flip($categories); // name => id
+    foreach ($category_order as $cat_name) {
+        $cat_id = $category_name_to_id[$cat_name] ?? null;
+        if (!$cat_id) continue;
+        if (!isset($commodities[$cat_id])) continue;
+        // Category header (use DB's category display name)
+        $cat_display = $categories[$cat_id] ?? $cat_name;
+        $html .= '<h3 style="margin-top:24px; color:#0f766e;">' . htmlspecialchars($cat_display) . '</h3>';
+        foreach ($commodities[$cat_id] as $com => $com_id) {
             // Find unit and label from yield_data if exists, else default
             $sample = null;
-            foreach ($yield_data[$cat][$com] ?? [] as $brgy => $info) { $sample = $info; break; }
+            // yield_data is keyed by category_name, so use $cat_display
+            foreach ($yield_data[$cat_display][$com] ?? [] as $brgy => $info) { $sample = $info; break; }
             $unit = $sample ? $sample['unit'] : '';
-            $is_head = $sample ? $sample['is_head'] : in_array($cat, $head_categories);
+            // Fallback to commodity_units map if unit is not present in yield records
+            if (empty($unit) && isset($commodity_units[$com]) && !empty($commodity_units[$com])) {
+                $unit = $commodity_units[$com];
+            }
+            // If still empty, query yield_monitoring for this commodity and period to get recorded unit
+            if (empty($unit) && isset($com_id)) {
+                $u_stmt = $conn->prepare("SELECT COALESCE(MAX(unit),'') AS unit FROM yield_monitoring WHERE commodity_id = ? AND record_date BETWEEN ? AND ?");
+                if ($u_stmt) {
+                    $u_stmt->bind_param('iss', $com_id, $start_date, $end_date);
+                    $u_stmt->execute();
+                    $u_res = $u_stmt->get_result();
+                    if ($u_res && $u_res->num_rows > 0) {
+                        $urow = $u_res->fetch_assoc();
+                        if (!empty($urow['unit'])) {
+                            $unit = $urow['unit'];
+                        }
+                    }
+                    $u_stmt->close();
+                }
+            }
+            $is_head = $sample ? $sample['is_head'] : in_array($cat_display, $head_categories);
             $label = $is_head ? 'Number of Heads' : 'Total Yield';
-            $html .= '<h4 style="margin-bottom:5px;">' . htmlspecialchars($com) . ($unit ? ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($unit) . ')</span>' : '') . '</h4>';
+            $unit_label = (!$is_head && $unit) ? ' (' . htmlspecialchars($unit) . ')' : '';
+            $label_full = $label . $unit_label;
+            $unit_header = $unit ? ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($unit) . ')</span>' : ' <span style="font-size:12px; color:#ef4444;">(unit unspecified)</span>';
+            $html .= '<h4 style="margin-bottom:5px;">' . htmlspecialchars($com) . $unit_header . '</h4>';
+            // If there are no yield records for this commodity in the selected period, show a uniform table indicating no data
+            $has_yield_for_commodity = !empty($yield_data[$cat][$com]);
             $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
-            $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($label) . '</th></tr></thead><tbody>';
+            $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($label_full) . '</th></tr></thead><tbody>';
+            if (!$has_yield_for_commodity) {
+                $html .= '<tr><td colspan="2" style="border:1px solid #e5e7eb; padding:12px; text-align:center; color:#6b7280;">No available yield data recorded for this commodity in the selected period.</td></tr>';
+                $html .= '</tbody></table>';
+                continue;
+            }
             $total = 0;
             foreach ($barangays as $brgy_id => $brgy_name) {
                 $amount = isset($yield_data[$cat][$com][$brgy_name]) ? $yield_data[$cat][$com][$brgy_name]['amount'] : 0;
-                $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($brgy_name) . '</td><td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($amount, 2) . '</td></tr>';
+                $display_amount = number_format($amount, 2) . ($unit ? ' ' . htmlspecialchars($unit) : ' <span style="color:#ef4444;">(unit unspecified)</span>');
+                $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($brgy_name) . '</td><td style="border:1px solid #e5e7eb; padding:8px;">' . $display_amount . '</td></tr>';
                 $total += $amount;
             }
-            $html .= '<tr style="font-weight:bold; background:#f0fdf4;"><td style="border:1px solid #16a34a; padding:8px;">Total</td><td style="border:1px solid #16a34a; padding:8px;">' . number_format($total, 2) . '</td></tr>';
+            $display_total = number_format($total, 2) . ($unit ? ' ' . htmlspecialchars($unit) : ' <span style="color:#ef4444;">(unit unspecified)</span>');
+            $html .= '<tr style="font-weight:bold; background:#f0fdf4;"><td style="border:1px solid #16a34a; padding:8px;">Total</td><td style="border:1px solid #16a34a; padding:8px;">' . $display_total . '</td></tr>';
             $html .= '</tbody></table>';
         }
     }
@@ -124,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (isset($_SESSION['user_id'])) {
         try {
             $stmt_log = $conn->prepare("INSERT INTO activity_logs (staff_id, action, action_type, details) VALUES (?, ?, 'system', ?)");
-            $action = "Generated {$report_type} report (not saved)";
+            $action = "Generated {$report_type} report";
             $details = "Period: {$start_date} to {$end_date}";
             $stmt_log->bind_param("iss", $_SESSION['user_id'], $action, $details);
             $stmt_log->execute();
@@ -148,7 +201,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     array_unshift($_SESSION['recent_reports'], $recent_item);
     $_SESSION['recent_reports'] = array_slice($_SESSION['recent_reports'], 0, 10);
 
-    echo $report_content;
+    // Store generated report HTML in session and redirect (POST-Redirect-GET)
+    if (!isset($_SESSION)) session_start();
+    $_SESSION['generated_report_content'] = $report_content;
+    // Redirect to a GET so the new tab can be refreshed without re-submitting the POST
+    header('Location: reports.php?show_generated=1');
+    exit;
+}
+
+// POST-Redirect-GET support: if a generated report was stored in the session,
+// serve it on a GET request so refreshing the report tab does not resubmit the POST.
+if (isset($_GET['show_generated']) && !empty($_SESSION['generated_report_content'])) {
+    echo $_SESSION['generated_report_content'];
+    // Remove stored report so refresh won't keep showing stale content
+    unset($_SESSION['generated_report_content']);
     exit;
 }
 
@@ -690,7 +756,7 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
         <button onclick="closeReport()" class="btn btn-secondary"><i class="fas fa-times"></i> Close</button>
     </div>';
     $html .= '<div class="no-print" id="saveStatus"></div>';
-    $html .= '<div class="no-print save-success"><i class="fas fa-check-circle"></i> This report has been automatically saved to the database</div>';
+    // Saved-to-database notice removed because auto-save is disabled to conserve storage.
 
     // Get the Base64 encoded strings for your logos
     $logoLeftPath = 'assets/Logo/Lagonglong_seal_SVG.svg.png';
@@ -1116,52 +1182,129 @@ function generateBarangayAnalyticsReport($start_date, $end_date, $conn) {
 function generateCommodityProductionReport($start_date, $end_date, $conn) {
     $html = '';
     
-    // Commodity distribution among farmers
-    $commodity_sql = "SELECT c.commodity_name, cc.category_name,
-                      COUNT(DISTINCT f.farmer_id) as farmer_count,
-                      COALESCE(SUM(f.land_area_hectares), 0) as total_land_area,
-                      COALESCE(AVG(f.land_area_hectares), 0) as avg_land_area
-                      FROM commodities c
-                      INNER JOIN commodity_categories cc ON c.category_id = cc.category_id
-                      LEFT JOIN farmer_commodities fc ON c.commodity_id = fc.commodity_id
-                      LEFT JOIN farmers f ON fc.farmer_id = f.farmer_id 
-                      AND f.registration_date BETWEEN '$start_date' AND '$end_date'
-                      GROUP BY c.commodity_id, c.commodity_name, cc.category_name
-                      ORDER BY farmer_count DESC, c.commodity_name";
-    
-    $commodity_result = $conn->query($commodity_sql);
-    
+    // Summary header for Commodity Production (top producers shown below)
     $html .= '<div class="summary-box">
         <h3 style="margin-top: 0; color: #15803d;">🌱 Commodity Production Summary</h3>
         <div class="summary-item"><span class="summary-label">Analysis Period:</span> ' . date('F d, Y', strtotime($start_date)) . ' to ' . date('F d, Y', strtotime($end_date)) . '</div>
-        <div class="summary-item"><span class="summary-label">Total Commodities:</span> ' . $commodity_result->num_rows . '</div>
+        <div class="summary-item" style="color:#6b7280;">This report shows the top producing farmers per commodity with their barangay and land area.</div>
     </div>';
-    
-    if ($commodity_result->num_rows > 0) {
-        $html .= '<h3>📊 Commodity Distribution Among Farmers</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Commodity</th>
-                    <th>Category</th>
-                    <th>Number of Farmers</th>
-                    <th>Total Land Area (ha)</th>
-                    <th>Average Land Area (ha)</th>
-                </tr>
-            </thead>
-            <tbody>';
-        
-        while ($row = $commodity_result->fetch_assoc()) {
-            $html .= '<tr>
-                <td>' . htmlspecialchars($row['commodity_name']) . '</td>
-                <td>' . htmlspecialchars($row['category_name']) . '</td>
-                <td>' . number_format($row['farmer_count']) . '</td>
-                <td>' . number_format($row['total_land_area'], 2) . '</td>
-                <td>' . number_format($row['avg_land_area'], 2) . '</td>
-            </tr>';
+
+    // Top producers per commodity (show top 5 farmers and their barangay)
+    $html .= '<h3 style="margin-top:30px; color:#166534;">🏆 Top Producers by Commodity</h3>';
+    // Build categories and commodities mapping so we can order by category and prioritize commodities with data
+    // Desired category order (user-requested)
+    $category_order = ['Agronomic Crops', 'High Value Crops', 'Poultry', 'Livestocks'];
+    // Load categories (id => name)
+    $categories = [];
+    $cat_res = $conn->query("SELECT category_id, category_name FROM commodity_categories");
+    while ($r = $cat_res->fetch_assoc()) { $categories[$r['category_id']] = $r['category_name']; }
+    // Build reverse map name => id for the requested ordering
+    $category_name_to_id = array_flip($categories);
+    // Build commodities keyed by category_id so grouping is robust
+    $commodities = [];
+    $commodity_units = [];
+    // Check if 'unit' column exists, some installs may not have it
+    $col_check = $conn->query("SHOW COLUMNS FROM commodities LIKE 'unit'");
+    $select_unit = ($col_check && $col_check->num_rows > 0);
+    if ($select_unit) {
+        $com_q = $conn->query("SELECT commodity_id, commodity_name, category_id, COALESCE(unit,'') AS unit FROM commodities");
+    } else {
+        $com_q = $conn->query("SELECT commodity_id, commodity_name, category_id FROM commodities");
+    }
+    while ($r = $com_q->fetch_assoc()) {
+        $cat_id = (int)$r['category_id'];
+        $commodities[$cat_id][$r['commodity_name']] = $r['commodity_id'];
+        $commodity_units[$r['commodity_id']] = isset($r['unit']) ? $r['unit'] : '';
+    }
+    // Find which commodities have yield in the selected period (one query)
+    $has_yield_ids = [];
+    $hy_stmt = $conn->prepare("SELECT DISTINCT commodity_id FROM yield_monitoring WHERE record_date BETWEEN ? AND ?");
+    if ($hy_stmt) {
+        $hy_stmt->bind_param('ss', $start_date, $end_date);
+        $hy_stmt->execute();
+        $hy_res = $hy_stmt->get_result();
+        while ($hr = $hy_res->fetch_assoc()) { $has_yield_ids[] = (int)$hr['commodity_id']; }
+        $hy_stmt->close();
+    }
+    // Iterate categories in desired order (use name->id map so names from DB are authoritative)
+    foreach ($category_order as $cat_name) {
+        $cat_id = $category_name_to_id[$cat_name] ?? null;
+        if (!$cat_id) continue;
+        if (!isset($commodities[$cat_id])) continue;
+        $cat_display = $categories[$cat_id] ?? $cat_name;
+    // Category header (bigger)
+    $html .= '<h2 style="margin-top:28px; color:#0f766e; font-size:20px;">' . htmlspecialchars($cat_display) . '</h2>';
+    // Build list and prioritize commodities with data
+        $list = [];
+        foreach ($commodities[$cat_id] as $name => $id) { $list[] = ['name'=>$name,'id'=>$id]; }
+        usort($list, function($a,$b) use ($has_yield_ids) {
+            $aHas = in_array($a['id'], $has_yield_ids);
+            $bHas = in_array($b['id'], $has_yield_ids);
+            if ($aHas && !$bHas) return -1;
+            if (!$aHas && $bHas) return 1;
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        foreach ($list as $comrow) {
+            $cid = $comrow['id'];
+            $cname = $comrow['name'];
+            $unit = $commodity_units[$cid] ?? '';
+            $unit_label = $unit ? ' (' . htmlspecialchars($unit) . ')' : '';
+            // if unit missing, try to get from yield_monitoring
+            if (empty($unit)) {
+                $u_stmt2 = $conn->prepare("SELECT COALESCE(MAX(unit),'') AS unit FROM yield_monitoring WHERE commodity_id = ? AND record_date BETWEEN ? AND ?");
+                if ($u_stmt2) {
+                    $u_stmt2->bind_param('iss', $cid, $start_date, $end_date);
+                    $u_stmt2->execute();
+                    $u_res2 = $u_stmt2->get_result();
+                    if ($u_res2 && $u_res2->num_rows > 0) {
+                        $urow2 = $u_res2->fetch_assoc();
+                        if (!empty($urow2['unit'])) {
+                            $unit = $urow2['unit'];
+                            $unit_label = ' (' . htmlspecialchars($unit) . ')';
+                        }
+                    }
+                    $u_stmt2->close();
+                }
+            }
+
+            $stmt_top = $conn->prepare("SELECT f.farmer_id, CONCAT(f.first_name, ' ', f.last_name) AS farmer_name, b.barangay_name, COALESCE(SUM(y.yield_amount),0) AS total_yield, COALESCE(MAX(f.land_area_hectares),0) AS land_area
+                FROM yield_monitoring y
+                INNER JOIN farmers f ON y.farmer_id = f.farmer_id
+                LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
+                WHERE y.commodity_id = ? AND y.record_date BETWEEN ? AND ?
+                GROUP BY f.farmer_id
+                ORDER BY total_yield DESC
+                LIMIT 5");
+            if ($stmt_top) {
+                $stmt_top->bind_param('iss', $cid, $start_date, $end_date);
+                $stmt_top->execute();
+                $top_res = $stmt_top->get_result();
+                if ($top_res && $top_res->num_rows > 0) {
+                    // commodity header (keep compact)
+                    $html .= '<h4 style="margin-bottom:8px; font-size:16px;">' . htmlspecialchars($cname) . $unit_label . '</h4>';
+                    $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
+                    $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Rank</th><th style="border:1px solid #e5e7eb; padding:8px;">Farmer</th><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">Total Yield' . $unit_label . '</th><th style="border:1px solid #e5e7eb; padding:8px;">Land Area (ha)</th></tr></thead><tbody>';
+                    $rank = 1;
+                    while ($t = $top_res->fetch_assoc()) {
+                        $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . $rank . '</td>';
+                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($t['farmer_name']) . '</td>';
+                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($t['barangay_name'] ?? 'N/A') . '</td>';
+                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['total_yield'], 2) . ($unit ? ' ' . htmlspecialchars($unit) : ' <span style="color:#ef4444;">(unit unspecified)</span>') . '</td>';
+                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['land_area'], 2) . '</td></tr>';
+                        $rank++;
+                    }
+                    $html .= '</tbody></table>';
+                } else {
+                    // No entries for this commodity in the period — show uniform no-data table
+                    $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
+                    $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Rank</th><th style="border:1px solid #e5e7eb; padding:8px;">Farmer</th><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">Total Yield' . $unit_label . '</th><th style="border:1px solid #e5e7eb; padding:8px;">Land Area (ha)</th></tr></thead><tbody>';
+                    $html .= '<tr><td colspan="5" style="border:1px solid #e5e7eb; padding:12px; text-align:center; color:#6b7280;">No available yield data recorded for ' . htmlspecialchars($cname) . ' in the selected period.</td></tr>';
+                    $html .= '</tbody></table>';
+                }
+                $stmt_top->close();
+            }
         }
-        
-        $html .= '</tbody></table>';
     }
     
     return $html;
@@ -1343,11 +1486,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                     </div>
                                 </div>
                             </div>
-                            <!-- Saved reports/auto-save has been disabled to reduce storage usage -->
-                            <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                                <div class="text-sm text-yellow-800 font-medium">Saved reports feature disabled</div>
-                                <div class="text-xs text-yellow-700">Reports are generated on demand and are not stored on the server to conserve storage.</div>
-                            </div>
+                            <!-- Saved reports feature and auto-save removed (no UI shown) -->
                         </div>
                     </div>
 
@@ -1421,17 +1560,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                         </div>
                                     </div>
                                     
-                                    <div class="bg-agri-light p-6 rounded-xl border border-agri-green/20">
-                                        <div class="flex items-start">
-                                            <i class="fas fa-info-circle text-agri-green mr-3 mt-1"></i>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700">
-                                                    <i class="fas fa-save text-agri-green mr-2"></i>Report Auto-Save Information
-                                                </label>
-                                                <p class="text-sm text-gray-600 mt-1">All generated reports are automatically saved to the database and reports folder for future reference and download</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <!-- Report auto-save information removed (feature disabled to conserve storage) -->
                                     
                                     <div class="flex gap-4 pt-4">
                                         <button type="submit" 
@@ -1444,13 +1573,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                         </button>
                                     </div>
                                 </form>
-                                <script>
-                                document.getElementById('generateReportForm').addEventListener('submit', function() {
-                                    setTimeout(function() {
-                                        window.location.reload();
-                                    }, 1500);
-                                });
-                                </script>
+                                <!-- Removed auto-reload after submit to avoid unexpected behavior -->
                             </div>
                         </div>
 

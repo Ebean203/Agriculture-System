@@ -304,17 +304,6 @@ function navigateToNotificationPage(category, itemName, inputId, farmerName, far
                 window.location.href = 'yield_monitoring.php';
             }
             break;
-        case 'activity':
-            console.log('Redirecting to MAO Activities with activity id:', inputId || itemName);
-            // Prefer activity_id (sent as inputId) then fallback to title search
-            if (inputId && inputId !== '') {
-                window.location.href = 'mao_activities.php?activity_id=' + inputId;
-            } else if (itemName && itemName !== '') {
-                window.location.href = 'mao_activities.php?search=' + encodeURIComponent(itemName);
-            } else {
-                window.location.href = 'mao_activities.php';
-            }
-            break;
         default:
             console.log('Redirecting to dashboard (default)');
             // Default to dashboard
