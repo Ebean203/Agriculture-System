@@ -6,8 +6,8 @@ require_once __DIR__ . '/includes/yield_helpers.php';
 // Get date range from request or set defaults
 $start_date = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01')); // First day of current month
 $end_date = isset($_POST['end_date']) ? $_POST['end_date'] : (isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d')); // Today
-$report_type = isset($_POST['report_type']) ? $_POST['report_type'] : (isset($_GET['report_type']) ? $_GET['report_type'] : '');
-$chart_type = isset($_POST['chart_type']) ? $_POST['chart_type'] : (isset($_GET['chart_type']) ? $_GET['chart_type'] : '');
+$report_type = 'yield_monitoring'; // Default report type for simplified chart
+$chart_type = '';
 $barangay_filter = isset($_POST['barangay_filter']) ? $_POST['barangay_filter'] : (isset($_GET['barangay_filter']) ? $_GET['barangay_filter'] : '');
 
 // Get barangays for filter dropdown
@@ -464,171 +464,122 @@ r        .gradient-bg {
 
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md p-6 text-white animate-fade-in">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-blue-100 text-sm">Farmers (Period)</p>
-                            <p class="text-2xl font-bold"><?php echo number_format($total_farmers); ?></p>
-                        </div>
-                        <i class="fas fa-users text-3xl text-blue-200"></i>
-                    </div>
-                </div>
-                <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-md p-6 text-white animate-fade-in">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-green-100 text-sm">Total Yield (kg)</p>
-                            <p class="text-2xl font-bold"><?php echo number_format($total_yield, 1); ?></p>
-                        </div>
-                        <i class="fas fa-weight-hanging text-3xl text-green-200"></i>
-                    </div>
-                </div>
                 <?php
-                    // Replace Boats card with dynamic unit totals aggregated across all commodities
-                    $agg_all = aggregate_totals_by_commodity_db($conn, $start_date, $end_date, $barangay_filter);
-                    // Sum across commodities per unit
-                    $unit_totals = [];
-                    foreach ($agg_all as $com => $units) {
+                // Always show all commodity categories as cards, even if no yield data
+                $cat_sql = "SELECT category_id, category_name FROM commodity_categories ORDER BY category_id ASC LIMIT 4";
+                $cat_result = mysqli_query($conn, $cat_sql);
+                $categories = [];
+                while ($cat_row = mysqli_fetch_assoc($cat_result)) {
+                    $categories[$cat_row['category_id']] = $cat_row['category_name'];
+                }
+
+                // Get yield and unit per category (may be missing some categories)
+                // Use LEFT JOIN and put date filter in ON clause
+                $sql = "SELECT cat.category_id, cat.category_name, ym.unit, SUM(ym.yield_amount) as total_yield
+                        FROM commodity_categories cat
+                        LEFT JOIN commodities c ON c.category_id = cat.category_id
+                        LEFT JOIN farmer_commodities fc ON fc.commodity_id = c.commodity_id
+                        LEFT JOIN farmers f ON f.farmer_id = fc.farmer_id
+                        LEFT JOIN yield_monitoring ym ON ym.farmer_id = fc.farmer_id AND ym.commodity_id = fc.commodity_id AND DATE(ym.record_date) BETWEEN ? AND ?
+                        ";
+                $params = [$start_date, $end_date];
+                $types = "ss";
+                if ($barangay_filter) {
+                    $sql .= " AND f.barangay_id = ?";
+                    $params[] = $barangay_filter;
+                    $types .= "s";
+                }
+                $sql .= " GROUP BY cat.category_id, cat.category_name, ym.unit ORDER BY cat.category_id ASC LIMIT 40";
+                $stmt = mysqli_prepare($conn, $sql);
+                mysqli_stmt_bind_param($stmt, $types, ...$params);
+                mysqli_stmt_execute($stmt);
+                $result = mysqli_stmt_get_result($stmt);
+                // Build associative array: [category_id][unit] = total_yield
+                $yield_data = [];
+                if ($result) {
+                    while ($row = mysqli_fetch_assoc($result)) {
+                        $cat_id = $row['category_id'];
+                        $unit = $row['unit'];
+                        $total = $row['total_yield'];
+                        if (!isset($yield_data[$cat_id])) $yield_data[$cat_id] = [];
+                        $yield_data[$cat_id][$unit] = $total;
+                    }
+                }
+                $bgClasses = ['from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-purple-500 to-purple-600', 'from-orange-500 to-orange-600'];
+                $iconClasses = ['fas fa-wheat-awn','fas fa-seedling','fas fa-leaf','fas fa-apple-alt'];
+                require_once __DIR__ . '/includes/yield_helpers.php';
+                $i = 0;
+                foreach ($categories as $cat_id => $cat_name) {
+                    $bg = $bgClasses[$i] ?? 'from-gray-500 to-gray-600';
+                    $icon = $iconClasses[$i] ?? 'fas fa-box';
+                    $units = isset($yield_data[$cat_id]) ? $yield_data[$cat_id] : [];
+                    $parts = [];
+                    if (!empty($units)) {
                         foreach ($units as $unit => $amt) {
-                            if (!isset($unit_totals[$unit])) $unit_totals[$unit] = 0.0;
-                            $unit_totals[$unit] += $amt;
+                            if ($amt > 0) {
+                                $labelUnit = normalize_unit_label($unit);
+                                $parts[] = '<span class="text-2xl font-bold">' . number_format($amt, 2) . '</span> <span class="text-base">' . htmlspecialchars($labelUnit) . '</span>';
+                            }
                         }
                     }
-                    // Prepare cards for top N units by amount
-                    arsort($unit_totals);
-                    $maxCards = 4;
-                    $i = 0;
-                    foreach ($unit_totals as $unit => $amt) {
-                        if ($i >= $maxCards) break;
-                        $i++;
-                        $displayUnit = $unit ? htmlspecialchars($unit) : 'Units';
-                        // Choose color set based on index
-                        $bgClasses = ['from-purple-500 to-purple-600', 'from-pink-500 to-pink-600', 'from-teal-500 to-teal-600', 'from-indigo-500 to-indigo-600'];
-                        $iconClasses = ['fas fa-boxes','fas fa-balance-scale','fas fa-seedling','fas fa-box'];
-                        $bg = $bgClasses[$i-1] ?? 'from-gray-500 to-gray-600';
-                        $icon = $iconClasses[$i-1] ?? 'fas fa-box';
-                        ?>
-                        <div class="bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-6 text-white animate-fade-in">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-purple-100 text-sm"><?php echo 'Total ' . $displayUnit; ?></p>
-                                    <p class="text-2xl font-bold"><?php echo number_format($amt, 2); ?></p>
-                                </div>
-                                <i class="<?php echo $icon; ?> text-3xl text-purple-200"></i>
-                            </div>
-                        </div>
-                        <?php
+                    // Only show 0 for Agronomic Crops and Livestock if no data, otherwise leave blank for High Value Crops and Poultry if no data
+                    if (empty($parts)) {
+                        if ($cat_id == 1 || $cat_id == 3) {
+                            $display = '<span class="text-2xl font-bold">0</span> <span class="text-base">kg</span>';
+                        } else {
+                            $display = '';
+                        }
+                    } else {
+                        $display = implode('<br>', $parts);
                     }
-                    // If no unit totals found, render an empty placeholder (previous Boats card)
-                    if ($i === 0) {
                 ?>
-                <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-md p-6 text-white animate-fade-in">
+                <div class="bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-6 text-white animate-fade-in">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-purple-100 text-sm">Boats Registered</p>
-                            <p class="text-2xl font-bold"><?php echo number_format($total_boats); ?></p>
+                            <p class="text-blue-100 text-sm"><?php echo htmlspecialchars($cat_name); ?></p>
+                            <div><?php echo $display; ?></div>
                         </div>
-                        <i class="fas fa-ship text-3xl text-purple-200"></i>
+                        <i class="<?php echo $icon; ?> text-3xl text-blue-200"></i>
                     </div>
                 </div>
-                <?php } ?>
-                <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-md p-6 text-white animate-fade-in">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-orange-100 text-sm">Active Commodities</p>
-                            <p class="text-2xl font-bold"><?php echo number_format($total_commodities); ?></p>
-                        </div>
-                        <i class="fas fa-wheat-awn text-3xl text-orange-200"></i>
-                    </div>
-                </div>
+                <?php $i++; } if (isset($stmt)) mysqli_stmt_close($stmt); ?>
             </div>
 
             <!-- Controls Section -->
+            <!-- Chart Filters Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                    <i class="fas fa-sliders-h text-agri-green mr-3"></i>Analytics Controls
-                </h3>
-                <form method="POST" action="" class="space-y-4">
-                    <!-- Report Type Selection -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Choose a report type...</label>
-                        <select name="report_type" id="reportType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent" onchange="updateChartOptions()">
-                            <option value="">Select Report Type...</option>
-                            <!-- Keep analytics-specific time-series option -->
-                            <option value="farmer_registrations" <?php echo $report_type === 'farmer_registrations' ? 'selected' : ''; ?>>👥 Farmer Registrations Over Time</option>
-
-                            <!-- Mirror reports available on reports.php -->
-                            <option value="farmers_summary" <?php echo $report_type === 'farmers_summary' ? 'selected' : ''; ?>>👥 Farmers Summary Report</option>
-                            <option value="input_distribution" <?php echo $report_type === 'input_distribution' ? 'selected' : ''; ?>>📦 Input Distribution Report</option>
-                            <option value="yield_monitoring" <?php echo $report_type === 'yield_monitoring' ? 'selected' : ''; ?>>🌾 Yield Monitoring Report</option>
-                            <option value="inventory_status" <?php echo $report_type === 'inventory_status' ? 'selected' : ''; ?>>📋 Current Inventory Status</option>
-                            <option value="barangay_analytics" <?php echo $report_type === 'barangay_analytics' ? 'selected' : ''; ?>>🗺️ Barangay Analytics Report</option>
-                            <option value="commodity_production" <?php echo $report_type === 'commodity_production' ? 'selected' : ''; ?>>🌱 Commodity Production Report</option>
-                            <option value="registration_analytics" <?php echo $report_type === 'registration_analytics' ? 'selected' : ''; ?>>📋 Registration Analytics Report</option>
-                            <option value="comprehensive_overview" <?php echo $report_type === 'comprehensive_overview' ? 'selected' : ''; ?>>📈 Comprehensive Overview Report</option>
-                            <option value="consolidated_yield" <?php echo $report_type === 'consolidated_yield' ? 'selected' : ''; ?>>🧮 Consolidated Yield of All Commodities</option>
+                <form id="chartFilterForm" class="row g-3 align-items-end" autocomplete="off">
+                    <div class="col-md-4">
+                        <label for="filterBarangay" class="form-label">Barangay</label>
+                        <select id="filterBarangay" name="barangay_filter" class="form-select">
+                            <option value="">All Barangays</option>
+                            <?php foreach($barangays as $barangay): ?>
+                                <option value="<?php echo $barangay['barangay_id']; ?>" <?php echo $barangay_filter == $barangay['barangay_id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($barangay['barangay_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
-
-                    <!-- Filters Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Barangay Filter</label>
-                            <select name="barangay_filter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                                <option value="">All Barangays</option>
-                                <?php foreach($barangays as $barangay): ?>
-                                    <option value="<?php echo $barangay['barangay_id']; ?>" <?php echo $barangay_filter == $barangay['barangay_id'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($barangay['barangay_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                            <input type="date" name="start_date" value="<?php echo $start_date; ?>" 
-                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                            <input type="date" name="end_date" value="<?php echo $end_date; ?>" 
-                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        </div>
+                    <div class="col-md-3">
+                        <label for="filterStartDate" class="form-label">Start Date</label>
+                        <input type="date" id="filterStartDate" name="start_date" value="<?php echo $start_date; ?>" class="form-control">
                     </div>
-
-                    <!-- Submit Button -->
-                    <div class="flex justify-center">
-                        <button type="submit" class="bg-agri-green text-white px-6 py-3 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
-                            <i class="fas fa-chart-bar mr-2"></i>Generate Analytics
-                        </button>
+                    <div class="col-md-3">
+                        <label for="filterEndDate" class="form-label">End Date</label>
+                        <input type="date" id="filterEndDate" name="end_date" value="<?php echo $end_date; ?>" class="form-control">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-sync-alt me-2"></i>Update</button>
                     </div>
                 </form>
-
-                <!-- Loading indicator -->
-                <div id="loadingIndicator" class="hidden text-center py-4">
-                    <div class="inline-flex items-center">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-agri-green mr-3"></div>
-                        <span class="text-gray-600">Generating analytics...</span>
-                    </div>
-                </div>
             </div>
 
             <!-- Chart Display -->
-            <?php if($report_type): ?>
             <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-bold text-gray-900 flex items-center">
                         <i class="fas fa-chart-area text-agri-green mr-3"></i>
-                        <span id="chartTitle">
-                            <?php 
-                            $titles = [
-                                'farmer_registrations' => 'Farmer Registrations Over Time',
-                                'yield_monitoring' => 'Yield Production Over Time',
-                                'commodity_distribution' => 'Commodity Distribution',
-                                'barangay_analytics' => 'Farmers by Barangay',
-                                'registration_status' => 'Registration Status Comparison'
-                            ];
-                            echo $titles[$report_type] ?? 'Analytics Chart';
-                            ?>
-                        </span>
+                        <span id="chartTitle">Analytics Chart</span>
                     </h3>
                     <div class="flex space-x-2">
                         <button onclick="downloadChart()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center">
@@ -639,8 +590,7 @@ r        .gradient-bg {
                         </button>
                     </div>
                 </div>
-
-                <!-- Chart Type Switcher Buttons -->
+                <!-- Chart Type Switcher Buttons (only line and bar) -->
                 <div class="flex justify-center mb-4">
                     <div class="bg-gray-100 rounded-lg p-1 flex space-x-1">
                         <button onclick="switchChartType('line')" id="btn-line" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center">
@@ -649,31 +599,126 @@ r        .gradient-bg {
                         <button onclick="switchChartType('bar')" id="btn-bar" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center">
                             <i class="fas fa-chart-bar mr-2"></i>Bar
                         </button>
-                        <button onclick="switchChartType('pie')" id="btn-pie" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center">
-                            <i class="fas fa-chart-pie mr-2"></i>Pie
-                        </button>
-                        <button onclick="switchChartType('doughnut')" id="btn-doughnut" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center">
-                            <i class="fas fa-chart-donut mr-2"></i>Doughnut
-                        </button>
                     </div>
                 </div>
-
                 <div class="chart-container">
                     <canvas id="analyticsChart"></canvas>
                 </div>
                 <div id="noDataMessage" class="hidden text-center mt-6 text-gray-600">
                     <i class="fas fa-exclamation-circle text-2xl text-gray-400 block mx-auto"></i>
-                    <p class="mt-2">No data available for the selected report and date range.</p>
+                    <p class="mt-2">No data available for the selected filters and date range.</p>
                 </div>
             </div>
-            <?php else: ?>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-                <div class="flex items-center">
-                    <i class="fas fa-info-circle text-blue-600 mr-3"></i>
-                    <p class="text-blue-800">Please select a report type to begin generating analytics.</p>
+
+            <!-- SECTION 1: FARMER PRODUCTION PERFORMANCE -->
+            <div class="row g-4 mb-4">
+            <!-- SECTION 3: COMPLIANCE & PROGRAM EFFICIENCY -->
+            <div class="row g-4 mb-4">
+                <!-- Yield Reporting Compliance Score -->
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                            <h5 class="card-title mb-3">Yield Reporting Compliance</h5>
+                            <h1 id="complianceRateDisplay" class="display-3 fw-bold text-success mb-0">--%</h1>
+                            <div class="text-muted mt-2">% of input recipients reporting yield</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Commodity Yield Breakdown -->
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Commodity Share of Total Yield</h5>
+                            <canvas id="commodityYieldPie" height="180"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <!-- Program Efficiency Comparison -->
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Avg. Yield by Program (RSBSA vs. General)</h5>
+                            <canvas id="programEfficiencyChart" height="180"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <?php endif; ?>
+            <!-- SECTION 2: INVENTORY RISK & DISTRIBUTION -->
+            <div class="row g-4 mb-4">
+                <!-- Inventory Risk: Low Stock & Expiring Items -->
+                <div class="col-md-6">
+                    <div class="card text-white bg-danger h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">⚠️ Inventory Risk: Low Stock & Expiring</h5>
+                            <div class="row">
+                                <div class="col-12 col-lg-6 mb-3 mb-lg-0">
+                                    <h6 class="fw-bold">Low Stock Items</h6>
+                                    <ul class="list-group list-group-flush bg-transparent" id="lowStockList">
+                                        <!-- Data loaded via JS -->
+                                    </ul>
+                                </div>
+                                <div class="col-12 col-lg-6">
+                                    <h6 class="fw-bold">Expiring Soon (60 days)</h6>
+                                    <ul class="list-group list-group-flush bg-transparent" id="expiringSoonList">
+                                        <!-- Data loaded via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Input Distribution Trends -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Input Distribution Volume (Monthly)</h5>
+                            <canvas id="distributionTrendChart" height="220"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                <!-- Top Yield Producers & Input Correlation -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Top Yield Producers & Input Correlation</h5>
+                            <form class="row g-2 mb-3" id="topProducersFilterForm" autocomplete="off">
+                                <div class="col-6">
+                                    <label for="topProducersFrom" class="form-label mb-1">From Date</label>
+                                    <input type="date" class="form-control" id="topProducersFrom" name="from" required>
+                                </div>
+                                <div class="col-6">
+                                    <label for="topProducersTo" class="form-label mb-1">To Date</label>
+                                    <input type="date" class="form-control" id="topProducersTo" name="to" required>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover align-middle mb-0" id="topProducersTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Farmer Name</th>
+                                            <th>Total Yield (kg)</th>
+                                            <th>Key Inputs Received</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data loaded via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Historical Yield Trends -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">Historical Yield Trends (Kg/Month)</h5>
+                            <canvas id="historicalYieldChart" height="220"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -700,101 +745,18 @@ r        .gradient-bg {
         // Chart instance
         let analyticsChart = null;
 
-        // Chart data from PHP - load data if report_type is selected
-        <?php if($report_type):
-            // Build a PHP payload and json_encode it. If the selected report_type is not supported for analytics,
-            // $chart_payload will remain null and JS will receive `null` which prevents rendering undefined labels.
-            $chart_payload = null;
-            switch($report_type) {
-                case 'farmer_registrations':
-                    $data = getFarmerRegistrations($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'date'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'count'))),
-                        'reportType' => 'farmer_registrations',
-                        'label' => 'Farmers Registered'
-                    ];
-                    break;
-                case 'yield_monitoring':
-                    $data = getYieldData($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'date'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'total_yield'))),
-                        'reportType' => 'yield_monitoring',
-                        'label' => 'Total Yield (kg)'
-                    ];
-                    break;
-                case 'commodity_distribution':
-                    $data = getCommodityDistribution($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'commodity_name'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
-                        'reportType' => 'commodity_distribution',
-                        'label' => 'Farmers per Commodity'
-                    ];
-                    break;
-                case 'barangay_analytics':
-                    $data = getBarangayDistribution($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'barangay_name'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
-                        'reportType' => 'barangay_analytics',
-                        'label' => 'Farmers per Barangay'
-                    ];
-                    break;
-                case 'registration_status':
-                    $data = getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'status'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'count'))),
-                        'reportType' => 'registration_status',
-                        'label' => 'Registration Status'
-                    ];
-                    break;
-                // Aliases / additional reports present on reports.php
-                case 'registration_analytics':
-                    // alias for registration_status
-                    $data = getRegistrationStatus($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'status'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'count'))),
-                        'reportType' => 'registration_status',
-                        'label' => 'Registration Status'
-                    ];
-                    break;
-                case 'commodity_production':
-                case 'commodity_distribution':
-                    // alias: commodity production / distribution
-                    $data = getCommodityDistribution($conn, $start_date, $end_date, $barangay_filter);
-                    $chart_payload = [
-                        'labels' => array_column($data, 'commodity_name'),
-                        'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'farmer_count'))),
-                        'reportType' => 'commodity_distribution',
-                        'label' => 'Farmers per Commodity'
-                    ];
-                    break;
-                case 'consolidated_yield':
-                    // Use helper to aggregate totals grouped by commodity+unit and prepare labels/data
-                    $agg = aggregate_totals_by_commodity_db($conn, $start_date, $end_date, $barangay_filter);
-                    $flat = flatten_aggregated_totals_for_chart($agg, 30, false);
-                    $chart_payload = [
-                        'labels' => $flat['labels'],
-                        'data' => $flat['data'],
-                        'reportType' => 'consolidated_yield',
-                        'label' => 'Total Yield by Commodity'
-                    ];
-                    break;
-                // Unsupported report types will result in $chart_payload = null
-            }
-
+        // Chart data from PHP - always use yield_monitoring as default
+        <?php
+            $data = getYieldData($conn, $start_date, $end_date, $barangay_filter);
+            $chart_payload = [
+                'labels' => array_column($data, 'date'),
+                'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'total_yield'))),
+                'reportType' => 'yield_monitoring',
+                'label' => 'Total Yield (kg)'
+            ];
             echo "const chartData = " . ($chart_payload ? json_encode($chart_payload) : 'null') . ";\n";
             echo "let currentChartType = 'line';\n";
-            echo "if (window.APP_DEBUG) console.log('Chart data from PHP:', chartData);\n";
-        else: ?>
-        const chartData = null;
-        let currentChartType = 'line';
-    if (window.APP_DEBUG) console.log('No chart data - report type not selected');
-        <?php endif; ?>
+        ?>
 
         // Function to switch chart type dynamically
         function switchChartType(newType) {
@@ -1124,6 +1086,151 @@ r        .gradient-bg {
                 }
             }
         });
+    </script>
+    <!-- Deep-dive Analytics JS (new sections) -->
+    <script>
+    // SECTION 1: Farmer Production Performance
+    function loadTopProducers() {
+        const from = document.getElementById('topProducersFrom').value;
+        const to = document.getElementById('topProducersTo').value;
+        const tableBody = document.querySelector('#topProducersTable tbody');
+        tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>';
+        $.getJSON('get_report_data.php', { type: 'top_producers', from, to }, function(res) {
+            if (Array.isArray(res) && res.length) {
+                tableBody.innerHTML = res.map(row =>
+                    `<tr><td>${row.farmer_name}</td><td>${row.total_yield}</td><td>${row.inputs_received}</td></tr>`
+                ).join('');
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No data found for selected range.</td></tr>';
+            }
+        }).fail(function() {
+            tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading data.</td></tr>';
+        });
+    }
+
+    function initHistoricalYieldChart() {
+        const ctx = document.getElementById('historicalYieldChart').getContext('2d');
+        $.getJSON('get_report_data.php', { type: 'yield_trend' }, function(res) {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: res.labels || [],
+                    datasets: [{
+                        label: 'Yield (kg)',
+                        data: res.data || [],
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22,163,74,0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {responsive:true, plugins:{legend:{display:false}}}
+            });
+        });
+    }
+
+    // SECTION 2: Inventory Risk & Distribution
+    function loadInventoryRisk() {
+        // Low Stock
+        $.getJSON('get_report_data.php', { type: 'low_stock' }, function(res) {
+            const list = document.getElementById('lowStockList');
+            if (Array.isArray(res) && res.length) {
+                list.innerHTML = res.map(item => `<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center">${item.name}<span class="badge bg-warning text-dark">${item.qty}</span></li>`).join('');
+            } else {
+                list.innerHTML = '<li class="list-group-item bg-transparent text-muted">No low stock items.</li>';
+            }
+        });
+        // Expiring Soon
+        $.getJSON('get_report_data.php', { type: 'expiring_soon' }, function(res) {
+            const list = document.getElementById('expiringSoonList');
+            if (Array.isArray(res) && res.length) {
+                list.innerHTML = res.map(item => `<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center">${item.name}<span class="badge bg-danger">${item.days_left}d</span></li>`).join('');
+            } else {
+                list.innerHTML = '<li class="list-group-item bg-transparent text-muted">No items expiring soon.</li>';
+            }
+        });
+    }
+
+    function initDistributionTrendChart() {
+        const ctx = document.getElementById('distributionTrendChart').getContext('2d');
+        $.getJSON('get_report_data.php', { type: 'input_distribution' }, function(res) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: res.labels || [],
+                    datasets: [{
+                        label: 'Inputs Distributed',
+                        data: res.data || [],
+                        backgroundColor: '#f59e42'
+                    }]
+                },
+                options: {responsive:true, plugins:{legend:{display:false}}}
+            });
+        });
+    }
+
+    // SECTION 3: Compliance & Program Efficiency
+    function loadComplianceRate() {
+        $.getJSON('get_report_data.php', { type: 'compliance_rate' }, function(res) {
+            document.getElementById('complianceRateDisplay').textContent = (res && res.rate ? res.rate : '--') + '%';
+        });
+    }
+
+    function initCommodityYieldPie() {
+        const ctx = document.getElementById('commodityYieldPie').getContext('2d');
+        $.getJSON('get_report_data.php', { type: 'yield_breakdown' }, function(res) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: res.labels || [],
+                    datasets: [{
+                        data: res.data || [],
+                        backgroundColor: ['#16a34a','#f59e42','#3b82f6','#e11d48','#fbbf24','#6366f1','#10b981']
+                    }]
+                },
+                options: {responsive:true, plugins:{legend:{position:'bottom'}}}
+            });
+        });
+    }
+
+    function initProgramEfficiencyChart() {
+        const ctx = document.getElementById('programEfficiencyChart').getContext('2d');
+        $.getJSON('get_report_data.php', { type: 'program_comparison' }, function(res) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: res.labels || [],
+                    datasets: [{
+                        label: 'Avg. Yield (kg)',
+                        data: res.data || [],
+                        backgroundColor: ['#6366f1','#f59e42']
+                    }]
+                },
+                options: {responsive:true, plugins:{legend:{display:false}}}
+            });
+        });
+    }
+
+    // Event bindings and initial load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Top Producers date filter
+        const fromInput = document.getElementById('topProducersFrom');
+        const toInput = document.getElementById('topProducersTo');
+        if (fromInput && toInput) {
+            const today = new Date().toISOString().split('T')[0];
+            fromInput.value = today.slice(0,8) + '01';
+            toInput.value = today;
+            fromInput.addEventListener('change', loadTopProducers);
+            toInput.addEventListener('change', loadTopProducers);
+            loadTopProducers();
+        }
+        if (document.getElementById('historicalYieldChart')) initHistoricalYieldChart();
+        loadInventoryRisk();
+        if (document.getElementById('distributionTrendChart')) initDistributionTrendChart();
+        loadComplianceRate();
+        if (document.getElementById('commodityYieldPie')) initCommodityYieldPie();
+        if (document.getElementById('programEfficiencyChart')) initProgramEfficiencyChart();
+    });
     </script>
 
     <style>

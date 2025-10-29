@@ -49,6 +49,9 @@ if (!isset($pageTitle)) {
                         <i class="fas fa-user-tie mr-2"></i>Staff
                     </a>
                 <?php endif; ?>
+                <a href="commodities.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-seedling mr-2"></i>Commodities
+                </a>
                 <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                     <i class="fas fa-sign-out-alt mr-2"></i>Logout
                 </a>

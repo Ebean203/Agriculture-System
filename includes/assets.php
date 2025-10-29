@@ -1,7 +1,11 @@
 <?php
-// Asset configuration - Set to true for offline mode, false for CDN mode
-$offline_mode = true;
-$offline_mode = false;
+// Asset configuration - Auto-detect online/offline mode
+// You can override with ?offline=1 or ?offline=0 in the URL for manual toggle
+$offline_mode = isset($_GET['offline']) ? ($_GET['offline'] == '1') : null;
+if ($offline_mode === null) {
+    // Default to CDN, but fallback to offline if CDN CSS fails to load
+    $offline_mode = false;
+}
 if ($offline_mode) {
     // Local assets
     echo '<link href="assets/css/bootstrap.min.css" rel="stylesheet">';
@@ -41,8 +45,8 @@ if ($offline_mode) {
     echo '<script src="assets/js/bootstrap.bundle.min.js"></script>';
 } else {
     // CDN assets (for when you have internet)
-    echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">';
-    echo '<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">';
+    echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" onerror="this.onerror=null;this.href=\'assets/css/bootstrap.min.css\';">';
+    echo '<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" onerror="this.onerror=null;this.href=\'assets/css/fontawesome.min.css\';">';
     // When using CDN in development, you can still control console verbosity via APP_DEBUG
     echo '<script>window.APP_DEBUG = window.APP_DEBUG || false;</script>';
     // Suppress console early so the CDN script cannot log warnings when APP_DEBUG is false
@@ -55,7 +59,7 @@ if ($offline_mode) {
             console.debug = function(){};
         }
     </script>';
-    echo '<script src="https://cdn.tailwindcss.com"></script>';
+    echo '<script src="https://cdn.tailwindcss.com" onerror="this.onerror=null;this.src=\'assets/js/tailwind-cdn.js\';"></script>';
     echo '<script>
         tailwind.config = {
             theme: {
@@ -69,8 +73,8 @@ if ($offline_mode) {
             }
         }
     </script>';
-    echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>';
-    echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>';
+    echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js" onerror="this.onerror=null;this.src=\'assets/js/jquery.min.js\';"></script>';
+    echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" onerror="this.onerror=null;this.src=\'assets/js/bootstrap.bundle.min.js\';"></script>';
 }
 ?>
 

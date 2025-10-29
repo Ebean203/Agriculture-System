@@ -6,11 +6,55 @@ $month = $_GET['month'] ?? date('m');
 $year = $_GET['year'] ?? date('Y');
 $barangay = $_GET['barangay'] ?? '';
 
-$data = [];
-$labels = [];
-
+ $data = [];
+ $labels = [];
 try {
+// Debug: log incoming GET parameters for troubleshooting
+if (isset($_GET['debug']) && $_GET['debug'] == '2') {
+    header('Content-Type: text/plain');
+    echo "GET params:\n";
+    print_r($_GET);
+}
 switch ($type) {
+    case 'yield_by_category':
+        $category_id = isset($_GET['category_id']) ? trim($_GET['category_id']) : '';
+        if ($category_id !== '') {
+            $debug_rows = [];
+            $query = "SELECT c.commodity_id, c.commodity_name, c.category_id, SUM(ym.yield_amount) as total_yield FROM yield_monitoring ym INNER JOIN commodities c ON ym.commodity_id = c.commodity_id WHERE c.category_id = ? GROUP BY c.commodity_id ORDER BY c.commodity_name ASC";
+            $stmt = mysqli_prepare($conn, $query);
+            mysqli_stmt_bind_param($stmt, 'i', $category_id);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            if (!$result) throw new Exception(mysqli_error($conn));
+            $units = [];
+            while ($row = mysqli_fetch_assoc($result)) {
+                $labels[] = $row['commodity_name'];
+                $data[] = (float)$row['total_yield'];
+                // Get the most recent unit for this commodity
+                $unit_stmt = $conn->prepare("SELECT unit FROM yield_monitoring WHERE commodity_id = ? AND unit IS NOT NULL AND unit != '' ORDER BY record_date DESC LIMIT 1");
+                $unit_stmt->bind_param('i', $row['commodity_id']);
+                $unit_stmt->execute();
+                $unit_res = $unit_stmt->get_result();
+                $unit = 'kg';
+                if ($unit_row = $unit_res->fetch_assoc()) {
+                    $unit = $unit_row['unit'];
+                }
+                $units[] = $unit;
+                $unit_stmt->close();
+                $debug_rows[] = $row + ['unit' => $unit];
+            }
+            mysqli_stmt_close($stmt);
+            // Enhanced debug: show SQL, params, and result
+            if (isset($_GET['debug'])) {
+                header('Content-Type: text/plain');
+                echo "category_id: $category_id\n";
+                echo "SQL: $query\n";
+                echo "Result: ";
+                echo json_encode($debug_rows, JSON_PRETTY_PRINT);
+                exit;
+            }
+        }
+        break;
     case 'activities':
         // ...existing code...
         break;
@@ -159,10 +203,14 @@ switch ($type) {
         break;
 }
 // Output for Chart.js
-echo json_encode([
+$output = [
     'labels' => $labels,
     'data' => $data
-]);
+];
+if (isset($units)) {
+    $output['units'] = $units;
+}
+echo json_encode($output);
 } catch (Exception $e) {
     echo json_encode([
         'error' => $e->getMessage(),

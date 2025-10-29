@@ -324,7 +324,7 @@ $stmt->close();
                         </script>
                     </div>
                 <!-- Commodities -->
-                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='mao_inventory.php'" title="View Commodities">
+                <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='commodities.php'" title="View Commodities">
                     <div class="flex items-center mb-2">
                         <i class="fas fa-box-open text-orange-500 text-2xl mr-2"></i>
                         <span class="font-semibold text-gray-700">COMMODITIES</span>
@@ -354,125 +354,264 @@ $stmt->close();
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
                 <!-- Yield Monitoring Chart -->
                 <div class="xl:col-span-2">
-                    <div class="bg-white rounded-xl card-shadow p-6 h-full">
-                        <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
-                            <i class="fas fa-chart-line text-agri-green mr-2"></i><span id="chartTitle">Yield Monitoring</span>
-                        </h3>
-                        <canvas id="yieldChart" height="120"></canvas>
+                    <div class="bg-white rounded-xl card-shadow p-6 h-full flex flex-col justify-between" style="min-height:480px;">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                                <i class="fas fa-chart-line text-agri-green mr-2"></i><span id="chartTitle">Yield Monitoring</span>
+                            </h3>
+                            <div class="flex flex-row justify-end items-center mb-2 gap-2">
+                                <div class="relative w-full max-w-xs flex-shrink-0" style="min-width:180px;">
+                                    <input type="text" id="commoditySearch" autocomplete="off" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-agri-green focus:border-agri-green w-full" placeholder="Search commodity...">
+                                    <ul id="commoditySuggestions" class="absolute left-0 right-0 bg-white border border-gray-200 rounded-md shadow z-10 mt-1 hidden max-h-40 overflow-y-auto"></ul>
+                                </div>
+                                <div>
+                                    <select id="timeRange" class="border border-gray-300 rounded-md px-2 py-1 text-sm">
+                                        <option value="monthly">Monthly</option>
+                                        <option value="quarterly">Per 3 Months</option>
+                                        <option value="semiannual">Per 6 Months</option>
+                                        <option value="annual">Annual</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <canvas id="yieldChart" height="120"></canvas>
+                        </div>
                         <div class="flex flex-col items-center mt-4">
                             <div id="categoryButtons" class="flex flex-wrap gap-2 mb-2 justify-center">
-                                <button type="button" class="category-btn px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 flex items-center gap-1 text-sm shadow-sm hover:bg-agri-green hover:text-white transition active" data-category="">All Categories</button>
                                 <?php foreach ($commodity_categories as $cat): ?>
                                     <button type="button" class="category-btn px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 flex items-center gap-1 text-sm shadow-sm hover:bg-agri-green hover:text-white transition" data-category="<?php echo htmlspecialchars($cat['category_id']); ?>">
-                                        <i class="fas fa-leaf"></i> <?php echo htmlspecialchars($cat['category_name']); ?>
+                                        <i class="fas fa-leaf"></i> <span class="category-btn-label"><?php echo htmlspecialchars($cat['category_name']); ?></span>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
-                            <input type="text" id="commoditySearch" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-agri-green focus:border-agri-green w-full max-w-xs" placeholder="Search commodity...">
                         </div>
                         <script>
                         let yieldChartInstance = null;
                         let currentCategory = '';
                         let currentCommodity = '';
+                        // Add style for active category button to keep text visible
+                        const style = document.createElement('style');
+                        style.innerHTML = `
+                            .category-btn.active, .category-btn.active:focus {
+                                background-color: #10b981 !important;
+                                color: #fff !important;
+                            }
+                            .category-btn.active .category-btn-label {
+                                color: #fff !important;
+                            }
+                            .category-btn .fas {
+                                color: inherit;
+                            }
+                        `;
+                        document.head.appendChild(style);
                         // Prepare commodity data for search (from PHP)
                         const allCommodities = <?php echo json_encode($commodities); ?>;
                         // Fetch and update chart for a specific commodity
                         function fetchAndUpdateYieldChart(commodity) {
                             let url = 'get_report_data.php?type=yield';
+                            const timeRange = document.getElementById('timeRange').value;
                             if (commodity) {
                                 url += '&commodity=' + encodeURIComponent(commodity);
+                            } else if (currentCategory) {
+                                url = 'get_report_data.php?type=yield_by_category&category_id=' + encodeURIComponent(currentCategory);
                             }
+                            url += '&time_range=' + encodeURIComponent(timeRange);
                             fetch(url)
                                 .then(res => res.json())
                                 .then(data => {
-                                    updateYieldChart(data.labels, data.data, commodity);
+                                    window.lastApiData = data;
+                                    updateYieldChart(data.labels, data.data, commodity, currentCategory);
                                 });
                         }
-                        function updateYieldChart(labels, chartData, commodity) {
+                        async function updateYieldChart(labels, chartData, commodity) {
                             const ctx = document.getElementById('yieldChart').getContext('2d');
                             if (yieldChartInstance) {
                                 yieldChartInstance.destroy();
                             }
-                            let chartLabel = commodity ? ('Yield for ' + commodity) : 'Yearly Yield per Barangay';
+                            // Fetch the yield unit (default to 'kg' if request fails)
+                            let units = [];
+                            let unit = 'kg';
+                            // If viewing by category, fetch units from the API response
+                            if (currentCategory && !commodity && window.lastApiData && Array.isArray(window.lastApiData.units)) {
+                                units = window.lastApiData.units;
+                            } else if (commodity) {
+                                try {
+                                    let url = 'get_yield_unit.php?commodity=' + encodeURIComponent(commodity);
+                                    const res = await fetch(url);
+                                    if (res.ok) {
+                                        const json = await res.json();
+                                        if (json.unit) unit = json.unit;
+                                    }
+                                } catch (e) {}
+                            }
+                            let chartLabel = '';
+                            if (commodity) {
+                                chartLabel = 'Yield for ' + commodity + ' (' + unit + ')';
+                            } else if (currentCategory) {
+                                chartLabel = 'Total Yield per Commodity';
+                            } else {
+                                chartLabel = 'Yearly Yield per Barangay (' + unit + ')';
+                            }
+                            // Dynamically set y-axis max based on highest yield per commodity being displayed
+                            let maxValue = 0;
+                            if (Array.isArray(chartData) && chartData.length > 0) {
+                                maxValue = Math.max(...chartData);
+                            }
+                            // Add 10% buffer, then round up to nearest 50 for a clean axis
+                            let yAxisMax = maxValue > 0 ? Math.ceil((maxValue * 1.1) / 50) * 50 : 10;
                             yieldChartInstance = new Chart(ctx, {
-                                type: 'line',
+                                type: (commodity || currentCategory) ? 'bar' : 'line',
                                 data: {
                                     labels: labels,
                                     datasets: [{
                                         label: chartLabel,
                                         data: chartData,
-                                        backgroundColor: 'rgba(16,185,129,0.15)',
+                                        backgroundColor: 'rgba(16,185,129,0.35)',
                                         borderColor: '#10b981',
                                         borderWidth: 2,
                                         pointBackgroundColor: '#10b981',
                                         pointBorderColor: '#10b981',
                                         fill: true,
-                                        tension: 0.3
+                                        tension: 0.3,
+                                        datalabels: {
+                                            display: true,
+                                            color: '#222',
+                                            anchor: 'end',
+                                            align: 'top',
+                                            font: { weight: 'bold', size: 14 },
+                                            formatter: function(value, context) {
+                                                if (currentCategory && units.length > 0) {
+                                                    return value + ' ' + units[context.dataIndex];
+                                                }
+                                                return value + ' ' + unit;
+                                            }
+                                        }
                                     }]
                                 },
                                 options: {
                                     responsive: true,
                                     plugins: {
                                         legend: { display: false },
+                                        datalabels: {
+                                            display: true,
+                                            color: '#222',
+                                            anchor: 'end',
+                                            align: 'top',
+                                            font: { weight: 'bold', size: 14 },
+                                            formatter: function(value, context) {
+                                                if (currentCategory && units.length > 0) {
+                                                    return value + ' ' + units[context.dataIndex];
+                                                }
+                                                return value + ' ' + unit;
+                                            }
+                                        }
                                     },
                                     scales: {
                                         y: {
                                             beginAtZero: true,
-                                            ticks: { stepSize: 1 }
+                                            max: yAxisMax,
+                                            ticks: { display: false }
                                         }
                                     }
-                                }
+                                },
+                                plugins: [ChartDataLabels]
                             });
                         }
-                        // Category button and search logic
+                        // Category button and search logic with autosuggest
                         document.addEventListener('DOMContentLoaded', function() {
                             const categoryBtns = document.querySelectorAll('.category-btn');
                             const commoditySearch = document.getElementById('commoditySearch');
-                            // Helper: get filtered commodities
-                            function getFilteredCommodities() {
-                                const searchTerm = commoditySearch.value.trim().toLowerCase();
+                            const suggestionsBox = document.getElementById('commoditySuggestions');
+
+                            function getFilteredCommodities(searchTerm = '') {
+                                searchTerm = searchTerm.trim().toLowerCase();
                                 return allCommodities.filter(com => {
-                                    let matchCat = !currentCategory || com.category_id == currentCategory;
+                                    let matchCat = currentCategory ? com.category_id == currentCategory : true;
                                     let matchSearch = !searchTerm || com.commodity_name.toLowerCase().includes(searchTerm);
                                     return matchCat && matchSearch;
                                 });
                             }
+
+                            function showSuggestions(list) {
+                                suggestionsBox.innerHTML = '';
+                                if (list.length === 0 || !commoditySearch.value.trim()) {
+                                    suggestionsBox.classList.add('hidden');
+                                    return;
+                                }
+                                list.forEach(com => {
+                                    const li = document.createElement('li');
+                                    li.textContent = com.commodity_name;
+                                    li.className = 'px-3 py-1 cursor-pointer hover:bg-agri-light';
+                                    li.addEventListener('mousedown', function(e) {
+                                        e.preventDefault();
+                                        commoditySearch.value = com.commodity_name;
+                                        suggestionsBox.classList.add('hidden');
+                                        currentCommodity = com.commodity_name;
+                                        fetchAndUpdateYieldChart(currentCommodity);
+                                    });
+                                    suggestionsBox.appendChild(li);
+                                });
+                                suggestionsBox.classList.remove('hidden');
+                            }
+
                             // On category button click
                             categoryBtns.forEach(btn => {
                                 btn.addEventListener('click', function() {
                                     categoryBtns.forEach(b => b.classList.remove('active', 'bg-agri-green', 'text-white'));
                                     btn.classList.add('active', 'bg-agri-green', 'text-white');
                                     currentCategory = btn.getAttribute('data-category');
-                                    // If search is empty, show first commodity in this category, else filter by search
-                                    const filtered = getFilteredCommodities();
+                                    currentCommodity = '';
+                                    commoditySearch.value = '';
+                                    suggestionsBox.classList.add('hidden');
+                                    // Fetch yield by category (not by commodity)
+                                    fetchAndUpdateYieldChart(null);
+                                });
+                            });
+
+                            // On search input
+                            commoditySearch.addEventListener('input', function() {
+                                const filtered = getFilteredCommodities(commoditySearch.value);
+                                showSuggestions(filtered);
+                            });
+
+                            // On Enter in search
+                            commoditySearch.addEventListener('keydown', function(e) {
+                                if (e.key === 'Enter') {
+                                    const filtered = getFilteredCommodities(commoditySearch.value);
                                     if (filtered.length > 0) {
                                         currentCommodity = filtered[0].commodity_name;
                                         fetchAndUpdateYieldChart(currentCommodity);
                                     } else {
-                                        // No commodity, show all
                                         currentCommodity = '';
-                                        fetchAndUpdateYieldChart('');
+                                        if (yieldChartInstance) {
+                                            yieldChartInstance.destroy();
+                                            yieldChartInstance = null;
+                                        }
+                                        const ctx = document.getElementById('yieldChart').getContext('2d');
+                                        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                                        document.getElementById('chartTitle').textContent = 'Yield Monitoring';
                                     }
-                                });
-                            });
-                            // On search input
-                            commoditySearch.addEventListener('input', function() {
-                                const filtered = getFilteredCommodities();
-                                if (filtered.length > 0) {
-                                    currentCommodity = filtered[0].commodity_name;
-                                    fetchAndUpdateYieldChart(currentCommodity);
-                                } else {
-                                    currentCommodity = '';
-                                    fetchAndUpdateYieldChart('');
+                                    suggestionsBox.classList.add('hidden');
                                 }
                             });
-                            // Initial chart: first commodity or all
-                            if (allCommodities.length > 0) {
-                                currentCommodity = allCommodities[0].commodity_name;
+
+                            // Hide suggestions on blur
+                            commoditySearch.addEventListener('blur', function() {
+                                setTimeout(() => suggestionsBox.classList.add('hidden'), 100);
+                            });
+
+                            // Time range dropdown event
+                            document.getElementById('timeRange').addEventListener('change', function() {
                                 fetchAndUpdateYieldChart(currentCommodity);
-                            } else {
-                                fetchAndUpdateYieldChart('');
+                            });
+                            // On load, do not display any data; wait for user to select a commodity or category
+                            currentCommodity = '';
+                            if (yieldChartInstance) {
+                                yieldChartInstance.destroy();
+                                yieldChartInstance = null;
                             }
+                            const ctx = document.getElementById('yieldChart').getContext('2d');
+                            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                            document.getElementById('chartTitle').textContent = 'Yield Monitoring';
                         });
                         </script>
                     </div>
@@ -985,4 +1124,5 @@ $stmt->close();
         });
     </script>
 <script src="assets/js/chart.min.js"></script>
+<script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
 <?php include 'includes/notification_complete.php'; ?>
