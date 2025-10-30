@@ -1,6 +1,7 @@
 <?php
 require_once 'check_session.php';
 require_once 'conn.php';
+require_once 'includes/name_helpers.php';
 
 // Check if user has admin access
 if ($_SESSION['role'] !== 'admin') {
@@ -9,20 +10,7 @@ if ($_SESSION['role'] !== 'admin') {
 }
 
 // Helper function to format farmer name properly (exclude N/A suffixes)
-function formatFarmerName($first_name, $middle_name, $last_name, $suffix) {
-    $name_parts = [];
-    
-    if (!empty($first_name)) $name_parts[] = $first_name;
-    if (!empty($middle_name)) $name_parts[] = $middle_name;
-    if (!empty($last_name)) $name_parts[] = $last_name;
-    
-    // Only add suffix if it's not N/A (case insensitive)
-    if (!empty($suffix) && !in_array(strtolower($suffix), ['n/a', 'na'])) {
-        $name_parts[] = $suffix;
-    }
-    
-    return trim(implode(' ', $name_parts));
-}
+// formatFarmerName() now provided by includes/name_helpers.php
 
 // Handle PDF export
 

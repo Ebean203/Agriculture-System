@@ -57,7 +57,9 @@ try {
         
         $farmers = [];
         while ($row = mysqli_fetch_assoc($result)) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name']);
+            $full_name = trim($row['last_name'] . ', ' . $row['first_name'] .
+                (!empty($row['middle_name']) ? ' ' . strtoupper(substr($row['middle_name'], 0, 1)) . '.' : '')
+            );
             $farmers[] = [
                 'farmer_id' => $row['farmer_id'],
                 'full_name' => $full_name,

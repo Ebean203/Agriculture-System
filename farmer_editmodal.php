@@ -69,16 +69,16 @@ if ($_SESSION['role'] !== 'admin') {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-3 mb-3">
-                                    <label for="edit_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="edit_first_name" name="first_name" required>
+                                    <label for="edit_first_name" class="form-label">First Name</label>
+                                    <input type="text" class="form-control" id="edit_first_name" name="first_name">
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label for="edit_middle_name" class="form-label">Middle Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="edit_middle_name" name="middle_name" required>
+                                    <label for="edit_middle_name" class="form-label">Middle Name</label>
+                                    <input type="text" class="form-control" id="edit_middle_name" name="middle_name">
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label for="edit_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="edit_last_name" name="last_name" required>
+                                    <label for="edit_last_name" class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="edit_last_name" name="last_name">
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label for="edit_suffix" class="form-label">Suffix</label>
@@ -87,12 +87,12 @@ if ($_SESSION['role'] !== 'admin') {
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_birth_date" class="form-label">Birth Date <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control" id="edit_birth_date" name="birth_date" required>
+                                    <label for="edit_birth_date" class="form-label">Birth Date</label>
+                                    <input type="date" class="form-control" id="edit_birth_date" name="birth_date">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_gender" class="form-label">Gender <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_gender" name="gender" required>
+                                    <label for="edit_gender" class="form-label">Gender</label>
+                                    <select class="form-select" id="edit_gender" name="gender">
                                         <option value="">Select Gender</option>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
@@ -110,12 +110,12 @@ if ($_SESSION['role'] !== 'admin') {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_contact_number" class="form-label">Contact Number <span class="text-danger">*</span></label>
-                                    <input type="tel" class="form-control" id="edit_contact_number" name="contact_number" required placeholder="09xxxxxxxxx">
+                                    <label for="edit_contact_number" class="form-label">Contact Number</label>
+                                    <input type="tel" class="form-control" id="edit_contact_number" name="contact_number" placeholder="09xxxxxxxxx">
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_barangay_id" class="form-label">Barangay <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_barangay_id" name="barangay_id" required>
+                                    <label for="edit_barangay_id" class="form-label">Barangay</label>
+                                    <select class="form-select" id="edit_barangay_id" name="barangay_id">
                                         <option value="">Select Barangay</option>
                                         <?php foreach ($barangays as $barangay): ?>
                                             <option value="<?php echo htmlspecialchars($barangay['barangay_id']); ?>">
@@ -125,9 +125,9 @@ if ($_SESSION['role'] !== 'admin') {
                                     </select>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="edit_address_details" class="form-label">Full Address <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="edit_address_details" name="address_details" rows="2" required placeholder="Complete residential address"></textarea>
+                                <div class="mb-3">
+                                <label for="edit_address_details" class="form-label">Full Address</label>
+                                <textarea class="form-control" id="edit_address_details" name="address_details" rows="2" placeholder="Complete residential address"></textarea>
                             </div>
                         </div>
                     </div>
@@ -140,8 +140,8 @@ if ($_SESSION['role'] !== 'admin') {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_civil_status" class="form-label">Civil Status <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_civil_status" name="civil_status" required onchange="toggleEditSpouseField()">
+                                    <label for="edit_civil_status" class="form-label">Civil Status</label>
+                                    <select class="form-select" id="edit_civil_status" name="civil_status" onchange="toggleEditSpouseField()">
                                         <option value="">Select</option>
                                         <option value="Single">Single</option>
                                         <option value="Married">Married</option>
@@ -150,18 +150,18 @@ if ($_SESSION['role'] !== 'admin') {
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3" id="edit_spouse_field">
-                                    <label for="edit_spouse_name" class="form-label">Spouse Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="edit_spouse_name" name="spouse_name" required>
+                                    <label for="edit_spouse_name" class="form-label">Spouse Name</label>
+                                    <input type="text" class="form-control" id="edit_spouse_name" name="spouse_name">
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label for="edit_household_size" class="form-label">Household Size <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="edit_household_size" name="household_size" min="1" value="1" required>
+                                    <label for="edit_household_size" class="form-label">Household Size</label>
+                                    <input type="number" class="form-control" id="edit_household_size" name="household_size" min="1" value="1">
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label for="edit_education_level" class="form-label">Education Level <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="edit_education_level" name="education_level" required>
+                                    <label for="edit_education_level" class="form-label">Education Level</label>
+                                    <select class="form-select" id="edit_education_level" name="education_level">
                                         <option value="">Select Education Level</option>
                                         <option value="Elementary">Elementary</option>
                                         <option value="Highschool">High School</option>
@@ -172,8 +172,8 @@ if ($_SESSION['role'] !== 'admin') {
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label for="edit_occupation" class="form-label">Occupation <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="edit_occupation" name="occupation" value="Farmer" required>
+                                    <label for="edit_occupation" class="form-label">Occupation</label>
+                                    <input type="text" class="form-control" id="edit_occupation" name="occupation" value="Farmer">
                                 </div>
                             </div>
                             <div class="row">
@@ -266,7 +266,7 @@ if ($_SESSION['role'] !== 'admin') {
                     </div>
                     
                     <div class="alert alert-info">
-                        <small><i class="fas fa-info-circle me-1"></i>Fields marked with <span class="text-danger">*</span> are required.</small>
+                        <small><i class="fas fa-info-circle me-1"></i>Only contextually-required fields must be filled (for example, spouse name when Civil Status is "Married"). Leave other fields unchanged to keep current values.</small>
                     </div>
                 </div>
 
@@ -291,23 +291,20 @@ function renderEditCommodities(commodities) {
     container.innerHTML = '';
     commodities.forEach((commodity, idx) => {
         const isPrimary = commodity.is_primary ? 'checked' : '';
-        const locked = idx === 0 ? 'disabled' : '';
         container.innerHTML += `
             <div class="commodity-row mb-3 p-3 border rounded bg-light" data-commodity-index="${idx}">
                 <div class="row align-items-end">
-                    <div class="col-md-4 mb-3">
-                        <select class="form-select commodity-select" name="commodities[${idx}][commodity_id]" required>
-                            <option value="">Select Commodity</option>
-                            ${window.editCommodityOptions}
-                        </select>
+                    <div class="col-md-4 mb-3 position-relative">
+                        <input type="text" class="form-control commodity-search" name="commodities[${idx}][commodity_name]" autocomplete="off" placeholder="Type to search commodity...">
+                        <input type="hidden" name="commodities[${idx}][commodity_id]" class="commodity-id" value="">
+                        <ul class="commodity-suggestions position-absolute w-100 bg-white border rounded shadow-sm mt-1 d-none list-unstyled mb-0" style="z-index:1050; max-height:200px; overflow-y:auto;"></ul>
                     </div>
-                    <!-- Land area input removed; now stored in farmers table -->
                     <div class="col-md-2 mb-3">
-                        <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${idx}][years_farming]" value="${commodity.years_farming}" placeholder="0" required>
+                        <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${idx}][years_farming]" value="${commodity.years_farming}" placeholder="0">
                     </div>
                     <div class="col-md-2 mb-3">
                         <div class="form-check mt-2 text-center">
-                            <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="${idx}" ${isPrimary} required>
+                            <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="${idx}" ${isPrimary}>
                             <label class="form-check-label text-success fw-bold d-block">
                                 <i class="fas fa-star me-1"></i>Primary
                             </label>
@@ -323,10 +320,21 @@ function renderEditCommodities(commodities) {
             </div>
         `;
     });
-    // Set selected values for commodity selects
+    // Set selected values for commodity inputs/hidden ids
     commodities.forEach((commodity, idx) => {
-        const select = container.querySelector(`[name='commodities[${idx}][commodity_id]']`);
-        if (select) select.value = commodity.commodity_id;
+        const inputName = container.querySelector(`[name='commodities[${idx}][commodity_name]']`);
+        const hidden = container.querySelector(`[name='commodities[${idx}][commodity_id]']`);
+        // If server provided commodity_name, use it; otherwise map by id
+        if (inputName) {
+            if (commodity.commodity_name) {
+                inputName.value = commodity.commodity_name;
+            } else if (commodity.commodity_id && window.editCommodityMap && window.editCommodityMap[commodity.commodity_id]) {
+                inputName.value = window.editCommodityMap[commodity.commodity_id];
+            } else {
+                inputName.value = '';
+            }
+        }
+        if (hidden) hidden.value = commodity.commodity_id || '';
     });
 }
 
@@ -348,6 +356,12 @@ document.getElementById('editAddCommodityBtn').addEventListener('click', functio
 
 // Prepare commodity options for JS
 window.editCommodityOptions = `<?php foreach ($commodities as $c): ?><option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option><?php endforeach; ?>`;
+// Also prepare a map id->name for pre-filling commodity inputs when editing
+window.editCommodityMap = {
+    <?php foreach ($commodities as $i => $c): ?>
+    "<?php echo htmlspecialchars($c['commodity_id']); ?>": "<?php echo htmlspecialchars(addslashes($c['commodity_name'])); ?>"<?php echo $i < count($commodities)-1 ? ',' : ''; ?>
+    <?php endforeach; ?>
+};
 
 // Initialize commodities from PHP (replace with actual farmer data)
 window.editCommodities = <?php echo json_encode($farmer_commodities && count($farmer_commodities) ? $farmer_commodities : [['commodity_id'=>'','land_area_hectares'=>'','years_farming'=>'','is_primary'=>true]]); ?>;
@@ -385,14 +399,8 @@ function validateEditForm() {
     const address = document.getElementById('edit_address_details').value.trim();
     const barangay = document.getElementById('edit_barangay_id').value;
     
-    // Check required fields
-    if (!firstName) errors.push('First Name is required');
-    if (!lastName) errors.push('Last Name is required');
-    if (!birthDate) errors.push('Birth Date is required');
-    if (!gender) errors.push('Gender is required');
-    if (!contactNumber) errors.push('Contact Number is required');
-    if (!address) errors.push('Address is required');
-    if (!barangay) errors.push('Barangay is required');
+    // For edit form we allow partial updates. We only validate fields if they are provided
+    // (except for contextual rules like spouse required when civil status is Married).
     
     // Validate birth date
     if (birthDate) {
@@ -422,11 +430,14 @@ function validateEditForm() {
         errors.push('Household size must be between 1 and 50');
     }
     
-    // Validate years farming
-    const yearsFarming = document.getElementById('edit_years_farming').value;
-    if (yearsFarming && (parseInt(yearsFarming) < 0 || parseInt(yearsFarming) > 100)) {
-        errors.push('Years farming must be between 0 and 100');
-    }
+    // Validate years farming for any commodity rows that exist
+    const yearsInputs = document.querySelectorAll('#editCommoditiesContainer input[name$="[years_farming]"]');
+    yearsInputs.forEach(yi => {
+        const v = yi.value;
+        if (v && (parseInt(v) < 0 || parseInt(v) > 100)) {
+            errors.push('Years farming must be between 0 and 100');
+        }
+    });
     
     // Validate land area
     const landArea = document.getElementById('edit_land_area_hectares').value;

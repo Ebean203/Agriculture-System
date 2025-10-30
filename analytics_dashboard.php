@@ -372,68 +372,7 @@ r        .gradient-bg {
                                 <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
                             </button>
                             <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-home text-blue-600 mr-3"></i>
-                                        Dashboard
-                                    </a>
-                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 bg-blue-50 border-l-4 border-blue-500 font-medium">
-                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                        Analytics Dashboard
-                                    </a>
-                                </div>
-                                
-                                <!-- Inventory Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Inventory Management</div>
-                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                        MAO Inventory
-                                    </a>
-                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                        Distribution Records
-                                    </a>
-                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-calendar-check text-green-600 mr-3"></i>
-                                        MAO Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Records Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-users text-green-600 mr-3"></i>
-                                        Farmers Registry
-                                    </a>
-                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                        RSBSA Records
-                                    </a>
-                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                        NCFRS Records
-                                    </a>
-                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                        FishR Records
-                                    </a>
-                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-ship text-indigo-600 mr-3"></i>
-                                        Boat Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Monitoring & Reports Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                        Yield Monitoring
-                                    </a>
+                                <!-- Dashboard Section (quick links) -->
                                     <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
                                         <i class="fas fa-file-alt text-red-600 mr-3"></i>
                                         Reports
@@ -545,11 +484,10 @@ r        .gradient-bg {
                 <?php $i++; } if (isset($stmt)) mysqli_stmt_close($stmt); ?>
             </div>
 
-            <!-- Controls Section -->
-            <!-- Chart Filters Section -->
+            <!-- Chart Filters: Date Range and Barangay Only -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <form id="chartFilterForm" class="row g-3 align-items-end" autocomplete="off">
-                    <div class="col-md-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3 mb-2">
                         <label for="filterBarangay" class="form-label">Barangay</label>
                         <select id="filterBarangay" name="barangay_filter" class="form-select">
                             <option value="">All Barangays</option>
@@ -560,49 +498,44 @@ r        .gradient-bg {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2 mb-2">
                         <label for="filterStartDate" class="form-label">Start Date</label>
                         <input type="date" id="filterStartDate" name="start_date" value="<?php echo $start_date; ?>" class="form-control">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2 mb-2">
                         <label for="filterEndDate" class="form-label">End Date</label>
                         <input type="date" id="filterEndDate" name="end_date" value="<?php echo $end_date; ?>" class="form-control">
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-sync-alt me-2"></i>Update</button>
-                    </div>
-                </form>
+                </div>
             </div>
 
-            <!-- Chart Display -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-bold text-gray-900 flex items-center">
-                        <i class="fas fa-chart-area text-agri-green mr-3"></i>
-                        <span id="chartTitle">Analytics Chart</span>
-                    </h3>
-                    <div class="flex space-x-2">
-                        <button onclick="downloadChart()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center">
-                            <i class="fas fa-download mr-2"></i>Download
-                        </button>
-                        <button onclick="toggleFullscreen()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
-                            <i class="fas fa-expand"></i>
-                        </button>
+            <!-- Chart Display with Commodity Filter -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in" style="min-height: 540px;">
+                <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center">
+                            <i class="fas fa-chart-area text-agri-green mr-3"></i>
+                            <span id="chartTitle">Analytics Chart</span>
+                        </h3>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-2 items-end">
+                        <div class="relative w-full max-w-xs flex-shrink-0" style="min-width:180px;">
+                            <input type="text" id="commoditySearch" autocomplete="off" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-agri-green focus:border-agri-green w-full" placeholder="Search commodity...">
+                            <ul id="commoditySuggestions" class="absolute left-0 right-0 bg-white border border-gray-200 rounded-md shadow z-10 mt-1 hidden max-h-40 overflow-y-auto"></ul>
+                        </div>
+                        <!-- Download and fullscreen buttons removed -->
                     </div>
                 </div>
-                <!-- Chart Type Switcher Buttons (only line and bar) -->
-                <div class="flex justify-center mb-4">
-                    <div class="bg-gray-100 rounded-lg p-1 flex space-x-1">
-                        <button onclick="switchChartType('line')" id="btn-line" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center">
-                            <i class="fas fa-chart-line mr-2"></i>Line
-                        </button>
-                        <button onclick="switchChartType('bar')" id="btn-bar" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center">
-                            <i class="fas fa-chart-bar mr-2"></i>Bar
-                        </button>
-                    </div>
-                </div>
-                <div class="chart-container">
+                <div class="chart-container" style="height: 600px; min-height: 600px; padding-top: 40px;">
                     <canvas id="analyticsChart"></canvas>
+                </div>
+                <div class="flex justify-center mt-6">
+                    <button type="button" id="btn-line" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center mx-2" style="border:2px solid #15803d; background-color:#16a34a; color:#fff;">
+                        <i class="fas fa-chart-line mr-2"></i>Line
+                    </button>
+                    <button type="button" id="btn-bar" class="chart-type-btn px-4 py-2 rounded-md transition-colors flex items-center mx-2">
+                        <i class="fas fa-chart-bar mr-2"></i>Bar
+                    </button>
                 </div>
                 <div id="noDataMessage" class="hidden text-center mt-6 text-gray-600">
                     <i class="fas fa-exclamation-circle text-2xl text-gray-400 block mx-auto"></i>
@@ -612,84 +545,22 @@ r        .gradient-bg {
 
             <!-- SECTION 1: FARMER PRODUCTION PERFORMANCE -->
             <div class="row g-4 mb-4">
-            <!-- SECTION 3: COMPLIANCE & PROGRAM EFFICIENCY -->
-            <div class="row g-4 mb-4">
-                <!-- Yield Reporting Compliance Score -->
-                <div class="col-md-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                            <h5 class="card-title mb-3">Yield Reporting Compliance</h5>
-                            <h1 id="complianceRateDisplay" class="display-3 fw-bold text-success mb-0">--%</h1>
-                            <div class="text-muted mt-2">% of input recipients reporting yield</div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Commodity Yield Breakdown -->
-                <div class="col-md-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Commodity Share of Total Yield</h5>
-                            <canvas id="commodityYieldPie" height="180"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <!-- Program Efficiency Comparison -->
-                <div class="col-md-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Avg. Yield by Program (RSBSA vs. General)</h5>
-                            <canvas id="programEfficiencyChart" height="180"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- SECTION 2: INVENTORY RISK & DISTRIBUTION -->
-            <div class="row g-4 mb-4">
-                <!-- Inventory Risk: Low Stock & Expiring Items -->
-                <div class="col-md-6">
-                    <div class="card text-white bg-danger h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">⚠️ Inventory Risk: Low Stock & Expiring</h5>
-                            <div class="row">
-                                <div class="col-12 col-lg-6 mb-3 mb-lg-0">
-                                    <h6 class="fw-bold">Low Stock Items</h6>
-                                    <ul class="list-group list-group-flush bg-transparent" id="lowStockList">
-                                        <!-- Data loaded via JS -->
-                                    </ul>
-                                </div>
-                                <div class="col-12 col-lg-6">
-                                    <h6 class="fw-bold">Expiring Soon (60 days)</h6>
-                                    <ul class="list-group list-group-flush bg-transparent" id="expiringSoonList">
-                                        <!-- Data loaded via JS -->
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Input Distribution Trends -->
-                <div class="col-md-6">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Input Distribution Volume (Monthly)</h5>
-                            <canvas id="distributionTrendChart" height="220"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
                 <!-- Top Yield Producers & Input Correlation -->
                 <div class="col-md-6">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title mb-3">Top Yield Producers & Input Correlation</h5>
-                            <form class="row g-2 mb-3" id="topProducersFilterForm" autocomplete="off">
-                                <div class="col-6">
+                            <form class="row g-2 mb-3 align-items-end" id="topProducersFilterForm" autocomplete="off" onsubmit="return false;">
+                                <div class="col-12 col-md-4">
                                     <label for="topProducersFrom" class="form-label mb-1">From Date</label>
                                     <input type="date" class="form-control" id="topProducersFrom" name="from" required>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-12 col-md-4">
                                     <label for="topProducersTo" class="form-label mb-1">To Date</label>
                                     <input type="date" class="form-control" id="topProducersTo" name="to" required>
+                                </div>
+                                <div class="col-12 col-md-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-success w-100" id="generateTopProducersBtn">Generate</button>
                                 </div>
                             </form>
                             <div class="table-responsive">
@@ -709,12 +580,247 @@ r        .gradient-bg {
                         </div>
                     </div>
                 </div>
-                <!-- Historical Yield Trends -->
+                <!-- Input Distribution Volume (Monthly) beside Top Producers -->
                 <div class="col-md-6">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body">
-                            <h5 class="card-title mb-3">Historical Yield Trends (Kg/Month)</h5>
-                            <canvas id="historicalYieldChart" height="220"></canvas>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="card-title mb-0">Input Distribution Volume</h5>
+                                <div class="d-flex flex-column align-items-end" style="min-width: 220px;">
+                                    <div class="dropdown modern-dropdown mb-1">
+                                        <button class="btn btn-light btn-sm dropdown-toggle px-3 py-1" type="button" id="distributionRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span id="distributionRangeDropdownLabel">Current Month</span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="distributionRangeDropdown">
+                                            <li><a class="dropdown-item" href="#" data-value="current_month">Current Month</a></li>
+                                            <li><a class="dropdown-item" href="#" data-value="last_6_months">Last 6 Months</a></li>
+                                            <li><a class="dropdown-item" href="#" data-value="current_year">Current Year</a></li>
+                                            <li><a class="dropdown-item" href="#" data-value="custom_range">Custom Range</a></li>
+                                        </ul>
+                                    </div>
+                                    <div id="distributionCustomRange" style="display: none; width: 100%;">
+                                        <input type="date" id="distributionFromDate" class="form-control form-control-sm d-inline-block w-auto mb-1">
+                                        <input type="date" id="distributionToDate" class="form-control form-control-sm d-inline-block w-auto">
+                                    </div>
+                                </div>
+                            </div>
+                            <canvas id="distributionTrendChart" height="220"></canvas>
+<script>
+// --- Distribution Range Dropdown Logic ---
+if (document.getElementById('distributionTrendChart')) {
+    const distributionDropdown = document.getElementById('distributionRangeDropdown');
+    const distributionDropdownLabel = document.getElementById('distributionRangeDropdownLabel');
+    const distributionDropdownItems = document.querySelectorAll('#distributionRangeDropdown ~ .dropdown-menu .dropdown-item');
+    const distributionFromInput = document.getElementById('distributionFromDate');
+    const distributionToInput = document.getElementById('distributionToDate');
+    let distributionSelectedValue = 'current_month';
+    distributionDropdownItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            distributionSelectedValue = this.getAttribute('data-value');
+            distributionDropdownLabel.textContent = this.textContent;
+            handleDistributionRangeChange();
+        });
+    });
+    if (distributionFromInput) distributionFromInput.addEventListener('change', handleDistributionRangeChange);
+    if (distributionToInput) distributionToInput.addEventListener('change', handleDistributionRangeChange);
+    function handleDistributionRangeChange() {
+        const customRangeDiv = document.getElementById('distributionCustomRange');
+        let today = new Date();
+        let startDate = null, endDate = null;
+        if (distributionSelectedValue === 'current_month') {
+            startDate = today.toISOString().slice(0,8) + '01';
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (distributionSelectedValue === 'last_6_months') {
+            let past = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+            startDate = past.toISOString().slice(0,10);
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (distributionSelectedValue === 'current_year') {
+            startDate = today.getFullYear() + '-01-01';
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (distributionSelectedValue === 'custom_range') {
+            customRangeDiv.style.display = 'flex';
+            customRangeDiv.style.flexDirection = 'column';
+            startDate = distributionFromInput.value;
+            endDate = distributionToInput.value;
+        }
+        if (distributionSelectedValue !== 'custom_range' || (distributionFromInput.value && distributionToInput.value)) {
+            initDistributionTrendChart('custom', startDate, endDate);
+        }
+    }
+    // Initial load
+    handleDistributionRangeChange();
+}
+</script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            <!-- SECTION 2: INVENTORY RISK & DISTRIBUTION -->
+            <div class="row g-4 mb-4">
+                <!-- Inventory Risk: Low Stock & Expiring Items (Full Width) -->
+                <div class="col-12">
+                    <div class="card text-white bg-danger shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">⚠️ Inventory Risk: Low Stock & Expiring</h5>
+                            <div class="row">
+                                <div class="col-12 col-lg-6 mb-3 mb-lg-0">
+                                    <h6 class="fw-bold">Low Stock Items</h6>
+                                    <ul class="list-group list-group-flush bg-transparent" id="lowStockList">
+                                        <!-- Data loaded via JS -->
+                                    </ul>
+                                </div>
+                                <div class="col-12 col-lg-6">
+                                    <h6 class="fw-bold">Expiring Soon (60 days)</h6>
+                                    <ul class="list-group list-group-flush bg-transparent" id="expiringSoonList">
+                                        <!-- Data loaded via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: COMPLIANCE & PROGRAM EFFICIENCY -->
+            <div class="row g-4 mb-4">
+                <!-- Yield Reporting Compliance Score -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-agri-green text-white d-flex align-items-center justify-content-between">
+                            <span><i class="fas fa-clipboard-check me-2"></i>Yield Reporting Compliance</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="dropdown modern-dropdown">
+                                    <button class="btn btn-light btn-sm dropdown-toggle px-3 py-1" type="button" id="complianceRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <span id="complianceRangeDropdownLabel">Current Month</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="complianceRangeDropdown">
+                                        <li><a class="dropdown-item" href="#" data-value="current_month">Current Month</a></li>
+                                        <li><a class="dropdown-item" href="#" data-value="last_6_months">Last 6 Months</a></li>
+                                        <li><a class="dropdown-item" href="#" data-value="current_year">Current Year</a></li>
+                                        <li><a class="dropdown-item" href="#" data-value="custom_range">Custom Range</a></li>
+                                    </ul>
+                                </div>
+                                <div id="complianceCustomRange" style="display: none;">
+                                    <input type="date" id="complianceFromDate" class="form-control form-control-sm d-inline-block w-auto me-1">
+                                    <input type="date" id="complianceToDate" class="form-control form-control-sm d-inline-block w-auto">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                            <canvas id="complianceBarChart" height="200"></canvas>
+                        </div>
+                    </div>
+<script>
+// --- Compliance Range Dropdown Logic ---
+if (document.getElementById('complianceBarChart')) {
+    // Dropdown logic for compliance card only
+    const complianceDropdown = document.getElementById('complianceRangeDropdown');
+    const complianceDropdownLabel = document.getElementById('complianceRangeDropdownLabel');
+    const complianceDropdownItems = document.querySelectorAll('#complianceRangeDropdown ~ .dropdown-menu .dropdown-item');
+    const complianceFromInput = document.getElementById('complianceFromDate');
+    const complianceToInput = document.getElementById('complianceToDate');
+    let complianceSelectedValue = 'current_month';
+    complianceDropdownItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            complianceSelectedValue = this.getAttribute('data-value');
+            complianceDropdownLabel.textContent = this.textContent;
+            handleComplianceRangeChange();
+        });
+    });
+    if (complianceFromInput) complianceFromInput.addEventListener('change', handleComplianceRangeChange);
+    if (complianceToInput) complianceToInput.addEventListener('change', handleComplianceRangeChange);
+    function handleComplianceRangeChange() {
+        const customRangeDiv = document.getElementById('complianceCustomRange');
+        let today = new Date();
+        let startDate = null, endDate = null;
+        if (complianceSelectedValue === 'current_month') {
+            startDate = today.toISOString().slice(0,8) + '01';
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (complianceSelectedValue === 'last_6_months') {
+            let past = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+            startDate = past.toISOString().slice(0,10);
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (complianceSelectedValue === 'current_year') {
+            startDate = today.getFullYear() + '-01-01';
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (complianceSelectedValue === 'custom_range') {
+            customRangeDiv.style.display = '';
+            startDate = complianceFromInput.value;
+            endDate = complianceToInput.value;
+        }
+        if (complianceSelectedValue !== 'custom_range' || (complianceFromInput.value && complianceToInput.value)) {
+            initComplianceBarChart(startDate, endDate);
+        }
+    }
+    // Initial load
+    handleComplianceRangeChange();
+}
+</script>
+                </div>
+                <!-- Commodity Yield Breakdown -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-agri-green text-white d-flex align-items-center justify-content-between">
+                            <span><i class="fas fa-seedling me-2"></i>Total Yield Breakdown by Commodity</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="dropdown modern-dropdown">
+                                    <button class="btn btn-light btn-sm dropdown-toggle px-3 py-1" type="button" id="commodityRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <span id="commodityRangeDropdownLabel">Current Month</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="commodityRangeDropdown">
+                                        <li><a class="dropdown-item" href="#" data-value="current_month">Current Month</a></li>
+                                        <li><a class="dropdown-item" href="#" data-value="last_6_months">Last 6 Months</a></li>
+                                        <li><a class="dropdown-item" href="#" data-value="current_year">Current Year</a></li>
+                                        <li><a class="dropdown-item" href="#" data-value="custom_range">Custom Range</a></li>
+                                    </ul>
+                                </div>
+                                <div id="commodityCustomRange" style="display: none;">
+                                    <input type="date" id="commodityFromDate" class="form-control form-control-sm d-inline-block w-auto me-1">
+                                    <input type="date" id="commodityToDate" class="form-control form-control-sm d-inline-block w-auto">
+                                </div>
+                            </div>
+    <style>
+    .modern-dropdown .dropdown-toggle {
+        border-radius: 6px;
+        background: #fff;
+        color: #222;
+        border: 1px solid #d1d5db;
+        font-weight: 500;
+        transition: box-shadow 0.2s;
+    }
+    .modern-dropdown .dropdown-toggle:focus, .modern-dropdown .dropdown-toggle:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        border-color: #16a34a;
+        color: #16a34a;
+    }
+    .modern-dropdown .dropdown-menu {
+        min-width: 180px;
+        border-radius: 8px;
+        font-size: 15px;
+        padding: 0.25rem 0;
+    }
+    .modern-dropdown .dropdown-item {
+        padding: 8px 18px;
+        transition: background 0.15s, color 0.15s;
+    }
+    .modern-dropdown .dropdown-item.active, .modern-dropdown .dropdown-item:active, .modern-dropdown .dropdown-item:hover {
+        background: #16a34a;
+        color: #fff;
+    }
+    </style>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="commodityYieldPie" height="180"></canvas>
                         </div>
                     </div>
                 </div>
@@ -742,371 +848,343 @@ r        .gradient-bg {
             }
             
         });
-        // Chart instance
-        let analyticsChart = null;
-
-        // Chart data from PHP - always use yield_monitoring as default
-        <?php
-            $data = getYieldData($conn, $start_date, $end_date, $barangay_filter);
-            $chart_payload = [
-                'labels' => array_column($data, 'date'),
-                'data' => array_values(array_map(function($v){ return is_numeric($v)?(0+$v):$v; }, array_column($data, 'total_yield'))),
-                'reportType' => 'yield_monitoring',
-                'label' => 'Total Yield (kg)'
-            ];
-            echo "const chartData = " . ($chart_payload ? json_encode($chart_payload) : 'null') . ";\n";
-            echo "let currentChartType = 'line';\n";
-        ?>
-
-        // Function to switch chart type dynamically
-        function switchChartType(newType) {
-            if (!chartData) return;
-            
-            currentChartType = newType;
-            
-            // Update button states
-            document.querySelectorAll('.chart-type-btn').forEach(btn => {
-                btn.classList.remove('bg-agri-green', 'text-white');
-                btn.classList.add('text-gray-600', 'hover:bg-gray-200');
+    // Chart type button highlight logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnLine = document.getElementById('btn-line');
+        const btnBar = document.getElementById('btn-bar');
+        if (btnLine && btnBar) {
+            // Set default active to Line
+            btnLine.classList.add('active');
+            btnLine.style.backgroundColor = '#16a34a';
+            btnLine.style.color = '#fff';
+            btnLine.style.border = '2px solid #15803d';
+            btnBar.style.backgroundColor = '';
+            btnBar.style.color = '';
+            btnBar.style.border = '';
+            btnLine.addEventListener('click', function() {
+                btnLine.classList.add('active');
+                btnBar.classList.remove('active');
+                btnLine.style.backgroundColor = '#16a34a';
+                btnLine.style.color = '#fff';
+                btnLine.style.border = '2px solid #15803d';
+                btnBar.style.backgroundColor = '';
+                btnBar.style.color = '';
+                btnBar.style.border = '';
             });
-            
-            document.getElementById('btn-' + newType).classList.remove('text-gray-600', 'hover:bg-gray-200');
-            document.getElementById('btn-' + newType).classList.add('bg-agri-green', 'text-white');
-            
-            // Recreate chart with new type
-            initChart();
+            btnBar.addEventListener('click', function() {
+                btnBar.classList.add('active');
+                btnLine.classList.remove('active');
+                btnBar.style.backgroundColor = '#16a34a';
+                btnBar.style.color = '#fff';
+                btnBar.style.border = '2px solid #15803d';
+                btnLine.style.backgroundColor = '';
+                btnLine.style.color = '';
+                btnLine.style.border = '';
+            });
         }
+    });
+    </script>
 
-        // Color schemes
-        const colorSchemes = {
-            blue: ['#3B82F6', '#1E40AF', '#1D4ED8', '#2563EB', '#3730A3'],
-            green: ['#10B981', '#059669', '#047857', '#065F46', '#064E3B'],
-            purple: ['#8B5CF6', '#7C3AED', '#6D28D9', '#5B21B6', '#4C1D95'],
-            mixed: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316']
-        };
+    <?php
+    // Prepare all commodities for JS search/autocomplete
+    $commodities = [];
+    $stmt_com = $conn->prepare("SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name FROM commodities c LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id ORDER BY cc.category_name, c.commodity_name");
+    if ($stmt_com) {
+        $stmt_com->execute();
+        $res_com = $stmt_com->get_result();
+        if ($res_com) {
+            while ($r = $res_com->fetch_assoc()) {
+                $commodities[] = $r;
+            }
+        }
+        $stmt_com->close();
+    }
+    ?>
 
-        function initChart() {
-            if (window.APP_DEBUG) console.log('initChart called');
-            
-            if (!chartData) {
-                if (window.APP_DEBUG) console.log('No chart data available');
-                document.getElementById('noDataMessage')?.classList.remove('hidden');
-                document.getElementById('analyticsChart')?.classList.add('hidden');
-                return;
+    <?php
+    // Prepare commodities for JS
+    $commodities = [];
+    $stmt_com = $conn->prepare("SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name FROM commodities c LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id ORDER BY cc.category_name, c.commodity_name");
+    if ($stmt_com) {
+        $stmt_com->execute();
+        $res_com = $stmt_com->get_result();
+        if ($res_com) {
+            while ($r = $res_com->fetch_assoc()) {
+                $commodities[] = $r;
             }
-            // If chartData exists but has empty labels or data, treat as no-data
-            if (!Array.isArray(chartData.labels) || chartData.labels.length === 0 || !Array.isArray(chartData.data) || chartData.data.length === 0) {
-                if (window.APP_DEBUG) console.log('Chart data empty');
-                document.getElementById('noDataMessage')?.classList.remove('hidden');
-                document.getElementById('analyticsChart')?.classList.add('hidden');
-                return;
-            }
+        }
+        $stmt_com->close();
+    }
+    ?>
+    <script>
+    let analyticsChart = null;
+    let currentChartType = 'bar';
+    let currentCommodity = '';
+    const allCommodities = <?php echo json_encode($commodities); ?>;
 
-            if (window.APP_DEBUG) console.log('Chart data:', chartData);
-            
-            // Check if Chart.js is loaded
-            if (typeof Chart === 'undefined') {
-                console.error('Chart.js is not loaded');
-                return;
-            }
-            
-            const canvas = document.getElementById('analyticsChart');
-            document.getElementById('noDataMessage')?.classList.add('hidden');
-            canvas.classList.remove('hidden');
-            if (!canvas) {
-                console.error('Chart canvas element not found');
-                return;
-            }
-            
-            const ctx = canvas.getContext('2d');
-            
-            // Destroy existing chart if it exists
-            if (analyticsChart) {
-                analyticsChart.destroy();
-            }
+    function fetchAndUpdateAnalyticsChart() {
+        let url = 'get_report_data.php?type=yield';
+        const barangay = document.getElementById('filterBarangay').value;
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+        if (barangay) url += '&barangay=' + encodeURIComponent(barangay);
+        if (startDate) url += '&start_date=' + encodeURIComponent(startDate);
+        if (endDate) url += '&end_date=' + encodeURIComponent(endDate);
+        if (currentCommodity) url += '&commodity=' + encodeURIComponent(currentCommodity);
+        fetch(url)
+            .then(res => res.text())
+            .then(text => {
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    document.getElementById('noDataMessage').classList.remove('hidden');
+                    document.getElementById('analyticsChart').classList.add('hidden');
+                    console.error('Invalid JSON from get_report_data.php:', text);
+                    return;
+                }
+                window.lastApiData = data;
+                updateAnalyticsChart(data.labels, data.data, data.units, data.commodities);
+            });
+    }
 
-            const config = {
-                type: currentChartType,
-                data: {
-                    labels: chartData.labels,
-                    datasets: [{
-                        label: chartData.label,
-                        data: chartData.data,
-                        backgroundColor: currentChartType === 'line' ? 'rgba(59, 130, 246, 0.1)' : colorSchemes.mixed,
-                        borderColor: currentChartType === 'line' ? '#3B82F6' : colorSchemes.mixed,
-                        borderWidth: 2,
-                        fill: currentChartType === 'line',
-                        tension: 0.4
-                    }]
-                },
-                plugins: [ChartDataLabels],
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                font: {
-                                    size: 12
-                                }
+    async function updateAnalyticsChart(labels, chartData, units, commodities) {
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+        if (analyticsChart) analyticsChart.destroy();
+        let unit = 'kg';
+        if (Array.isArray(units) && units.length > 0) {
+            unit = units[0];
+        }
+        let chartLabel = 'Yield Monitoring';
+        // Use datalabels plugin to show correct unit per data point
+        analyticsChart = new Chart(ctx, {
+            type: currentChartType,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: chartLabel,
+                    data: chartData,
+                    backgroundColor: currentChartType === 'line' ? 'rgba(59, 130, 246, 0.1)' : '#10b981',
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    fill: currentChartType === 'line',
+                    tension: 0.4,
+                    datalabels: {
+                        display: true,
+                        color: '#222',
+                        anchor: 'end',
+                        align: 'top',
+                        clamp: true,
+                        offset: 10,
+                        font: { weight: 'bold', size: 14 },
+                        formatter: function(value, context) {
+                            let idx = context.dataIndex;
+                            let unitLabel = (Array.isArray(units) && units.length > 0) ? (units[idx] || unit) : unit;
+                            let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
+                            if (comm) {
+                                return [value + ' ' + unitLabel, comm.toLowerCase()];
                             }
+                            return value + ' ' + unitLabel;
                         },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: 'white',
-                            bodyColor: 'white',
-                            borderColor: '#3B82F6',
-                            borderWidth: 1,
-                            callbacks: {
-                                afterLabel: function(context) {
-                                    if (currentChartType === 'pie' || currentChartType === 'doughnut') {
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((context.raw / total) * 100).toFixed(1);
-                                        return `Percentage: ${percentage}%`;
-                                    }
-                                    return '';
-                                }
+                        font: function(context) {
+                            // Make the second line (commodity name) smaller
+                            if (context.dataIndex !== undefined && context.dataset.data.length > 1) {
+                                return {
+                                    weight: 'bold',
+                                    size: 14
+                                };
                             }
+                            return { weight: 'bold', size: 14 };
                         },
-                        datalabels: {
-                            display: function(context) {
-                                // Only show for pie and doughnut charts
-                                return currentChartType === 'pie' || currentChartType === 'doughnut';
-                            },
-                            color: 'white',
-                            font: {
-                                weight: 'bold',
-                                size: 14
-                            },
-                            formatter: function(value, context) {
-                                // For pie/doughnut charts, value IS the actual data value
-                                if (currentChartType !== 'pie' && currentChartType !== 'doughnut') {
-                                    return null;
-                                }
-                                
-                                // Get the dataset and calculate total
-                                const dataset = context.dataset;
-                                const dataArray = dataset.data;
-                                const total = dataArray.reduce((sum, val) => sum + Number(val), 0);
-                                
-                                // Calculate percentage using the raw value
-                                const numValue = Number(value);
-                                const percentage = total > 0 ? ((numValue / total) * 100).toFixed(1) : 0;
-                                
-                                // Only hide labels for 0% (but show all others)
-                                if (parseFloat(percentage) === 0) {
-                                    return null;
-                                }
-                                
-                                return percentage + '%';
-                            },
-                            anchor: 'center',
-                            align: 'center'
+                        lineHeight: 1.1
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true },
+                    datalabels: {
+                        display: true,
+                        color: '#222',
+                        anchor: 'end',
+                        align: 'top',
+                        font: { weight: 'bold', size: 14 },
+                        formatter: function(value, context) {
+                            let idx = context.dataIndex;
+                            let unitLabel = (Array.isArray(units) && units.length > 0) ? (units[idx] || unit) : unit;
+                            let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
+                            if (comm) {
+                                return value + ' ' + unitLabel + ' of ' + comm;
+                            }
+                            return value + ' ' + unitLabel;
                         }
                     },
-                    layout: currentChartType === 'pie' || currentChartType === 'doughnut' ? {
-                        padding: {
-                            top: 20,
-                            bottom: 20,
-                            left: 20,
-                            right: 20
-                        }
-                    } : {},
-                    scales: currentChartType === 'line' || currentChartType === 'bar' ? {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                let idx = context[0].dataIndex;
+                                let date = context[0].label;
+                                let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
+                                if (comm) {
+                                    return comm + ' (' + date + ')';
+                                } else {
+                                    return date;
+                                }
+                            },
+                            label: function(context) {
+                                let value = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                                let idx = context.dataIndex;
+                                let unitLabel = (Array.isArray(units) && units.length > 0) ? (units[idx] || unit) : unit;
+                                let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
+                                if (comm) {
+                                    return value + ' ' + unitLabel + ' of ' + comm;
+                                } else {
+                                    return value + ' ' + unitLabel;
+                                }
                             }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
                         }
-                    } : {},
-                    animation: {
-                        duration: 1000,
-                        easing: 'easeInOutQuart'
                     }
+                },
+                scales: {
+                    y: { beginAtZero: true }
                 }
-            };
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
 
-            if (window.APP_DEBUG) console.log('Creating chart with config:', config);
-            analyticsChart = new Chart(ctx, config);
-            if (window.APP_DEBUG) console.log('Chart created successfully');
+    // Commodity search and autosuggest logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const commoditySearch = document.getElementById('commoditySearch');
+        const suggestionsBox = document.getElementById('commoditySuggestions');
+        function getFilteredCommodities(searchTerm = '') {
+            searchTerm = searchTerm.trim().toLowerCase();
+            return allCommodities.filter(com => !searchTerm || com.commodity_name.toLowerCase().includes(searchTerm));
         }
-
-        function downloadChart() {
-            if (analyticsChart) {
-                const link = document.createElement('a');
-                link.download = 'analytics-chart.png';
-                link.href = analyticsChart.toBase64Image();
-                link.click();
+        function showSuggestions(list) {
+            suggestionsBox.innerHTML = '';
+            if (list.length === 0 || !commoditySearch.value.trim()) {
+                suggestionsBox.classList.add('hidden');
+                return;
             }
+            list.forEach(com => {
+                const li = document.createElement('li');
+                li.textContent = com.commodity_name;
+                li.className = 'px-3 py-1 cursor-pointer hover:bg-agri-light';
+                li.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    commoditySearch.value = com.commodity_name;
+                    suggestionsBox.classList.add('hidden');
+                    currentCommodity = com.commodity_name;
+                    fetchAndUpdateAnalyticsChart();
+                });
+                suggestionsBox.appendChild(li);
+            });
+            suggestionsBox.classList.remove('hidden');
         }
-
-        function toggleFullscreen() {
-            const chartContainer = document.querySelector('.chart-container').parentElement;
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            } else {
-                chartContainer.requestFullscreen();
-            }
-        }
-
-        // Initialize chart when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.APP_DEBUG) console.log('DOM Content Loaded');
-            if (window.APP_DEBUG) console.log('Chart available?', typeof Chart !== 'undefined');
-            if (window.APP_DEBUG) console.log('Chart data?', chartData);
-            
-            // Register the datalabels plugin
-            if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
-                Chart.register(ChartDataLabels);
-                if (window.APP_DEBUG) console.log('ChartDataLabels plugin registered successfully');
-            } else {
-                console.error('ChartDataLabels plugin not available');
-            }
-            
-            // Wait a bit for Chart.js to fully load
-            setTimeout(function() {
-                if (typeof Chart !== 'undefined') {
-                    if (window.APP_DEBUG) console.log('Chart.js loaded successfully');
-                    if (chartData) {
-                        if (window.APP_DEBUG) console.log('Chart data exists, initializing chart');
-                        // Set default active button
-                        switchChartType('line');
-                    } else {
-                        if (window.APP_DEBUG) console.log('No chart data available');
-                    }
+        commoditySearch.addEventListener('input', function() {
+            const filtered = getFilteredCommodities(commoditySearch.value);
+            showSuggestions(filtered);
+        });
+        commoditySearch.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const filtered = getFilteredCommodities(commoditySearch.value);
+                if (filtered.length > 0) {
+                    currentCommodity = filtered[0].commodity_name;
+                    fetchAndUpdateAnalyticsChart();
                 } else {
-                    console.error('Chart.js failed to load');
+                    currentCommodity = '';
+                    fetchAndUpdateAnalyticsChart();
                 }
-                
-                // Add animation to cards
-                const cards = document.querySelectorAll('.animate-fade-in');
-                cards.forEach((card, index) => {
-                    setTimeout(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'translateY(0)';
-                    }, index * 100);
-                });
-            }, 100);
-        });
-
-        // Quick date range buttons
-        function setDateRange(days) {
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(endDate.getDate() - days);
-            
-            document.querySelector('input[name="start_date"]').value = startDate.toISOString().split('T')[0];
-            document.querySelector('input[name="end_date"]').value = endDate.toISOString().split('T')[0];
-        }
-
-        // AJAX form submission disabled for debugging - use normal form submission
-        /*
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.querySelector('form');
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault(); // Prevent normal form submission
-                    
-                    // Show loading indicator
-                    loadingIndicator.classList.remove('hidden');
-                    
-                    // Get form data
-                    const formData = new FormData(form);
-                    
-                    // Submit via AJAX
-                    fetch(window.location.href, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.text())
-                    .then(html => {
-                        // Parse the response and update the page content
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        
-                        // Update the main content area
-                        const newContent = doc.querySelector('.container');
-                        const currentContent = document.querySelector('.container');
-                        
-                        if (newContent && currentContent) {
-                            currentContent.innerHTML = newContent.innerHTML;
-                            
-                            // Re-initialize any scripts if needed
-                            const scripts = newContent.querySelectorAll('script');
-                            scripts.forEach(script => {
-                                const newScript = document.createElement('script');
-                                newScript.textContent = script.textContent;
-                                document.head.appendChild(newScript);
-                            });
-                        }
-                        
-                        // Hide loading indicator
-                        loadingIndicator.classList.add('hidden');
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        loadingIndicator.classList.add('hidden');
-                        alert('An error occurred while generating the report. Please try again.');
-                    });
-                });
+                suggestionsBox.classList.add('hidden');
             }
         });
-        */
-        
-        // Function to handle navigation dropdown toggle
-        function toggleNavigationDropdown() {
-            const dropdown = document.getElementById('navigationDropdown');
-            const arrow = document.getElementById('navigationArrow');
-            
-            dropdown.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
-        }
-
-        // Close navigation dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const navigationButton = event.target.closest('button');
-            const isNavigationButton = navigationButton && navigationButton.onclick && navigationButton.onclick.toString().includes('toggleNavigationDropdown');
-            const navigationDropdown = document.getElementById('navigationDropdown');
-            
-            if (!isNavigationButton && navigationDropdown && !navigationDropdown.contains(event.target)) {
-                navigationDropdown.classList.add('hidden');
-                const navigationArrow = document.getElementById('navigationArrow');
-                if (navigationArrow) {
-                    navigationArrow.classList.remove('rotate-180');
-                }
-            }
+        commoditySearch.addEventListener('blur', function() {
+            setTimeout(() => suggestionsBox.classList.add('hidden'), 100);
         });
+
+        document.getElementById('filterBarangay').addEventListener('change', function() {
+            fetchAndUpdateAnalyticsChart();
+        });
+        document.getElementById('filterStartDate').addEventListener('change', function() {
+            fetchAndUpdateAnalyticsChart();
+        });
+        document.getElementById('filterEndDate').addEventListener('change', function() {
+            fetchAndUpdateAnalyticsChart();
+        });
+        const btnLine = document.getElementById('btn-line');
+        const btnBar = document.getElementById('btn-bar');
+        btnBar.classList.add('active');
+        btnBar.style.backgroundColor = '#16a34a';
+        btnBar.style.color = '#fff';
+        btnBar.style.border = '2px solid #15803d';
+        btnLine.classList.remove('active');
+        btnLine.style.backgroundColor = '';
+        btnLine.style.color = '';
+        btnLine.style.border = '';
+        btnLine.addEventListener('click', function() {
+            currentChartType = 'line';
+            btnLine.classList.add('active');
+            btnBar.classList.remove('active');
+            btnLine.style.backgroundColor = '#16a34a';
+            btnLine.style.color = '#fff';
+            btnLine.style.border = '2px solid #15803d';
+            btnBar.style.backgroundColor = '';
+            btnBar.style.color = '';
+            btnBar.style.border = '';
+            fetchAndUpdateAnalyticsChart();
+        });
+        btnBar.addEventListener('click', function() {
+            currentChartType = 'bar';
+            btnBar.classList.add('active');
+            btnLine.classList.remove('active');
+            btnBar.style.backgroundColor = '#16a34a';
+            btnBar.style.color = '#fff';
+            btnBar.style.border = '2px solid #15803d';
+            btnLine.style.backgroundColor = '';
+            btnLine.style.color = '';
+            btnLine.style.border = '';
+            fetchAndUpdateAnalyticsChart();
+        });
+        // Initial chart load
+        fetchAndUpdateAnalyticsChart();
+    });
     </script>
     <!-- Deep-dive Analytics JS (new sections) -->
     <script>
     // SECTION 1: Farmer Production Performance
+    // Commodity filter removed
     function loadTopProducers() {
         const from = document.getElementById('topProducersFrom').value;
         const to = document.getElementById('topProducersTo').value;
         const tableBody = document.querySelector('#topProducersTable tbody');
         tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>';
-        $.getJSON('get_report_data.php', { type: 'top_producers', from, to }, function(res) {
-            if (Array.isArray(res) && res.length) {
-                tableBody.innerHTML = res.map(row =>
-                    `<tr><td>${row.farmer_name}</td><td>${row.total_yield}</td><td>${row.inputs_received}</td></tr>`
-                ).join('');
-            } else {
-                tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No data found for selected range.</td></tr>';
-            }
-        }).fail(function() {
-            tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading data.</td></tr>';
-        });
+        let url = 'get_top_producers.php?type=top_producers&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+        // Remove any lingering commodity param from the URL if present
+        if (window.location.search.includes('commodity=')) {
+            const urlObj = new URL(window.location.href);
+            urlObj.searchParams.delete('commodity');
+            history.replaceState(null, '', urlObj.pathname + urlObj.search);
+        }
+        fetch(url)
+            .then(res => res.json())
+            .then(res => {
+                if (Array.isArray(res) && res.length) {
+                    tableBody.innerHTML = res.map(row =>
+                        `<tr><td>${row.farmer_name}</td><td>${row.total_yield}</td><td>${row.inputs_received}</td></tr>`
+                    ).join('');
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No data found for selected range.</td></tr>';
+                }
+            })
+            .catch(() => {
+                tableBody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading data.</td></tr>';
+            });
     }
+
+    // Commodity filter/autosuggest removed
 
     function initHistoricalYieldChart() {
         const ctx = document.getElementById('historicalYieldChart').getContext('2d');
@@ -1151,10 +1229,17 @@ r        .gradient-bg {
         });
     }
 
-    function initDistributionTrendChart() {
+    let distributionTrendChartInstance = null;
+    function initDistributionTrendChart(range = 'monthly', startDate = null, endDate = null) {
         const ctx = document.getElementById('distributionTrendChart').getContext('2d');
-        $.getJSON('get_report_data.php', { type: 'input_distribution' }, function(res) {
-            new Chart(ctx, {
+        let params = { type: 'input_distribution', range: range };
+        if (range === 'custom' && startDate && endDate) {
+            params.start_date = startDate;
+            params.end_date = endDate;
+        }
+        $.getJSON('get_report_data.php', params, function(res) {
+            if (distributionTrendChartInstance) distributionTrendChartInstance.destroy();
+            distributionTrendChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: res.labels || [],
@@ -1170,16 +1255,51 @@ r        .gradient-bg {
     }
 
     // SECTION 3: Compliance & Program Efficiency
-    function loadComplianceRate() {
-        $.getJSON('get_report_data.php', { type: 'compliance_rate' }, function(res) {
-            document.getElementById('complianceRateDisplay').textContent = (res && res.rate ? res.rate : '--') + '%';
+    function initComplianceBarChart(startDate = null, endDate = null) {
+        let params = { type: 'compliance_rate' };
+        if (startDate && endDate) {
+            params.start_date = startDate;
+            params.end_date = endDate;
+        }
+        $.getJSON('get_report_data.php', params, function(res) {
+            const ctx = document.getElementById('complianceBarChart').getContext('2d');
+            if (window.complianceBarChartInstance) window.complianceBarChartInstance.destroy();
+            const labels = res.map(r => r.input_name);
+            const data = res.map(r => r.rate);
+            window.complianceBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Compliance Rate (%)',
+                        data: data,
+                        backgroundColor: '#16a34a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: ctx => ctx.parsed.y + '%' } }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Compliance (%)' } }
+                    }
+                }
+            });
         });
     }
 
-    function initCommodityYieldPie() {
+    function initCommodityYieldPie(startDate = null, endDate = null) {
         const ctx = document.getElementById('commodityYieldPie').getContext('2d');
-        $.getJSON('get_report_data.php', { type: 'yield_breakdown' }, function(res) {
-            new Chart(ctx, {
+        let params = { type: 'yield_breakdown' };
+        if (startDate && endDate) {
+            params.start_date = startDate;
+            params.end_date = endDate;
+        }
+        $.getJSON('get_report_data.php', params, function(res) {
+            if (window.commodityYieldPieChart) window.commodityYieldPieChart.destroy();
+            window.commodityYieldPieChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: res.labels || [],
@@ -1191,6 +1311,36 @@ r        .gradient-bg {
                 options: {responsive:true, plugins:{legend:{position:'bottom'}}}
             });
         });
+    }
+
+    function handleCommodityRangeChange() {
+        const selector = document.getElementById('commodityRangeSelector');
+        const customRangeDiv = document.getElementById('commodityCustomRange');
+        const fromInput = document.getElementById('commodityFromDate');
+        const toInput = document.getElementById('commodityToDate');
+        let today = new Date();
+        let startDate = null, endDate = null;
+        if (selector.value === 'current_month') {
+            startDate = today.toISOString().slice(0,8) + '01';
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (selector.value === 'last_6_months') {
+            let past = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+            startDate = past.toISOString().slice(0,10);
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (selector.value === 'current_year') {
+            startDate = today.getFullYear() + '-01-01';
+            endDate = today.toISOString().slice(0,10);
+            customRangeDiv.style.display = 'none';
+        } else if (selector.value === 'custom_range') {
+            customRangeDiv.style.display = '';
+            startDate = fromInput.value;
+            endDate = toInput.value;
+        }
+        if (selector.value !== 'custom_range' || (fromInput.value && toInput.value)) {
+            initCommodityYieldPie(startDate, endDate);
+        }
     }
 
     function initProgramEfficiencyChart() {
@@ -1220,15 +1370,81 @@ r        .gradient-bg {
             const today = new Date().toISOString().split('T')[0];
             fromInput.value = today.slice(0,8) + '01';
             toInput.value = today;
-            fromInput.addEventListener('change', loadTopProducers);
-            toInput.addEventListener('change', loadTopProducers);
+            document.getElementById('generateTopProducersBtn').addEventListener('click', loadTopProducers);
             loadTopProducers();
         }
         if (document.getElementById('historicalYieldChart')) initHistoricalYieldChart();
         loadInventoryRisk();
-        if (document.getElementById('distributionTrendChart')) initDistributionTrendChart();
-        loadComplianceRate();
-        if (document.getElementById('commodityYieldPie')) initCommodityYieldPie();
+        if (document.getElementById('distributionTrendChart')) initDistributionTrendChart('monthly');
+        // Input Distribution filter buttons
+        const filterBtns = [
+            {id: 'filterMonthly', range: 'monthly'},
+            {id: 'filter3Months', range: '3months'},
+            {id: 'filter6Months', range: '6months'},
+            {id: 'filterAnnual', range: 'annual'}
+        ];
+        filterBtns.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', function() {
+                    filterBtns.forEach(b => {
+                        const e = document.getElementById(b.id);
+                        if (e) e.classList.remove('active');
+                    });
+                    el.classList.add('active');
+                    initDistributionTrendChart(btn.range);
+                });
+            }
+        });
+    initComplianceBarChart();
+        if (document.getElementById('commodityYieldPie')) {
+            initCommodityYieldPie();
+            // Dropdown logic for commodity card only
+            const commodityDropdown = document.getElementById('commodityRangeDropdown');
+            const commodityDropdownLabel = document.getElementById('commodityRangeDropdownLabel');
+            const commodityDropdownItems = document.querySelectorAll('#commodityRangeDropdown ~ .dropdown-menu .dropdown-item');
+            const commodityFromInput = document.getElementById('commodityFromDate');
+            const commodityToInput = document.getElementById('commodityToDate');
+            let commoditySelectedValue = 'current_month';
+            commodityDropdownItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    commoditySelectedValue = this.getAttribute('data-value');
+                    commodityDropdownLabel.textContent = this.textContent;
+                    handleCommodityRangeChangeLocal();
+                });
+            });
+            if (commodityFromInput) commodityFromInput.addEventListener('change', handleCommodityRangeChangeLocal);
+            if (commodityToInput) commodityToInput.addEventListener('change', handleCommodityRangeChangeLocal);
+            function handleCommodityRangeChangeLocal() {
+                const customRangeDiv = document.getElementById('commodityCustomRange');
+                let today = new Date();
+                let startDate = null, endDate = null;
+                if (commoditySelectedValue === 'current_month') {
+                    startDate = today.toISOString().slice(0,8) + '01';
+                    endDate = today.toISOString().slice(0,10);
+                    customRangeDiv.style.display = 'none';
+                } else if (commoditySelectedValue === 'last_6_months') {
+                    let past = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                    startDate = past.toISOString().slice(0,10);
+                    endDate = today.toISOString().slice(0,10);
+                    customRangeDiv.style.display = 'none';
+                } else if (commoditySelectedValue === 'current_year') {
+                    startDate = today.getFullYear() + '-01-01';
+                    endDate = today.toISOString().slice(0,10);
+                    customRangeDiv.style.display = 'none';
+                } else if (commoditySelectedValue === 'custom_range') {
+                    customRangeDiv.style.display = '';
+                    startDate = commodityFromInput.value;
+                    endDate = commodityToInput.value;
+                }
+                if (commoditySelectedValue !== 'custom_range' || (commodityFromInput.value && commodityToInput.value)) {
+                    initCommodityYieldPie(startDate, endDate);
+                }
+            }
+            // Initial load
+            handleCommodityRangeChangeLocal();
+        }
         if (document.getElementById('programEfficiencyChart')) initProgramEfficiencyChart();
     });
     </script>

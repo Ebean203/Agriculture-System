@@ -135,7 +135,8 @@ function validateFarmerData($postData) {
     
     // All other fields are REQUIRED (NOT NULL in database)
     $validated['first_name'] = validateRequired($postData['first_name'] ?? '', 'First Name');
-    $validated['middle_name'] = validateRequired($postData['middle_name'] ?? '', 'Middle Name');
+    // Middle name is optional (not all people have a middle name)
+    $validated['middle_name'] = validateOptional($postData['middle_name'] ?? '', '');
     $validated['last_name'] = validateRequired($postData['last_name'] ?? '', 'Last Name');
     $validated['suffix'] = validateOptional($postData['suffix'] ?? '', ''); // Suffix can be empty
     $validated['birth_date'] = validateDate($postData['birth_date'] ?? '', 'Birth Date');
@@ -216,7 +217,8 @@ function validateFarmerDataForEdit($postData) {
     
     // All other fields are REQUIRED (NOT NULL in database)
     $validated['first_name'] = validateRequired($postData['first_name'] ?? '', 'First Name');
-    $validated['middle_name'] = validateRequired($postData['middle_name'] ?? '', 'Middle Name');
+    // Middle name optional for edits as well
+    $validated['middle_name'] = validateOptional($postData['middle_name'] ?? '', '');
     $validated['last_name'] = validateRequired($postData['last_name'] ?? '', 'Last Name');
     $validated['suffix'] = validateOptional($postData['suffix'] ?? '', ''); // Suffix can be empty
     $validated['birth_date'] = validateDate($postData['birth_date'] ?? '', 'Birth Date');

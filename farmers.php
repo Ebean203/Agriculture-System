@@ -449,6 +449,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
                 
                 if ($farmer = $result->fetch_assoc()) {
                     $farmer['photos'] = $photos; // Add photos to farmer data
+                    // Fetch recent yield records for this farmer (most recent 5)
+                    $recent_yields = [];
+                    $yield_stmt = $conn->prepare("SELECT ym.yield_id, ym.yield_amount, ym.unit, ym.season, ym.record_date, c.commodity_name FROM yield_monitoring ym LEFT JOIN commodities c ON ym.commodity_id = c.commodity_id WHERE ym.farmer_id = ? ORDER BY ym.record_date DESC LIMIT 3");
+                    if ($yield_stmt) {
+                        $yield_stmt->bind_param('s', $_GET['id']);
+                        $yield_stmt->execute();
+                        $yield_res = $yield_stmt->get_result();
+                        while ($yr = $yield_res->fetch_assoc()) {
+                            $recent_yields[] = $yr;
+                        }
+                        $yield_stmt->close();
+                    }
+                    $farmer['recent_yields'] = $recent_yields;
+
+                    // Fetch recent input distributions for this farmer (most recent 5)
+                    $recent_inputs = [];
+                    $input_stmt = $conn->prepare("SELECT mdl.log_id, mdl.date_given, mdl.quantity_distributed, mdl.visitation_date, mdl.status, ic.input_name, ic.unit FROM mao_distribution_log mdl LEFT JOIN input_categories ic ON mdl.input_id = ic.input_id WHERE mdl.farmer_id = ? ORDER BY mdl.date_given DESC LIMIT 3");
+                    if ($input_stmt) {
+                        $input_stmt->bind_param('s', $_GET['id']);
+                        $input_stmt->execute();
+                        $input_res = $input_stmt->get_result();
+                        while ($ir = $input_res->fetch_assoc()) {
+                            $recent_inputs[] = $ir;
+                        }
+                        $input_stmt->close();
+                    }
+                    $farmer['recent_inputs'] = $recent_inputs;
                     $html = generateFarmerViewHTML($farmer);
                     echo json_encode(['success' => true, 'html' => $html]);
                 } else {
@@ -764,6 +791,74 @@ function generateFarmerViewHTML($farmer) {
     $html .= '</div>';
     $html .= '</div>';
     
+    // Recent Yields and Inputs Section
+    $html .= '<div class="row g-3 mt-3">';
+
+    // Recent Yields Card
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="card border-0 shadow-sm h-100">';
+    $html .= '<div class="card-header bg-light border-0">';
+    $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-boxes-stacked me-2"></i>Recent Yields</h6>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+    if (!empty($farmer['recent_yields'])) {
+        $html .= '<ul class="list-group list-group-flush">';
+        foreach ($farmer['recent_yields'] as $ry) {
+            $commodity = htmlspecialchars($ry['commodity_name'] ?: 'Unspecified');
+            $amount = htmlspecialchars($ry['yield_amount'] ?: '');
+            $unit = htmlspecialchars($ry['unit'] ?: '');
+            $season = htmlspecialchars($ry['season'] ?: '');
+            $date = $ry['record_date'] ? date('M d, Y', strtotime($ry['record_date'])) : '-';
+            $html .= '<li class="list-group-item d-flex justify-content-between align-items-start">';
+            $html .= '<div class="ms-2 me-auto">';
+            $html .= '<div class="fw-semibold">' . $commodity . '</div>';
+            $html .= '<small class="text-muted">' . $season . ' &middot; ' . $date . '</small>';
+            $html .= '</div>';
+            $html .= '<span class="badge bg-success rounded-pill">' . ($amount !== '' ? number_format($amount) . ' ' . $unit : '—') . '</span>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+    } else {
+        $html .= '<div class="text-muted">No recent yield records found.</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+
+    // Recent Inputs Card
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="card border-0 shadow-sm h-100">';
+    $html .= '<div class="card-header bg-light border-0">';
+    $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-truck-field me-2"></i>Recent Inputs Received</h6>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+    if (!empty($farmer['recent_inputs'])) {
+        $html .= '<ul class="list-group list-group-flush">';
+        foreach ($farmer['recent_inputs'] as $ri) {
+            $inputName = htmlspecialchars($ri['input_name'] ?: 'Unspecified');
+            $qty = htmlspecialchars($ri['quantity_distributed'] ?: '');
+            $unit = htmlspecialchars($ri['unit'] ?: '');
+            $dateGiven = $ri['date_given'] ? date('M d, Y', strtotime($ri['date_given'])) : '-';
+            $status = htmlspecialchars(ucfirst($ri['status'] ?: ''));
+            $html .= '<li class="list-group-item d-flex justify-content-between align-items-start">';
+            $html .= '<div class="ms-2 me-auto">';
+            $html .= '<div class="fw-semibold">' . $inputName . '</div>';
+            $html .= '<small class="text-muted">Given: ' . $dateGiven . '</small>';
+            $html .= '</div>';
+            $html .= '<div class="text-end">';
+            $html .= '<div class="fw-semibold">' . ($qty !== '' ? number_format($qty) . ' ' . $unit : '—') . '</div>';
+            $html .= '<small class="text-muted">' . $status . '</small>';
+            $html .= '</div>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+    } else {
+        $html .= '<div class="text-muted">No recent input distributions found.</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+
     $html .= '</div>';
     $html .= '</div>';
     
@@ -1110,10 +1205,13 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                                 </div>
                                                 <div class="ml-3">
                                                     <div class="text-sm font-medium text-gray-900">
-                                                        <?php echo htmlspecialchars($farmer['first_name'] . ' ' . $farmer['last_name']); ?>
-                                                        <?php if (!empty($farmer['suffix']) && strtolower($farmer['suffix']) !== 'n/a'): ?>
-                                                            <?php echo ' ' . htmlspecialchars($farmer['suffix']); ?>
-                                                        <?php endif; ?>
+                                                        <?php
+                                                            $name = htmlspecialchars($farmer['last_name'] . ', ' . $farmer['first_name']);
+                                                            if (!empty($farmer['suffix']) && strtolower($farmer['suffix']) !== 'n/a') {
+                                                                $name .= ' ' . htmlspecialchars($farmer['suffix']);
+                                                            }
+                                                            echo $name;
+                                                        ?>
                                                     </div>
                                                     <div class="text-xs text-gray-500">
                                                         <?php echo ucfirst($farmer['gender']); ?>

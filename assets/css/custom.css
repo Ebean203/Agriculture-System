@@ -1,3 +1,11 @@
+/* Highlight for active chart type button */
+.chart-type-btn.active, .chart-type-btn.active:focus, button.chart-type-btn.active, button.chart-type-btn.active:focus {
+  background-color: #16a34a !important;
+  color: #fff !important;
+  border: 2px solid #15803d !important;
+  box-shadow: 0 2px 8px 0 rgba(22,163,74,0.10) !important;
+  z-index: 2;
+}
 /* Custom CSS for Lagonglong FARMS */
 /* Fix Font Awesome paths for local hosting */
 

@@ -15,9 +15,9 @@ if ($bq) {
 }
 mysqli_stmt_close($stmt);
 
-// Fetch commodities for primary commodity select (if table exists)
+// Fetch commodities for autosuggest (with category if available)
 $commodities = [];
-$query = "SELECT commodity_id, commodity_name FROM commodities ORDER BY commodity_name";
+$query = "SELECT c.commodity_id, c.commodity_name, c.category_id, cc.category_name FROM commodities c LEFT JOIN commodity_categories cc ON c.category_id = cc.category_id ORDER BY cc.category_name, c.commodity_name";
 $stmt = mysqli_prepare($conn, $query);
 mysqli_stmt_execute($stmt);
 $cq = mysqli_stmt_get_result($stmt);
@@ -61,16 +61,16 @@ if ($_SESSION['role'] !== 'admin') {
                                     <input type="text" class="form-control" id="first_name" name="first_name" required>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label for="middle_name" class="form-label">Middle Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="middle_name" name="middle_name" required>
+                                    <label for="middle_name" class="form-label">Middle Name</label>
+                                    <input type="text" class="form-control" id="middle_name" name="middle_name">
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="last_name" name="last_name" required>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label for="suffix" class="form-label">Suffix <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="suffix" name="suffix" placeholder="Jr., Sr., III, etc." required>
+                                    <label for="suffix" class="form-label">Suffix</label>
+                                    <input type="text" class="form-control" id="suffix" name="suffix" placeholder="Jr., Sr., III, etc.">
                                 </div>
                             </div>
                             <div class="row">
@@ -94,6 +94,14 @@ if ($_SESSION['role'] !== 'admin') {
                                 <h6 class="mb-0"><i class="fas fa-certificate me-2"></i>Registrations</h6>
                             </div>
                             <div class="card-body">
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-md-3 mb-3">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" id="checkAllRegistrations" onclick="toggleAllRegistrations(this)">
+                                            <label class="form-check-label fw-bold" for="checkAllRegistrations">Check All</label>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="row">
                                     <!-- RSBSA -->
                                     <div class="col-md-3 mb-3">
@@ -259,13 +267,11 @@ if ($_SESSION['role'] !== 'admin') {
                                 <!-- Primary commodity row (required) -->
                                 <div class="commodity-row mb-3 p-3 border rounded bg-light" data-commodity-index="0">
                                     <div class="row align-items-end">
-                                        <div class="col-md-5 mb-3">
-                                            <select class="form-select commodity-select" name="commodities[0][commodity_id]" required>
-                                                <option value="">Select Commodity</option>
-                                                <?php foreach ($commodities as $c): ?>
-                                                    <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
+                                        <div class="col-md-5 mb-3 position-relative">
+                                            <input type="text" class="form-control commodity-search" name="commodities[0][commodity_name]" autocomplete="off" required placeholder="Type to search commodity...">
+                                            <!-- Hidden field to store the selected commodity ID so backend receives commodity_id -->
+                                            <input type="hidden" name="commodities[0][commodity_id]" class="commodity-id" value="">
+                                            <ul class="commodity-suggestions position-absolute w-100 bg-white border rounded shadow-sm mt-1 d-none list-unstyled mb-0" style="z-index: 1050; max-height: 200px; overflow-y: auto;"></ul>
                                         </div>
                                         <div class="col-md-3 mb-3">
                                             <input type="number" min="0" max="100" class="form-control text-center" name="commodities[0][years_farming]" placeholder="0" required>
@@ -330,22 +336,27 @@ if ($_SESSION['role'] !== 'admin') {
 </div>
 
 <script>
+// Toggle all registration checkboxes
+function toggleAllRegistrations(source) {
+    const ids = ['is_rsbsa', 'is_ncfrs', 'is_fisherfolk', 'is_boat'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = source.checked;
+    });
+}
 function toggleSpouseField() {
     const civilStatus = document.getElementById('civil_status').value;
     const spouseField = document.getElementById('spouse_field');
     const spouseInput = document.getElementById('spouse_name');
-    
+    if (!spouseField || !spouseInput) return;
     if (civilStatus === 'Single') {
-        // Hide spouse field and remove required attribute
         spouseField.style.display = 'none';
         spouseInput.removeAttribute('required');
-        spouseInput.value = ''; // Clear the value
+        spouseInput.value = '';
     } else if (civilStatus === 'Married') {
-        // Show spouse field and make it required
         spouseField.style.display = 'block';
         spouseInput.setAttribute('required', 'required');
     } else {
-        // For Widowed, Separated, show field but not required
         spouseField.style.display = 'block';
         spouseInput.removeAttribute('required');
     }
@@ -365,21 +376,16 @@ let commodityIndex = 1; // Start from 1 since 0 is the primary commodity
 
 function addCommodityRow() {
     const container = document.getElementById('commoditiesContainer');
-    const commodityOptions = `<?php foreach ($commodities as $c): ?>
-        <option value="<?php echo htmlspecialchars($c['commodity_id']); ?>"><?php echo htmlspecialchars($c['commodity_name']); ?></option>
-    <?php endforeach; ?>`;
-    
     const newRow = document.createElement('div');
     newRow.className = 'commodity-row mb-3 p-3 border rounded';
     newRow.setAttribute('data-commodity-index', commodityIndex);
-    
     newRow.innerHTML = `
         <div class="row align-items-end">
-            <div class="col-md-5 mb-3">
-                <select class="form-select commodity-select" name="commodities[${commodityIndex}][commodity_id]" required>
-                    <option value="">Select Commodity</option>
-                    ${commodityOptions}
-                </select>
+            <div class="col-md-5 mb-3 position-relative">
+                <input type="text" class="form-control commodity-search" name="commodities[${commodityIndex}][commodity_name]" autocomplete="off" required placeholder="Type to search commodity...">
+                <!-- Hidden field to store selected commodity id for backend -->
+                <input type="hidden" name="commodities[${commodityIndex}][commodity_id]" class="commodity-id" value="">
+                <ul class="commodity-suggestions position-absolute w-100 bg-white border rounded shadow-sm mt-1 d-none list-unstyled mb-0" id="commoditySuggestions${commodityIndex}" style="z-index: 1050; max-height: 200px; overflow-y: auto;"></ul>
             </div>
             <div class="col-md-3 mb-3">
                 <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${commodityIndex}][years_farming]" placeholder="0" required>
@@ -411,9 +417,9 @@ function addCommodityRow() {
     });
     
     // Add validation for duplicate commodities
-    newRow.querySelector('.commodity-select').addEventListener('change', function() {
-        validateDuplicateCommodities();
-    });
+        newRow.querySelector('.commodity-search').addEventListener('change', function() {
+            validateDuplicateCommodities();
+        });
 }
 
 function removeCommodityRow(row) {
@@ -441,7 +447,7 @@ function removeCommodityRow(row) {
 }
 
 function validateDuplicateCommodities() {
-    const selects = document.querySelectorAll('.commodity-select');
+    const selects = document.querySelectorAll('.commodity-search');
     const selectedValues = [];
     let hasDuplicates = false;
     
@@ -476,10 +482,69 @@ function validateDuplicateCommodities() {
 // Add event listeners
 document.getElementById('addCommodityBtn').addEventListener('click', addCommodityRow);
 
-// Add validation for existing commodity select
-document.querySelector('.commodity-select').addEventListener('change', function() {
-    validateDuplicateCommodities();
+// Simple HTML-escape helper to safely inject suggestion text
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// Delegated, global autosuggest handlers for all commodity-search inputs (primary + dynamic)
+document.addEventListener('input', function(e) {
+    if (e.target.classList && e.target.classList.contains('commodity-search')) {
+        const input = e.target;
+        const suggestionsBox = input.parentElement.querySelector('.commodity-suggestions');
+        const hiddenId = input.parentElement.querySelector('.commodity-id');
+        if (hiddenId) hiddenId.value = ''; // clear previously selected id when user types
+        if (!suggestionsBox) return;
+        const q = input.value.trim();
+        if (q.length < 1) {
+            suggestionsBox.innerHTML = '';
+            suggestionsBox.classList.add('d-none');
+            if (hiddenId) hiddenId.value = '';
+            return;
+        }
+        fetch('get_commodity_suggestions.php?q=' + encodeURIComponent(q))
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success && Array.isArray(data.commodities) && data.commodities.length > 0) {
+                    suggestionsBox.innerHTML = data.commodities.map(c =>
+                        `<li class="list-group-item list-group-item-action" data-id="${c.commodity_id}" data-name="${escapeHtml(c.commodity_name)}">${escapeHtml(c.commodity_name)}${c.category_name ? ' <small class="text-muted">(' + escapeHtml(c.category_name) + ')</small>' : ''}</li>`
+                    ).join('');
+                    suggestionsBox.classList.remove('d-none');
+                    suggestionsBox.querySelectorAll('li').forEach(li => {
+                        li.addEventListener('click', function() {
+                            input.value = this.getAttribute('data-name');
+                            // set the hidden commodity_id so server receives the id
+                            if (hiddenId) hiddenId.value = this.getAttribute('data-id');
+                            suggestionsBox.classList.add('d-none');
+                            validateDuplicateCommodities();
+                        });
+                    });
+                } else {
+                    suggestionsBox.innerHTML = '<li class="list-group-item text-muted">No results</li>';
+                    suggestionsBox.classList.remove('d-none');
+                    if (hiddenId) hiddenId.value = '';
+                }
+            })
+            .catch(err => {
+                suggestionsBox.innerHTML = '<li class="list-group-item text-danger">Error fetching suggestions</li>';
+                suggestionsBox.classList.remove('d-none');
+                if (hiddenId) hiddenId.value = '';
+            });
+    }
 });
+
+// Hide suggestions on blur (with a small delay to allow click to register)
+document.addEventListener('focusout', function(e) {
+    if (e.target.classList && e.target.classList.contains('commodity-search')) {
+        setTimeout(() => {
+            const suggestionsBox = e.target.parentElement.querySelector('.commodity-suggestions');
+            if (suggestionsBox) suggestionsBox.classList.add('d-none');
+        }, 200);
+    }
+});
+
+// No .commodity-select exists anymore; validation is handled by .commodity-search and on form submit
 
 // Form validation and submission
 document.getElementById('farmerRegistrationForm').addEventListener('submit', function(e) {
@@ -489,44 +554,57 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
         alert('Please remove duplicate commodities before submitting.');
         return false;
     }
-    
-    // Check if at least one commodity is selected
-    const commoditySelects = document.querySelectorAll('.commodity-select');
+
+    // Check if at least one commodity input has a value
+    const commodityInputs = document.querySelectorAll('.commodity-search');
     let hasValidCommodity = false;
-    commoditySelects.forEach(select => {
-        if (select.value) hasValidCommodity = true;
+    commodityInputs.forEach(inp => {
+        if (inp.value && inp.value.trim()) hasValidCommodity = true;
     });
-    
+
     if (!hasValidCommodity) {
         e.preventDefault();
         alert('At least one commodity must be selected.');
         return false;
     }
-    
+
     // Check if a primary commodity is selected
     const primaryRadios = document.querySelectorAll('.primary-commodity-radio');
     let hasPrimary = false;
     primaryRadios.forEach(radio => {
         if (radio.checked) hasPrimary = true;
     });
-    
+
     if (!hasPrimary) {
         e.preventDefault();
         alert('Please select which commodity is the primary one.');
         return false;
     }
-    
-    // Show loading state
-    const submitBtn = this.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Registering...';
-    submitBtn.disabled = true;
-    
-    // Re-enable button after a delay (in case of validation errors)
-    setTimeout(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }, 3000);
+
+    // Prevent duplicate farmer registration (same first, last, birthdate)
+    const firstName = document.getElementById('first_name').value.trim().toLowerCase();
+    const lastName = document.getElementById('last_name').value.trim().toLowerCase();
+    const birthDate = document.getElementById('birth_date').value;
+    let isDuplicate = false;
+    // Synchronous AJAX is deprecated, but for validation before submit, we use fetch with async/await
+    e.preventDefault();
+    fetch('get_farmers.php?action=search&query=' + encodeURIComponent(firstName + ' ' + lastName))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.farmers) {
+                data.farmers.forEach(farmer => {
+                    if (farmer.full_name.toLowerCase().includes(lastName + ', ' + firstName) && farmer.birth_date === birthDate) {
+                        isDuplicate = true;
+                    }
+                });
+            }
+            if (isDuplicate) {
+                alert('A farmer with the same name and birth date already exists.');
+                return false;
+            } else {
+                e.target.submit();
+            }
+        });
 });
 
 

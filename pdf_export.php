@@ -10,6 +10,7 @@ function imageToBase64($path) {
 }
 require_once 'conn.php';
 require_once 'check_session.php';
+require_once 'includes/name_helpers.php';
 
 // Simple PDF class for table generation
 class SimplePDF {
@@ -323,7 +324,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
             if (in_array(strtolower($suffix), ['n/a', 'na'])) {
                 $suffix = '';
             }
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
+            $full_name = formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $suffix);
             $html .= '<tr>
                 <td>' . formatData($full_name) . '</td>
                 <td class="text-center">' . formatData($row['birth_date'], 'date') . '</td>
