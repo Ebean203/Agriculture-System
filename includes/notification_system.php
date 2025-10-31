@@ -114,26 +114,19 @@ function getVisitationNotifications($conn, $today) {
 function getStockNotifications($conn) {
     $notifications = [];
     
-    // Query for low stock items from mao_inventory table
+    // Query for low stock items (use master total in input_categories.total_stock if available)
+    // New policy: treat the baseline "minimum_level" as 10 units for all items (unit label is ignored).
+    // Critical when current_stock <= minimum_level/2 (i.e., 5 when minimum_level = 10).
     $query = "
-        SELECT 
+        SELECT
             ic.input_id,
             ic.input_name as item_name,
             ic.input_name as category,
-            COALESCE(mi.quantity_on_hand, 0) as current_stock,
+            COALESCE(ic.total_stock, 0) as current_stock,
             ic.unit,
-            mi.last_updated,
-            CASE 
-                WHEN LOWER(ic.input_name) LIKE '%seed%' THEN 20
-                WHEN LOWER(ic.input_name) LIKE '%fertilizer%' THEN 30
-                WHEN LOWER(ic.input_name) LIKE '%pesticide%' THEN 10
-                WHEN LOWER(ic.input_name) LIKE '%tool%' THEN 3
-                WHEN LOWER(ic.input_name) LIKE '%equipment%' THEN 1
-                ELSE 5
-            END as minimum_level
+            10 as minimum_level
         FROM input_categories ic
-        LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id
-        WHERE COALESCE(mi.quantity_on_hand, 0) >= 0
+        WHERE COALESCE(ic.total_stock, 0) >= 0
         HAVING current_stock <= minimum_level
         ORDER BY (current_stock / minimum_level) ASC
     ";
@@ -142,16 +135,18 @@ function getStockNotifications($conn) {
     $result = mysqli_stmt_get_result($stmt);
     if ($result && mysqli_num_rows($result) > 0) {
         while ($row = mysqli_fetch_assoc($result)) {
-            $stock_percentage = ($row['current_stock'] / $row['minimum_level']) * 100;
+            // Determine thresholds: minimum_level is 10 (see query above)
+            $min = (int)$row['minimum_level'];
+            $critical_threshold = floor($min / 2); // critical when stock <= half of minimum (e.g., 5)
             if ($row['current_stock'] == 0) {
                 $message = "OUT OF STOCK: " . $row['item_name'];
                 $priority = 1; // Highest priority
                 $type = 'urgent';
-            } elseif ($stock_percentage <= 25) {
+            } elseif ($row['current_stock'] <= $critical_threshold) {
                 $message = "CRITICAL LOW: " . $row['item_name'] . " (" . $row['current_stock'] . " " . $row['unit'] . " remaining)";
                 $priority = 2;
                 $type = 'urgent';
-            } elseif ($stock_percentage <= 50) {
+            } elseif ($row['current_stock'] <= $min) {
                 $message = "LOW STOCK: " . $row['item_name'] . " (" . $row['current_stock'] . " " . $row['unit'] . " remaining)";
                 $priority = 3;
                 $type = 'warning';
@@ -167,7 +162,7 @@ function getStockNotifications($conn) {
                     'category' => 'inventory',
                     'title' => 'Inventory Alert',
                     'message' => $message,
-                    'date' => $row['last_updated'] ?? '',
+                    'date' => '',
                     'priority' => $priority,
                     'icon' => 'fas fa-exclamation-triangle',
                     'data' => $row

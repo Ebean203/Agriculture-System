@@ -14,44 +14,39 @@ if (!$conn) {
     die('Database connection failed: ' . mysqli_connect_error());
 }
 
-// Get all input categories with their current inventory
+// Get all inventory batches (rows) with input details, ordered by expiration_date ASC
+
 $query = "SELECT 
-    ic.input_id,
+    mi.inventory_id,
+    mi.input_id,
     ic.input_name,
     ic.unit,
-    COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand,
-    mi.last_updated
-FROM input_categories ic
-LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id
-ORDER BY ic.input_name";
+    mi.quantity_on_hand,
+    mi.expiration_date
+FROM mao_inventory mi
+JOIN input_categories ic ON mi.input_id = ic.input_id
+ORDER BY mi.expiration_date ASC, mi.inventory_id ASC";
 
 $result = mysqli_query($conn, $query);
-
-// Check for query errors
 if (!$result) {
     die('Query failed: ' . mysqli_error($conn));
 }
-
-// Check if we have any data
 $row_count = mysqli_num_rows($result);
-if ($row_count == 0) {
-    // No input categories found, let's create some basic ones
-    $create_inputs = "INSERT IGNORE INTO input_categories (input_name, unit) VALUES 
-        ('Rice Seeds', 'kg'),
-        ('Corn Seeds', 'kg'),
-        ('Vegetable Seeds', 'pack'),
-        ('Urea Fertilizer', 'sack'),
-        ('Complete Fertilizer', 'sack'),
-        ('Organic Fertilizer', 'sack'),
-        ('Pesticide', 'liter'),
-        ('Herbicides', 'liter')";
-    
-    mysqli_query($conn, $create_inputs);
-    
-    // Re-run the main query
-    $result = mysqli_query($conn, $query);
-    $row_count = mysqli_num_rows($result);
+
+// Calculate total stock per input_id (sum of all batches)
+$total_stock = [];
+if ($row_count > 0) {
+    mysqli_data_seek($result, 0);
+    while ($row = mysqli_fetch_assoc($result)) {
+        $input_id = $row['input_id'];
+        if (!isset($total_stock[$input_id])) {
+            $total_stock[$input_id] = 0;
+        }
+        $total_stock[$input_id] += (int)$row['quantity_on_hand'];
+    }
+    mysqli_data_seek($result, 0); // Reset pointer for normal use
 }
+
 
 // Get total distributed amounts for each input (handle empty table after truncation)
 $distribution_query = "SELECT 
@@ -67,6 +62,16 @@ $distributions = [];
 if ($distribution_result && mysqli_num_rows($distribution_result) > 0) {
     while ($row = mysqli_fetch_assoc($distribution_result)) {
         $distributions[$row['input_id']] = intval($row['total_distributed']);
+    }
+}
+
+// Fetch master total_stock from input_categories (source of truth for 'Available')
+$master_totals = [];
+$mt_query = "SELECT input_id, COALESCE(total_stock,0) AS total_stock FROM input_categories";
+$mt_res = mysqli_query($conn, $mt_query);
+if ($mt_res) {
+    while ($r = mysqli_fetch_assoc($mt_res)) {
+        $master_totals[$r['input_id']] = intval($r['total_stock']);
     }
 }
 
@@ -93,23 +98,7 @@ foreach ($notifications as $notification) {
     }
 }
 
-// Categorize all inventory items
-mysqli_data_seek($result, 0);
-while ($row = mysqli_fetch_assoc($result)) {
-    $input_id = $row['input_id'];
-    if (isset($notification_lookup[$input_id])) {
-        $notif_type = $notification_lookup[$input_id]['type'];
-        if ($notif_type == 'urgent') {
-            $urgent_items[] = $row;
-        } else if ($notif_type == 'warning') {
-            $warning_items[] = $row;
-        } else {
-            $normal_items[] = $row;
-        }
-    } else {
-        $normal_items[] = $row;
-    }
-}
+// No need to categorize by notification for batch display; just fetch all batches
 
 ?>
 <?php include 'includes/layout_start.php'; ?>
@@ -126,6 +115,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3">
                             <!-- Add Input (Left) -->
+                            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                             <div class="relative">
                                 <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleAddInputDropdown()">
                                     <i class="fas fa-plus mr-2"></i>Add Input
@@ -147,6 +137,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     </button>
                                 </div>
                             </div>
+                            <?php endif; ?>
                             
                             <!-- Page Navigation (Right) -->
                             <div class="relative">
@@ -447,11 +438,19 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <?php
                 // Function to render inventory cards with status-specific styling
                 function renderInventoryCard($row, $distributions, $status, $notification_lookup) {
-                    $quantity = intval($row['quantity_on_hand']);
+                    // Expiration date display
+                    $expiration_display = '';
+                    if (!empty($row['expiration_date'])) {
+                        $expiration_display = '<div class="mb-2 text-xs text-gray-500"><i class="fas fa-hourglass-half mr-1"></i>Expires: ' . date('M d, Y', strtotime($row['expiration_date'])) . '</div>';
+                    }
+                    // Use master total_stock as source of truth for available stock when present
+                    global $master_totals;
+                    $batch_quantity = intval($row['quantity_on_hand']);
                     $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
-                    
-                    // Ensure we have valid values
-                    if ($quantity < 0) $quantity = 0;
+
+                    // Determine available from master totals if present
+                    $available_qty = isset($master_totals[$row['input_id']]) ? intval($master_totals[$row['input_id']]) : $batch_quantity;
+                    if ($available_qty < 0) $available_qty = 0;
                     if ($distributed < 0) $distributed = 0;
                     
                     // Determine stock status and styling based on segregation
@@ -480,7 +479,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                     // Define required variables for data attributes
                     $input_id = $row['input_id'];
                     $input_name_original = $row['input_name'];
-                    $quantity_safe = $quantity;
+                    // Determine available from master_totals if present
+                    $available_safe = isset($master_totals[$input_id]) ? $master_totals[$input_id] : intval($row['quantity_on_hand']);
+                    $quantity_safe = $available_safe;
                     
                     // Determine category icon
                     $input_name_lower = strtolower($row['input_name']);
@@ -523,6 +524,12 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <?php endif; ?>
                         
                         <div class="p-6">
+                            <?php echo $expiration_display; ?>
+                            <?php if (!empty($row['expiration_date'])): ?>
+                            <div class="mb-2 text-xs text-gray-500">
+                                <i class="fas fa-hourglass-half mr-1"></i>Expires: <?php echo date('M d, Y', strtotime($row['expiration_date'])); ?>
+                            </div>
+                            <?php endif; ?>
                             <!-- Header -->
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center">
@@ -551,8 +558,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <!-- Statistics -->
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <div class="text-center border-r border-gray-200">
-                                    <div class="text-2xl font-bold <?php echo $status == 'urgent' ? 'text-red-600' : ($status == 'warning' ? 'text-yellow-600' : 'text-green-600'); ?>">
-                                        <?php echo number_format($quantity); ?>
+                    <div class="text-2xl font-bold <?php echo $status == 'urgent' ? 'text-red-600' : ($status == 'warning' ? 'text-yellow-600' : 'text-green-600'); ?>">
+                        <?php // Use master total_stock as available if present
+                        $available_display = isset($available_qty) ? $available_qty : (isset($master_totals[$row['input_id']]) ? $master_totals[$row['input_id']] : intval($row['quantity_on_hand']));
+                        echo number_format($available_display); ?>
                                     </div>
                                     <div class="text-xs text-gray-600">Available</div>
                                 </div>
@@ -561,13 +570,13 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     <div class="text-xs text-gray-600">Distributed</div>
                                 </div>
                                 <div class="text-center">
-                                    <div class="text-2xl font-bold text-purple-600"><?php echo number_format($quantity + $distributed); ?></div>
+                                    <div class="text-2xl font-bold text-purple-600"><?php echo number_format($available_display + $distributed); ?></div>
                                     <div class="text-xs text-gray-600">Total</div>
                                 </div>
                             </div>
                             
                             <!-- Last Updated -->
-                            <?php if ($row['last_updated']): ?>
+                            <?php if (isset($row['last_updated']) && !empty($row['last_updated'])): ?>
                             <div class="mb-4 pt-4 border-t border-gray-200">
                                 <p class="text-sm text-gray-600">
                                     <i class="fas fa-clock mr-1"></i> 
@@ -578,12 +587,14 @@ while ($row = mysqli_fetch_assoc($result)) {
                             
                             <!-- Action Buttons -->
                             <div class="flex space-x-2">
-                                <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center update-btn" 
+                                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                                <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center stockin-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
                                         data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
                                         data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
-                                    <i class="fas fa-edit mr-1"></i> Update
+                                    <i class="fas fa-plus mr-1"></i> Stock In
                                 </button>
+                                <?php endif; ?>
                                 <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
                                         data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
@@ -614,6 +625,11 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <?php else:
                         mysqli_data_seek($result, 0);
                         while ($row = mysqli_fetch_assoc($result)):
+                            // Expiration date display
+                            $expiration_display = '';
+                            if (!empty($row['expiration_date'])) {
+                                $expiration_display = '<div class="mb-2 text-xs text-gray-500"><i class="fas fa-hourglass-half mr-1"></i>Expires: ' . date('M d, Y', strtotime($row['expiration_date'])) . '</div>';
+                            }
                             $quantity = intval($row['quantity_on_hand']); // Ensure it's always an integer
                             $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
                             
@@ -643,7 +659,8 @@ while ($row = mysqli_fetch_assoc($result)) {
                             // Define required variables for data attributes
                             $input_id = $row['input_id'];
                             $input_name_original = $row['input_name'];
-                            $quantity_safe = $quantity; // Safe version for HTML attributes
+                            // Use master total_stock as available if present
+                            $quantity_safe = isset($master_totals[$row['input_id']]) ? $master_totals[$row['input_id']] : $quantity; // Safe version for HTML attributes
                             
                             // Determine category icon
                             $input_name_lower = strtolower($row['input_name']);
@@ -686,9 +703,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 </div>
                                 
                                 <!-- Statistics -->
+                                <?php echo $expiration_display; ?>
                                 <div class="grid grid-cols-3 gap-4 mb-4">
                                     <div class="text-center border-r border-gray-200">
-                                        <div class="text-2xl font-bold text-green-600"><?php echo number_format($quantity); ?></div>
+                                        <div class="text-2xl font-bold text-green-600"><?php echo number_format(isset($master_totals[$row['input_id']]) ? $master_totals[$row['input_id']] : $quantity); ?></div>
                                         <div class="text-xs text-gray-600">Available</div>
                                     </div>
                                     <div class="text-center border-r border-gray-200">
@@ -696,13 +714,18 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         <div class="text-xs text-gray-600">Distributed</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="text-2xl font-bold text-purple-600"><?php echo number_format($quantity + $distributed); ?></div>
+                                        <div class="text-2xl font-bold text-purple-600"><?php echo number_format((isset($master_totals[$row['input_id']]) ? $master_totals[$row['input_id']] : $quantity) + $distributed); ?></div>
                                         <div class="text-xs text-gray-600">Total</div>
                                     </div>
                                 </div>
                                 
                                 <!-- Last Updated -->
-                                <?php if ($row['last_updated']): ?>
+                                <?php if (!empty($row['expiration_date'])): ?>
+                                <div class="mb-2 text-xs text-gray-500">
+                                    <i class="fas fa-hourglass-half mr-1"></i>Expires: <?php echo date('M d, Y', strtotime($row['expiration_date'])); ?>
+                                </div>
+                                <?php endif; ?>
+                                <?php if (isset($row['last_updated']) && !empty($row['last_updated'])): ?>
                                 <div class="mb-4 pt-4 border-t border-gray-200">
                                     <p class="text-sm text-gray-600">
                                         <i class="fas fa-clock mr-1"></i> 
@@ -738,6 +761,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     <!-- Modals -->
     <!-- Add Stock Modal -->
+    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
     <div id="addStockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div class="px-6 py-4 border-b border-gray-200">
@@ -746,7 +770,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 </h3>
                 <p class="text-sm text-gray-600 mt-1">Add new stock to existing inventory</p>
             </div>
-            <form method="POST" action="update_inventory.php">
+            <form method="POST" action="add_new_input.php">
                 <div class="px-6 py-4">
                     <div class="mb-4">
                         <label for="input_id" class="block text-sm font-medium text-gray-700 mb-2">Input Type</label>
@@ -766,11 +790,16 @@ while ($row = mysqli_fetch_assoc($result)) {
                     </div>
                     <div class="mb-4">
                         <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Add</label>
-                        <input type="number" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="quantity" min="1" required>
+                        <input type="number" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="add_quantity" min="1" required>
                         <p class="text-xs text-green-600 mt-1">
                             <i class="fas fa-info-circle mr-1"></i>
                             This will add to the existing stock quantity.
                         </p>
+                    </div>
+                    <div class="mb-4">
+                        <label for="add_expiration_date_modal" class="block text-sm font-medium text-gray-700 mb-2">Expiration Date <span class="text-red-500">*</span></label>
+                        <input type="date" id="add_expiration_date_modal" name="expiration_date" required
+                            class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <input type="hidden" name="action" value="add_stock">
                 </div>
@@ -781,6 +810,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             </form>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- Update Stock Modal -->
     <div id="updateStockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
@@ -959,7 +989,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 
         // Close modal when clicking outside
         document.addEventListener('click', function(event) {
-            const modals = ['addStockModal', 'updateStockModal', 'distributeModal'];
+            const modals = ['addStockModal', 'distributeModal'];
             modals.forEach(modalId => {
                 const modal = document.getElementById(modalId);
                 if (event.target === modal) {
@@ -968,25 +998,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             });
         });
 
-        function updateStock(inputId, inputName, currentStock) {
-            // Ensure all parameters have safe values
-            inputId = inputId || '';
-            inputName = inputName || 'Unknown Input';
-            currentStock = currentStock || 0;
-            
-            // Safely set values with null checks
-            const updateInputId = document.getElementById('update_input_id');
-            const updateInputName = document.getElementById('update_input_name');
-            const currentStockField = document.getElementById('current_stock');
-            const newQuantityField = document.getElementById('new_quantity');
-            
-            if (updateInputId) updateInputId.value = inputId;
-            if (updateInputName) updateInputName.value = inputName;
-            if (currentStockField) currentStockField.value = currentStock;
-            if (newQuantityField) newQuantityField.value = currentStock;
-            
-            openModal('updateStockModal');
-        }
+        // updateStock function removed: only additive stock-in allowed
 
         function distributeInput(inputId, inputName, availableStock) {
             // Ensure all parameters have safe values
@@ -1292,13 +1304,8 @@ while ($row = mysqli_fetch_assoc($result)) {
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Add event listeners to distribute buttons
+            // Add event listeners to distribute buttons only
             const distributeButtons = document.querySelectorAll('.distribute-btn');
-            
-            // Add event listeners to update buttons
-            const updateButtons = document.querySelectorAll('.update-btn');
-            
-            // Add event listeners to distribute buttons
             distributeButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const inputId = this.getAttribute('data-input-id');
@@ -1307,14 +1314,22 @@ while ($row = mysqli_fetch_assoc($result)) {
                     distributeInput(inputId, inputName, quantity);
                 });
             });
-            
-            // Add event listeners to update buttons
-            updateButtons.forEach(button => {
+
+            // Add event listeners to stockin buttons (admin only)
+            const stockinButtons = document.querySelectorAll('.stockin-btn');
+            stockinButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const inputId = this.getAttribute('data-input-id');
-                    const inputName = this.getAttribute('data-input-name');
-                    const quantity = this.getAttribute('data-quantity');
-                    updateStock(inputId, inputName, quantity);
+                    // Open the addStockModal
+                    openModal('addStockModal');
+                    // Try to preselect the input in the dropdown (if present)
+                    const select = document.querySelector('#addStockModal select[name="input_id"]');
+                    if (select && inputId) {
+                        select.value = inputId;
+                        // Optionally, trigger change event if needed
+                        const event = new Event('change', { bubbles: true });
+                        select.dispatchEvent(event);
+                    }
                 });
             });
         });
@@ -1559,10 +1574,15 @@ while ($row = mysqli_fetch_assoc($result)) {
                 </div>
                 
                 <div class="mb-4">
-                    <label for="initial_quantity" class="block text-sm font-medium text-gray-700 mb-2">Initial Quantity</label>
-                    <input type="number" id="initial_quantity" name="quantity_on_hand" required min="0"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                           placeholder="Enter initial stock quantity">
+              <label for="initial_quantity" class="block text-sm font-medium text-gray-700 mb-2">Initial Quantity</label>
+              <input type="number" id="initial_quantity" name="quantity_on_hand" required min="0"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="Enter initial stock quantity">
+          </div>
+          <div class="mb-4">
+              <label for="expiration_date" class="block text-sm font-medium text-gray-700 mb-2">Expiration Date (optional)</label>
+              <input type="date" id="expiration_date" name="expiration_date" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
                 
                 <div class="flex justify-end space-x-3">
@@ -1587,7 +1607,6 @@ while ($row = mysqli_fetch_assoc($result)) {
             </div>
             <form action="add_new_input.php" method="POST" class="p-6">
                 <input type="hidden" name="action" value="add_stock">
-                
                 <div class="mb-4">
                     <label for="existing_input" class="block text-sm font-medium text-gray-700 mb-2">Select Input Type</label>
                     <select id="existing_input" name="input_id" required
@@ -1601,12 +1620,65 @@ while ($row = mysqli_fetch_assoc($result)) {
                         ?>
                     </select>
                 </div>
-                
                 <div class="mb-4">
                     <label for="add_quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Add</label>
                     <input type="number" id="add_quantity" name="add_quantity" required min="1"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="Enter quantity to add">
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter quantity to add">
+                </div>
+                <div class="mb-4">
+                    <label for="add_expiration_date" class="block text-sm font-medium text-gray-700 mb-2">Expiration Date <span class="text-red-500">*</span></label>
+                    <input type="date" id="add_expiration_date" name="expiration_date" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddToExistingModal()"
+                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        Add Stock
+                    </button>
+                </div>
+            </form>
+    <!-- Manual Stock Out Expired Batch Modal -->
+    <div id="stockOutExpiredModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Stock Out Expired Batch</h3>
+                <p class="text-sm text-gray-600 mt-1">Remove expired inventory batch from the system</p>
+            </div>
+            <form action="stock_out_expired.php" method="POST" class="p-6">
+                <div class="mb-4">
+                    <label for="expired_batch" class="block text-sm font-medium text-gray-700 mb-2">Select Expired Batch</label>
+                    <select id="expired_batch" name="inventory_id" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                        <option value="">Choose expired batch...</option>
+                        <?php
+                        $today = date('Y-m-d');
+                        $expired_query = "SELECT mi.inventory_id, ic.input_name, mi.quantity_on_hand, mi.expiration_date FROM mao_inventory mi JOIN input_categories ic ON mi.input_id = ic.input_id WHERE mi.expiration_date IS NOT NULL AND mi.expiration_date < '$today' AND mi.quantity_on_hand > 0 ORDER BY mi.expiration_date ASC";
+                        $expired_result = mysqli_query($conn, $expired_query);
+                        while ($batch = mysqli_fetch_assoc($expired_result)) {
+                            $label = htmlspecialchars($batch['input_name']) . ' | Qty: ' . $batch['quantity_on_hand'] . ' | Exp: ' . date('M d, Y', strtotime($batch['expiration_date']));
+                            echo '<option value="' . $batch['inventory_id'] . '">' . $label . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('stockOutExpiredModal').classList.add('hidden')"
+                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                        Stock Out
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
                 </div>
                 
                 <div class="flex justify-end space-x-3">

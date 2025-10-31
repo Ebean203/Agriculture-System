@@ -159,5 +159,7 @@ document.addEventListener('click', function(e) {
         suggestBox.classList.add('hidden');
     }
 });
+
 </script>
+<?php include 'includes/notification_complete.php'; ?>
 </div>

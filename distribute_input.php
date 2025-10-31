@@ -76,11 +76,8 @@ if (strtotime($visitation_date) < strtotime($date_given)) {
 
 // No need for mysqli_real_escape_string, using prepared statements below
 
-// Verify input exists and get current stock (using prepared statement)
-$input_check = "SELECT ic.input_id, ic.input_name, COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand 
-                FROM input_categories ic 
-                LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id 
-                WHERE ic.input_id = ?";
+// Verify input exists and get current stock from master total_stock (source of truth)
+$input_check = "SELECT ic.input_id, ic.input_name, COALESCE(ic.total_stock, 0) as total_stock FROM input_categories ic WHERE ic.input_id = ?";
 $stmt = mysqli_prepare($conn, $input_check);
 mysqli_stmt_bind_param($stmt, "s", $input_id);
 mysqli_stmt_execute($stmt);
@@ -91,7 +88,7 @@ if (!$input_result || $input_result->num_rows == 0) {
     exit();
 }
 $input_data = $input_result->fetch_assoc();
-$current_stock = floatval($input_data['quantity_on_hand']);
+$current_stock = floatval($input_data['total_stock']);
 mysqli_stmt_close($stmt);
 
 // Verify farmer exists
@@ -133,16 +130,52 @@ try {
         throw new Exception("Error recording distribution: " . mysqli_error($conn));
     }
     mysqli_stmt_close($stmt);
-    // Update inventory
-    $update_inventory = "UPDATE mao_inventory SET quantity_on_hand = quantity_on_hand - ?, last_updated = NOW() WHERE input_id = ?";
-    $stmt = mysqli_prepare($conn, $update_inventory);
-    mysqli_stmt_bind_param($stmt, "ds", $quantity_distributed, $input_id);
-    $success = mysqli_stmt_execute($stmt);
-    if (!$success) {
-        mysqli_stmt_close($stmt);
-        throw new Exception("Error updating inventory: " . mysqli_error($conn));
+
+    // FEFO: Deduct from batches with earliest expiration first
+    $remaining = floatval($quantity_distributed);
+    $batch_query = "SELECT inventory_id, quantity_on_hand FROM mao_inventory WHERE input_id = ? AND quantity_on_hand > 0 ORDER BY expiration_date ASC, inventory_id ASC FOR UPDATE";
+    $stmt = mysqli_prepare($conn, $batch_query);
+    mysqli_stmt_bind_param($stmt, "s", $input_id);
+    mysqli_stmt_execute($stmt);
+    $batch_result = mysqli_stmt_get_result($stmt);
+    $batches = [];
+    while ($row = mysqli_fetch_assoc($batch_result)) {
+        $batches[] = $row;
     }
     mysqli_stmt_close($stmt);
+
+    $total_available = 0;
+    foreach ($batches as $batch) {
+        $total_available += floatval($batch['quantity_on_hand']);
+    }
+    if ($total_available < $remaining) {
+        throw new Exception("Insufficient stock across all batches! Available: $total_available, Requested: $remaining");
+    }
+
+    foreach ($batches as $batch) {
+        if ($remaining <= 0) break;
+        $batch_id = $batch['inventory_id'];
+        $batch_qty = floatval($batch['quantity_on_hand']);
+        $deduct = min($batch_qty, $remaining);
+    $update_batch = "UPDATE mao_inventory SET quantity_on_hand = quantity_on_hand - ? WHERE inventory_id = ?";
+        $stmt = mysqli_prepare($conn, $update_batch);
+        mysqli_stmt_bind_param($stmt, "di", $deduct, $batch_id);
+        $success = mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        if (!$success) {
+            throw new Exception("Error updating batch inventory: " . mysqli_error($conn));
+        }
+        $remaining -= $deduct;
+    }
+    // Also deduct from master total_stock in input_categories
+    $update_master = "UPDATE input_categories SET total_stock = total_stock - ? WHERE input_id = ?";
+    $stmt = mysqli_prepare($conn, $update_master);
+    mysqli_stmt_bind_param($stmt, "ds", $quantity_distributed, $input_id);
+    $master_success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    if (!$master_success) {
+        throw new Exception("Error updating master total_stock: " . mysqli_error($conn));
+    }
     // Get input name for logging
     $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
     $stmt = mysqli_prepare($conn, $input_query);

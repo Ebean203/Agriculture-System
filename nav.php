@@ -48,6 +48,9 @@ if (!isset($pageTitle)) {
                     <a href="staff.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                         <i class="fas fa-user-tie mr-2"></i>Staff
                     </a>
+                    <a href="expiring_inputs.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Expiring Batches
+                    </a>
                 <?php endif; ?>
                 <a href="commodities.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                     <i class="fas fa-seedling mr-2"></i>Commodities

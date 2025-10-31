@@ -17,6 +17,7 @@ if ($_POST['action'] == 'add_stock') {
     
     $input_id = trim($_POST['input_id']);
     $quantity = trim($_POST['quantity']);
+        $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
     
     // Validate data is not empty
     if (empty($input_id) || empty($quantity)) {
@@ -56,12 +57,12 @@ if ($_POST['action'] == 'add_stock') {
     if ($check_result->num_rows > 0) {
         $stmt->close();
         // Update existing record
-        $update_query = "UPDATE mao_inventory 
-                        SET quantity_on_hand = quantity_on_hand + ?,
-                            last_updated = NOW()
-                        WHERE input_id = ?";
-        $stmt = $conn->prepare($update_query);
-        $stmt->bind_param("ds", $quantity, $input_id);
+            $update_query = "UPDATE mao_inventory 
+                            SET quantity_on_hand = quantity_on_hand + ?,
+                                expiration_date = ?
+                            WHERE input_id = ?";
+            $stmt = $conn->prepare($update_query);
+            $stmt->bind_param("dss", $quantity, $expiration_date, $input_id);
         $success = $stmt->execute();
         $stmt->close();
         if ($success) {
@@ -81,9 +82,9 @@ if ($_POST['action'] == 'add_stock') {
         }
     } else {
         // Insert new record
-        $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) VALUES (?, ?, NOW())";
-        $stmt = $conn->prepare($insert_query);
-        $stmt->bind_param("sd", $input_id, $quantity);
+    $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, expiration_date) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($insert_query);
+    $stmt->bind_param("sds", $input_id, $quantity, $expiration_date);
         $success = $stmt->execute();
         $stmt->close();
         if ($success) {
@@ -167,9 +168,9 @@ if ($_POST['action'] == 'update_stock') {
 
     if ($check_result->num_rows > 0) {
         // Update existing record
-        $update_query = "UPDATE mao_inventory SET quantity_on_hand = ?, last_updated = NOW() WHERE input_id = ?";
-        $update_stmt = $conn->prepare($update_query);
-        $update_stmt->bind_param("is", $new_quantity, $input_id);
+    $update_query = "UPDATE mao_inventory SET quantity_on_hand = ? WHERE input_id = ?";
+    $update_stmt = $conn->prepare($update_query);
+    $update_stmt->bind_param("is", $new_quantity, $input_id);
         if ($update_stmt->execute()) {
             // Get input name for logging
             $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
@@ -188,9 +189,9 @@ if ($_POST['action'] == 'update_stock') {
         $update_stmt->close();
     } else {
         // Insert new record
-        $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) VALUES (?, ?, NOW())";
-        $insert_stmt = $conn->prepare($insert_query);
-        $insert_stmt->bind_param("si", $input_id, $new_quantity);
+    $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand) VALUES (?, ?)";
+    $insert_stmt = $conn->prepare($insert_query);
+    $insert_stmt->bind_param("si", $input_id, $new_quantity);
         if ($insert_stmt->execute()) {
             // Get input name for logging
             $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";

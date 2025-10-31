@@ -18,6 +18,32 @@ if (isset($_GET['debug']) && $_GET['debug'] == '2') {
     print_r($_GET);
 }
 switch ($type) {
+    case 'expiring_soon':
+        // Return inputs expiring within 60 days for analytics dashboard
+        $sql = "SELECT ic.input_name, mi.expiration_date, mi.quantity_on_hand
+                FROM mao_inventory mi
+                JOIN input_categories ic ON mi.input_id = ic.input_id
+                WHERE mi.expiration_date IS NOT NULL
+                  AND mi.is_expired = 0
+                  AND mi.quantity_on_hand > 0
+                  AND mi.expiration_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 60 DAY)
+                ORDER BY mi.expiration_date ASC";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $expiring = [];
+        while ($row = $result->fetch_assoc()) {
+            $days_left = (int)((strtotime($row['expiration_date']) - strtotime(date('Y-m-d'))) / 86400);
+            $expiring[] = [
+                'name' => $row['input_name'],
+                'days_left' => $days_left,
+                'qty' => $row['quantity_on_hand'],
+                'expiration_date' => $row['expiration_date']
+            ];
+        }
+        $stmt->close();
+        echo json_encode($expiring);
+        return;
     case 'yield_breakdown':
         // Pie chart: Total yield per commodity for a given date range
         $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');

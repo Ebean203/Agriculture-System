@@ -7,10 +7,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'new_type') {
-        // Add new input type
-        $input_name = trim($_POST['input_name'] ?? '');
-        $unit = $_POST['unit'] ?? '';
-        $quantity_on_hand = intval($_POST['quantity_on_hand'] ?? 0);
+    // Add new input type
+    $input_name = trim($_POST['input_name'] ?? '');
+    $unit = $_POST['unit'] ?? '';
+    $quantity_on_hand = intval($_POST['quantity_on_hand'] ?? 0);
+    $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
         
         if (empty($input_name) || empty($unit) || $quantity_on_hand < 0) {
             $_SESSION['error'] = "Please fill in all required fields with valid values.";
@@ -38,12 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (mysqli_stmt_execute($insert_stmt)) {
             $new_input_id = mysqli_insert_id($conn);
-            
             // If initial quantity > 0, add to mao_inventory table
             if ($quantity_on_hand > 0) {
-                $inventory_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) VALUES (?, ?, NOW())";
+                $inventory_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, expiration_date) VALUES (?, ?, ?)";
                 $inventory_stmt = mysqli_prepare($conn, $inventory_query);
-                mysqli_stmt_bind_param($inventory_stmt, "ii", $new_input_id, $quantity_on_hand);
+                mysqli_stmt_bind_param($inventory_stmt, "iis", $new_input_id, $quantity_on_hand, $expiration_date);
                 mysqli_stmt_execute($inventory_stmt);
             }
         
@@ -57,64 +57,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
     } elseif ($action === 'add_stock') {
-        // Add stock to existing input
+    // Add stock to existing input (batch-based, FEFO)
+        // Add stock to existing input (hybrid batch + master total)
         $input_id = $_POST['input_id'] ?? '';
         $add_quantity = intval($_POST['add_quantity'] ?? 0);
-        
-        if (empty($input_id) || $add_quantity <= 0) {
+        $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
+        // Require expiration date for batch stock-ins
+        if (empty($input_id) || $add_quantity <= 0 || empty($expiration_date)) {
             $_SESSION['error'] = "Please select an input and enter a valid quantity.";
             header("Location: mao_inventory.php");
             exit();
         }
-        
-        // Get input details and current stock
-        $input_query = "SELECT ic.input_name, ic.unit, COALESCE(mi.quantity_on_hand, 0) as quantity_on_hand
-                       FROM input_categories ic
-                       LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id
-                       WHERE ic.input_id = ?";
+        // Get input details
+        $input_query = "SELECT input_name, unit FROM input_categories WHERE input_id = ?";
         $input_stmt = mysqli_prepare($conn, $input_query);
         mysqli_stmt_bind_param($input_stmt, "i", $input_id);
         mysqli_stmt_execute($input_stmt);
         $input_result = mysqli_stmt_get_result($input_stmt);
-        
         if (mysqli_num_rows($input_result) === 0) {
             $_SESSION['error'] = "Selected input not found.";
             header("Location: mao_inventory.php");
             exit();
         }
-        
         $input_data = mysqli_fetch_assoc($input_result);
-        $current_stock = intval($input_data['quantity_on_hand']);
-        $new_stock = $current_stock + $add_quantity;
-        
-        // Check if inventory record exists, update or insert
-        $check_inventory = "SELECT input_id FROM mao_inventory WHERE input_id = ?";
-        $check_stmt = mysqli_prepare($conn, $check_inventory);
-        mysqli_stmt_bind_param($check_stmt, "i", $input_id);
-        mysqli_stmt_execute($check_stmt);
-        $check_result = mysqli_stmt_get_result($check_stmt);
-        
-        if (mysqli_num_rows($check_result) > 0) {
-            // Update existing inventory
-            $update_query = "UPDATE mao_inventory SET quantity_on_hand = ?, last_updated = NOW() WHERE input_id = ?";
-            $update_stmt = mysqli_prepare($conn, $update_query);
-            mysqli_stmt_bind_param($update_stmt, "ii", $new_stock, $input_id);
-        } else {
-            // Insert new inventory record
-            $update_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, last_updated) VALUES (?, ?, NOW())";
-            $update_stmt = mysqli_prepare($conn, $update_query);
-            mysqli_stmt_bind_param($update_stmt, "ii", $input_id, $new_stock);
+    // Ensure DB allows multiple batches per input_id by removing old unique index if present
+        // Check if unique index exists
+        $idx_check_sql = "SELECT INDEX_NAME, NON_UNIQUE FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mao_inventory' AND COLUMN_NAME = 'input_id'";
+        $idx_check_res = mysqli_query($conn, $idx_check_sql);
+        $has_unique_idx = false;
+        if ($idx_check_res) {
+            while ($r = mysqli_fetch_assoc($idx_check_res)) {
+                if ($r['INDEX_NAME'] === 'uq_inventory_input' || (int)$r['NON_UNIQUE'] === 0) {
+                    $has_unique_idx = true;
+                    break;
+                }
+            }
         }
-        
-        if (mysqli_stmt_execute($update_stmt)) {
+
+        if ($has_unique_idx) {
+            // If a unique index exists on input_id and it's required by a foreign key, we need to replace it with a non-unique index.
+            // Find any foreign key constraints on mao_inventory that reference input_categories
+            $fk_sql = "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'mao_inventory' AND REFERENCED_TABLE_NAME = 'input_categories' AND REFERENCED_COLUMN_NAME = 'input_id'";
+            $fk_res = mysqli_query($conn, $fk_sql);
+            $fks = [];
+            if ($fk_res) {
+                while ($fk = mysqli_fetch_assoc($fk_res)) {
+                    $fks[] = $fk['CONSTRAINT_NAME'];
+                }
+            }
+
+            // Temporarily drop foreign keys, drop the unique index, create a non-unique index, then recreate foreign keys
+            foreach ($fks as $fk_name) {
+                @mysqli_query($conn, "ALTER TABLE mao_inventory DROP FOREIGN KEY `" . $fk_name . "`");
+            }
+
+            // Drop unique index (if still present)
+            @mysqli_query($conn, "ALTER TABLE mao_inventory DROP INDEX uq_inventory_input");
+
+            // Create a normal (non-unique) index on input_id so FK can be recreated
+            @mysqli_query($conn, "CREATE INDEX idx_mao_inventory_input ON mao_inventory (input_id)");
+
+            // Recreate foreign keys (pointing to input_categories.input_id)
+            foreach ($fks as $fk_name) {
+                // Attempt to add FK back using standard name; if fails, skip silently
+                @mysqli_query($conn, "ALTER TABLE mao_inventory ADD CONSTRAINT `" . $fk_name . "` FOREIGN KEY (input_id) REFERENCES input_categories(input_id) ON DELETE CASCADE ON UPDATE CASCADE");
+            }
+        }
+
+    // Always insert a new batch row
+    $insert_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, expiration_date) VALUES (?, ?, ?)";
+    $insert_stmt = mysqli_prepare($conn, $insert_query);
+    mysqli_stmt_bind_param($insert_stmt, "iis", $input_id, $add_quantity, $expiration_date);
+        if (mysqli_stmt_execute($insert_stmt)) {
+            // Update master total in input_categories
+            $update_total_query = "UPDATE input_categories SET total_stock = total_stock + ? WHERE input_id = ?";
+            $update_total_stmt = mysqli_prepare($conn, $update_total_query);
+            mysqli_stmt_bind_param($update_total_stmt, "ii", $add_quantity, $input_id);
+            mysqli_stmt_execute($update_total_stmt);
+            mysqli_stmt_close($update_total_stmt);
             // Log activity
             require_once 'includes/activity_logger.php';
-            logActivity($conn, "Added $add_quantity {$input_data['unit']} to {$input_data['input_name']} (Total: $new_stock {$input_data['unit']})", 'inventory', "Input ID: $input_id, Added: $add_quantity, New Total: $new_stock");
-            
-            $_SESSION['success'] = "Successfully added $add_quantity {$input_data['unit']} to {$input_data['input_name']}. New total: $new_stock {$input_data['unit']}.";
+            logActivity($conn, "Stock-in: Added $add_quantity {$input_data['unit']} to {$input_data['input_name']} (Batch)", 'inventory', "Input ID: $input_id, Added: $add_quantity, Expiry: $expiration_date");
+            $_SESSION['success'] = "Successfully added $add_quantity {$input_data['unit']} to {$input_data['input_name']} as a new batch.";
         } else {
-            $_SESSION['error'] = "Failed to update stock. Please try again.";
-        }
+            $_SESSION['error'] = "Failed to add stock batch. Please try again.";
+    }
         
     } elseif ($action === 'new_commodity') {
         // Add new commodity
