@@ -75,9 +75,8 @@ while ($row = $res->fetch_assoc()) {
 
     <div class="bg-white rounded-xl card-shadow p-6">
     <h3 class="text-2xl font-bold mb-4">Current Commodities</h3>
-        <div class="mb-4 flex justify-end relative" style="min-width: 16rem;">
+        <div class="mb-4 flex justify-end" style="min-width: 16rem;">
             <input type="text" id="commoditySearch" class="form-control w-64" placeholder="Search commodities..." autocomplete="off">
-            <ul id="commoditySuggest" class="absolute bg-white border border-gray-300 rounded-md shadow z-10 hidden max-h-48 overflow-y-auto w-64 mt-1 left-auto right-0"></ul>
         </div>
         <div class="overflow-x-auto">
             <table class="table table-bordered w-full" id="commoditiesTable">
@@ -100,12 +99,10 @@ while ($row = $res->fetch_assoc()) {
     </div>
 
 <script>
-// --- Commodity Search & Autosuggest ---
+// --- Commodity Search ---
 const searchInput = document.getElementById('commoditySearch');
-const suggestBox = document.getElementById('commoditySuggest');
 const table = document.getElementById('commoditiesTable');
 const rows = Array.from(table.querySelectorAll('tbody tr'));
-const commodityNames = rows.map(row => row.cells[0].textContent.trim());
 
 searchInput.addEventListener('input', function() {
     const val = this.value.trim().toLowerCase();
@@ -114,52 +111,7 @@ searchInput.addEventListener('input', function() {
         const name = row.getAttribute('data-commodity');
         row.style.display = (!val || name.includes(val)) ? '' : 'none';
     });
-    // Autosuggest
-    if (val) {
-        const matches = commodityNames.filter(n => n.toLowerCase().includes(val));
-        if (matches.length > 0) {
-            suggestBox.innerHTML = matches.map(m => `<li class='px-3 py-2 cursor-pointer hover:bg-gray-100' tabindex='0'>${m}</li>`).join('');
-            suggestBox.classList.remove('hidden');
-        } else {
-            suggestBox.innerHTML = '<li class="px-3 py-2 text-gray-400">No matches</li>';
-            suggestBox.classList.remove('hidden');
-        }
-    } else {
-        suggestBox.classList.add('hidden');
-    }
 });
-
-// Click or keyboard select on suggestion
-suggestBox.addEventListener('mousedown', function(e) {
-    if (e.target.tagName === 'LI' && !e.target.classList.contains('text-gray-400')) {
-        searchInput.value = e.target.textContent;
-        filterTableToCommodity(e.target.textContent);
-        suggestBox.classList.add('hidden');
-    }
-});
-suggestBox.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && document.activeElement.tagName === 'LI') {
-        searchInput.value = document.activeElement.textContent;
-        filterTableToCommodity(document.activeElement.textContent);
-        suggestBox.classList.add('hidden');
-    }
-});
-
-function filterTableToCommodity(name) {
-    const val = name.trim().toLowerCase();
-    rows.forEach(row => {
-        const rowName = row.getAttribute('data-commodity');
-        row.style.display = (rowName === val) ? '' : 'none';
-    });
-}
-
-// Hide suggest box when clicking outside
-document.addEventListener('click', function(e) {
-    if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) {
-        suggestBox.classList.add('hidden');
-    }
-});
-
 </script>
 <?php include 'includes/notification_complete.php'; ?>
 </div>

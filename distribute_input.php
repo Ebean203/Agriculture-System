@@ -129,6 +129,7 @@ try {
         mysqli_stmt_close($stmt);
         throw new Exception("Error recording distribution: " . mysqli_error($conn));
     }
+    $distribution_log_id = mysqli_insert_id($conn);
     mysqli_stmt_close($stmt);
 
     // FEFO: Deduct from batches with earliest expiration first
@@ -157,7 +158,9 @@ try {
         $batch_id = $batch['inventory_id'];
         $batch_qty = floatval($batch['quantity_on_hand']);
         $deduct = min($batch_qty, $remaining);
-    $update_batch = "UPDATE mao_inventory SET quantity_on_hand = quantity_on_hand - ? WHERE inventory_id = ?";
+        
+        // Update batch inventory
+        $update_batch = "UPDATE mao_inventory SET quantity_on_hand = quantity_on_hand - ? WHERE inventory_id = ?";
         $stmt = mysqli_prepare($conn, $update_batch);
         mysqli_stmt_bind_param($stmt, "di", $deduct, $batch_id);
         $success = mysqli_stmt_execute($stmt);
@@ -165,6 +168,17 @@ try {
         if (!$success) {
             throw new Exception("Error updating batch inventory: " . mysqli_error($conn));
         }
+        
+        // Log batch-level distribution
+        $batch_dist_query = "INSERT INTO mao_batch_distribution (log_id, inventory_id, quantity_from_batch) VALUES (?, ?, ?)";
+        $stmt = mysqli_prepare($conn, $batch_dist_query);
+        mysqli_stmt_bind_param($stmt, "iid", $distribution_log_id, $batch_id, $deduct);
+        $batch_success = mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        if (!$batch_success) {
+            throw new Exception("Error logging batch distribution: " . mysqli_error($conn));
+        }
+        
         $remaining -= $deduct;
     }
     // Also deduct from master total_stock in input_categories
@@ -176,6 +190,18 @@ try {
     if (!$master_success) {
         throw new Exception("Error updating master total_stock: " . mysqli_error($conn));
     }
+    // Hard reconcile master total for this input_id to match sum of batches (safety against drift)
+    $recalc_sql = "UPDATE input_categories ic
+                   SET ic.total_stock = (
+                       SELECT COALESCE(SUM(quantity_on_hand),0)
+                       FROM mao_inventory
+                       WHERE input_id = ?
+                   )
+                   WHERE ic.input_id = ?";
+    $stmt = mysqli_prepare($conn, $recalc_sql);
+    mysqli_stmt_bind_param($stmt, "ss", $input_id, $input_id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
     // Get input name for logging
     $input_query = "SELECT input_name FROM input_categories WHERE input_id = ?";
     $stmt = mysqli_prepare($conn, $input_query);

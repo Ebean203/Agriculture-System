@@ -46,7 +46,8 @@ switch ($type) {
         return;
     case 'yield_breakdown':
         // Pie chart: Total yield per commodity for a given date range
-        $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
+        // Default to current year instead of current month to show more data
+        $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-01-01');
         $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
         $sql = "SELECT c.commodity_name, SUM(ym.yield_amount) as total_yield FROM yield_monitoring ym JOIN commodities c ON ym.commodity_id = c.commodity_id WHERE ym.record_date BETWEEN ? AND ? GROUP BY c.commodity_name ORDER BY c.commodity_name ASC";
         $stmt = $conn->prepare($sql);
@@ -64,8 +65,9 @@ switch ($type) {
         return;
     case 'compliance_rate':
         // Compliance breakdown per input (bar chart)
-        $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
-        $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-t');
+        // Default to current year instead of current month to show more data
+        $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-01-01');
+        $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
         $sql = "SELECT ic.input_name, COUNT(DISTINCT mdl.farmer_id) AS expected_count, COUNT(DISTINCT ym.farmer_id) AS compliant_count FROM mao_distribution_log mdl JOIN input_categories ic ON mdl.input_id = ic.input_id LEFT JOIN yield_monitoring ym ON mdl.farmer_id = ym.farmer_id AND ym.record_date BETWEEN ? AND ? WHERE mdl.date_given BETWEEN ? AND ? AND (ic.input_name LIKE '%Seed%' OR ic.input_name LIKE '%Seedling%' OR ic.input_name LIKE '%Palay%') GROUP BY ic.input_name";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('ssss', $start_date, $end_date, $start_date, $end_date);

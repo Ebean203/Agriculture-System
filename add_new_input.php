@@ -10,10 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Add new input type
     $input_name = trim($_POST['input_name'] ?? '');
     $unit = $_POST['unit'] ?? '';
-    $quantity_on_hand = intval($_POST['quantity_on_hand'] ?? 0);
-    $expiration_date = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
         
-        if (empty($input_name) || empty($unit) || $quantity_on_hand < 0) {
+        if (empty($input_name) || empty($unit)) {
             $_SESSION['error'] = "Please fill in all required fields with valid values.";
             header("Location: mao_inventory.php");
             exit();
@@ -32,26 +30,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
         
-        // Insert new input type (input_categories table handles auto-increment for input_id)
-        $insert_query = "INSERT INTO input_categories (input_name, unit) VALUES (?, ?)";
+        // Insert new input type with total_stock set to 0
+        $insert_query = "INSERT INTO input_categories (input_name, unit, total_stock) VALUES (?, ?, 0)";
         $insert_stmt = mysqli_prepare($conn, $insert_query);
         mysqli_stmt_bind_param($insert_stmt, "ss", $input_name, $unit);
         
         if (mysqli_stmt_execute($insert_stmt)) {
             $new_input_id = mysqli_insert_id($conn);
-            // If initial quantity > 0, add to mao_inventory table
-            if ($quantity_on_hand > 0) {
-                $inventory_query = "INSERT INTO mao_inventory (input_id, quantity_on_hand, expiration_date) VALUES (?, ?, ?)";
-                $inventory_stmt = mysqli_prepare($conn, $inventory_query);
-                mysqli_stmt_bind_param($inventory_stmt, "iis", $new_input_id, $quantity_on_hand, $expiration_date);
-                mysqli_stmt_execute($inventory_stmt);
-            }
         
             // Log activity
             require_once 'includes/activity_logger.php';
-            logActivity($conn, "Added new input type: $input_name" . ($quantity_on_hand > 0 ? " with $quantity_on_hand $unit initial stock" : ""), 'inventory', "Input: $input_name, Unit: $unit, Initial Stock: $quantity_on_hand");
+            logActivity($conn, "Added new input type: $input_name", 'inventory', "Input: $input_name, Unit: $unit, Initial Stock: 0");
             
-            $_SESSION['success'] = "New input type '$input_name' added successfully" . ($quantity_on_hand > 0 ? " with $quantity_on_hand $unit in stock" : "") . ".";
+            $_SESSION['success'] = "New input type '$input_name' added successfully with initial stock of 0. You can now stock in using 'Add to Existing Input'.";
         } else {
             $_SESSION['error'] = "Failed to add new input type. Please try again.";
         }
@@ -135,6 +126,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_bind_param($update_total_stmt, "ii", $add_quantity, $input_id);
             mysqli_stmt_execute($update_total_stmt);
             mysqli_stmt_close($update_total_stmt);
+            // Reconcile master total to exact sum of batches for this input (safety)
+            $recalc_sql = "UPDATE input_categories ic
+                           SET ic.total_stock = (
+                               SELECT COALESCE(SUM(quantity_on_hand),0)
+                               FROM mao_inventory
+                               WHERE input_id = ?
+                           )
+                           WHERE ic.input_id = ?";
+            $re_stmt = mysqli_prepare($conn, $recalc_sql);
+            mysqli_stmt_bind_param($re_stmt, "ii", $input_id, $input_id);
+            mysqli_stmt_execute($re_stmt);
+            mysqli_stmt_close($re_stmt);
             // Log activity
             require_once 'includes/activity_logger.php';
             logActivity($conn, "Stock-in: Added $add_quantity {$input_data['unit']} to {$input_data['input_name']} (Batch)", 'inventory', "Input ID: $input_id, Added: $add_quantity, Expiry: $expiration_date");

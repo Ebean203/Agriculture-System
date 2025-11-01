@@ -812,9 +812,6 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
         case 'commodity_production':
             $html .= generateCommodityProductionReport($start_date, $end_date, $conn);
             break;
-        case 'registration_analytics':
-            $html .= generateRegistrationAnalyticsReport($start_date, $end_date, $conn);
-            break;
         case 'comprehensive_overview':
             $html .= generateComprehensiveOverviewReport($start_date, $end_date, $conn);
             break;
@@ -855,12 +852,20 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
     // Detailed farmers list
     $farmers_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix, f.gender, 
                     f.contact_number, f.land_area_hectares, fc.years_farming, f.registration_date,
-                    b.barangay_name, c.commodity_name, h.civil_status, h.household_size
+                    b.barangay_name, c.commodity_name,
+                    (SELECT GROUP_CONCAT(DISTINCT ic.input_name SEPARATOR ', ')
+                     FROM mao_distribution_log mdl
+                     INNER JOIN input_categories ic ON mdl.input_id = ic.input_id
+                     WHERE mdl.farmer_id = f.farmer_id
+                     AND mdl.date_given BETWEEN '$start_date' AND '$end_date') as inputs_received,
+                    (SELECT MAX(mdl.date_given)
+                     FROM mao_distribution_log mdl
+                     WHERE mdl.farmer_id = f.farmer_id
+                     AND mdl.date_given BETWEEN '$start_date' AND '$end_date') as latest_distribution_date
                     FROM farmers f
                     LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
                     LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id AND fc.is_primary = 1
                     LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
-                    LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
                     WHERE f.registration_date BETWEEN '$start_date' AND '$end_date'
                     ORDER BY f.registration_date DESC";
     
@@ -871,7 +876,6 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
         <table>
             <thead>
                 <tr>
-                    <th>Farmer ID</th>
                     <th>Full Name</th>
                     <th>Gender</th>
                     <th>Contact</th>
@@ -879,8 +883,8 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
                     <th>Primary Commodity</th>
                     <th>Land Area (ha)</th>
                     <th>Years Farming</th>
-                    <th>Civil Status</th>
-                    <th>Household Size</th>
+                    <th>Inputs Received</th>
+                    <th>Date Received</th>
                     <th>Registration Date</th>
                 </tr>
             </thead>
@@ -893,7 +897,6 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
             }
             $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
             $html .= '<tr>
-                <td>' . htmlspecialchars($row['farmer_id']) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['gender']) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
@@ -901,8 +904,8 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
                 <td>' . htmlspecialchars($row['commodity_name']) . '</td>
                 <td>' . number_format($row['land_area_hectares'] ?? 0, 2) . '</td>
                 <td>' . htmlspecialchars($row['years_farming'] ?? 'N/A') . '</td>
-                <td>' . htmlspecialchars($row['civil_status'] ?: 'N/A') . '</td>
-                <td>' . htmlspecialchars($row['household_size'] ?: 'N/A') . '</td>
+                <td>' . htmlspecialchars($row['inputs_received'] ?: 'None') . '</td>
+                <td>' . ($row['latest_distribution_date'] ? date('M d, Y', strtotime($row['latest_distribution_date'])) : 'N/A') . '</td>
                 <td>' . date('M d, Y', strtotime($row['registration_date'])) . '</td>
             </tr>';
         }
@@ -986,7 +989,6 @@ function generateInputDistributionReport($start_date, $end_date, $conn) {
         <table>
             <thead>
                 <tr>
-                    <th>Log ID</th>
                     <th>Date</th>
                     <th>Farmer</th>
                     <th>Contact</th>
@@ -1004,7 +1006,6 @@ function generateInputDistributionReport($start_date, $end_date, $conn) {
             $visitation = $row['visitation_date'] ? date('M d, Y', strtotime($row['visitation_date'])) : 'N/A';
             
             $html .= '<tr>
-                <td>' . htmlspecialchars($row['log_id']) . '</td>
                 <td>' . date('M d, Y', strtotime($row['date_given'])) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
@@ -1048,50 +1049,118 @@ function generateYieldMonitoringReport($start_date, $end_date, $conn) {
 
 function generateInventoryStatusReport($conn) {
     $html = '';
+    // Reconcile master totals with batch sums to prevent drift
+    $reconcile_sql = "UPDATE input_categories ic
+                       LEFT JOIN (
+                           SELECT input_id, COALESCE(SUM(quantity_on_hand),0) AS total_current
+                           FROM mao_inventory
+                           GROUP BY input_id
+                       ) s ON s.input_id = ic.input_id
+                       SET ic.total_stock = COALESCE(s.total_current, 0)";
+    @$conn->query($reconcile_sql);
     
-    // Get current inventory status
-    $inventory_sql = "SELECT ic.input_name, ic.unit, mi.quantity_on_hand, mi.last_updated,
-                      COALESCE(SUM(mdl.quantity_distributed), 0) as total_distributed
-                      FROM mao_inventory mi
-                      INNER JOIN input_categories ic ON mi.input_id = ic.input_id
-                      LEFT JOIN mao_distribution_log mdl ON mi.input_id = mdl.input_id
-                      GROUP BY mi.inventory_id, ic.input_name, ic.unit, mi.quantity_on_hand, mi.last_updated
-                      ORDER BY ic.input_name";
+    // Get current inventory status with batch details
+    // Use SUM of mao_inventory quantities per input as the authoritative total (total_current_stock)
+    $inventory_sql = "SELECT 
+                        ic.input_id,
+                        ic.input_name, 
+                        ic.unit, 
+                        COALESCE(s.total_current_stock, 0) AS total_current_stock,
+                        mi.inventory_id,
+                        COALESCE(mi.quantity_on_hand, 0) AS batch_quantity,
+                        mi.expiration_date,
+                        mi.last_updated,
+                        COALESCE(td.total_given,0) AS total_given_input,
+                        COALESCE(bd.batch_given,0) AS batch_given,
+                        CASE 
+                            WHEN mi.expiration_date IS NOT NULL AND mi.expiration_date < CURDATE() THEN 'Yes'
+                            ELSE 'No'
+                        END as is_expired
+                      FROM input_categories ic
+                      LEFT JOIN (
+                          SELECT input_id, SUM(quantity_distributed) AS total_given
+                          FROM mao_distribution_log
+                          GROUP BY input_id
+                      ) td ON ic.input_id = td.input_id
+                      LEFT JOIN (
+                          SELECT input_id, SUM(quantity_on_hand) AS total_current_stock
+                          FROM mao_inventory
+                          GROUP BY input_id
+                      ) s ON ic.input_id = s.input_id
+                      LEFT JOIN mao_inventory mi ON ic.input_id = mi.input_id
+                      LEFT JOIN (
+                          SELECT inventory_id, SUM(quantity_from_batch) AS batch_given
+                          FROM mao_batch_distribution
+                          GROUP BY inventory_id
+                      ) bd ON mi.inventory_id = bd.inventory_id
+                      ORDER BY ic.input_name, mi.expiration_date";
     
     $inventory_result = $conn->query($inventory_sql);
-    $total_value = 0;
+    
+    // Calculate summary statistics
+    $total_inputs = 0;
     $low_stock_items = 0;
+    $expired_batches = 0;
+    $input_totals = [];
+    
+    // First pass to calculate totals
+    $inventory_result->data_seek(0);
+    while ($row = $inventory_result->fetch_assoc()) {
+        if (!isset($input_totals[$row['input_id']])) {
+            $input_totals[$row['input_id']] = $row['total_current_stock'];
+            $total_inputs++;
+            if ($row['total_current_stock'] <= 10) {
+                $low_stock_items++;
+            }
+        }
+        if ($row['is_expired'] === 'Yes') {
+            $expired_batches++;
+        }
+    }
     
     $html .= '<div class="summary-box">
         <h3 style="margin-top: 0; color: #15803d;">📦 Current Inventory Status</h3>
         <div class="summary-item"><span class="summary-label">Report Generated:</span> ' . date('F d, Y h:i A') . '</div>
-        <div class="summary-item"><span class="summary-label">Total Input Categories:</span> ' . $inventory_result->num_rows . '</div>
+        <div class="summary-item"><span class="summary-label">Total Input Categories:</span> ' . $total_inputs . '</div>
+        <div class="summary-item"><span class="summary-label">Low Stock Items:</span> ' . $low_stock_items . '</div>
+        <div class="summary-item"><span class="summary-label">Expired Batches:</span> ' . $expired_batches . '</div>
     </div>';
     
     if ($inventory_result->num_rows > 0) {
-        $html .= '<h3>📋 Detailed Inventory Status</h3>
+        $html .= '<h3>📋 Detailed Inventory Status with Batch Information</h3>
         <table>
             <thead>
                 <tr>
                     <th>Input Name</th>
+                    <th>Total Stock</th>
+                    <th>Total Given (Input)</th>
                     <th>Unit</th>
-                    <th>Current Stock</th>
-                    <th>Total Distributed</th>
+                    <th>Batch</th>
+                    <th>Batch Quantity</th>
+                    <th>Total Given (Batch)</th>
+                    <th>Expiration Date</th>
+                    <th>Expired</th>
                     <th>Stock Status</th>
                     <th>Last Updated</th>
                 </tr>
             </thead>
             <tbody>';
         
-        while ($row = $inventory_result->fetch_assoc()) {
+    $inventory_result->data_seek(0);
+    $batch_counts = [];
+    $last_input_id = null;
+    while ($row = $inventory_result->fetch_assoc()) {
             $stock_status = '';
             $stock_class = '';
             
-            if ($row['quantity_on_hand'] <= 10) {
+            // Determine stock status based on computed total_current_stock
+            if ($row['total_current_stock'] <= 0) {
+                $stock_status = 'Out of Stock';
+                $stock_class = 'background-color: #fee2e2; color: #991b1b;';
+            } else if ($row['total_current_stock'] <= 10) {
                 $stock_status = 'Critical Low';
                 $stock_class = 'background-color: #fee2e2; color: #991b1b;';
-                $low_stock_items++;
-            } else if ($row['quantity_on_hand'] <= 50) {
+            } else if ($row['total_current_stock'] <= 50) {
                 $stock_status = 'Low Stock';
                 $stock_class = 'background-color: #fef3c7; color: #92400e;';
             } else {
@@ -1099,14 +1168,37 @@ function generateInventoryStatusReport($conn) {
                 $stock_class = 'background-color: #dcfce7; color: #166534;';
             }
             
+            // Expired status styling
+            $expired_class = '';
+            if ($row['is_expired'] === 'Yes') {
+                $expired_class = 'background-color: #fee2e2; color: #991b1b; font-weight: bold;';
+            }
+            
+            // Format expiration date
+            $expiration_display = 'N/A';
+            if ($row['expiration_date']) {
+                $expiration_display = date('M d, Y', strtotime($row['expiration_date']));
+                // Check if nearing expiration (within 30 days)
+                $days_to_expire = (strtotime($row['expiration_date']) - time()) / (60 * 60 * 24);
+                if ($days_to_expire > 0 && $days_to_expire <= 30) {
+                    $expiration_display .= ' <span style="color: #f59e0b; font-weight: bold;">(Nearing)</span>';
+                }
+            }
+            
             $html .= '<tr>
                 <td>' . htmlspecialchars($row['input_name']) . '</td>
+                <td><strong>' . number_format($row['total_current_stock'] ?? 0) . '</strong></td>
+                <td>' . number_format($row['total_given_input'] ?? 0) . '</td>
                 <td>' . htmlspecialchars($row['unit']) . '</td>
-                <td>' . number_format($row['quantity_on_hand']) . '</td>
-                <td>' . number_format($row['total_distributed']) . '</td>
+                <td>' . (isset($row['batch_quantity']) || isset($row['expiration_date']) ? 'Batch ' . (($batch_counts[$row['input_name']] = ($batch_counts[$row['input_name']] ?? 0) + 1)) : 'N/A') . '</td>
+                <td>' . number_format($row['batch_quantity'] ?: 0) . '</td>
+                <td>' . number_format($row['batch_given'] ?: 0) . '</td>
+                <td>' . $expiration_display . '</td>
+                <td style="' . $expired_class . ' padding: 5px; border-radius: 3px;">' . $row['is_expired'] . '</td>
                 <td style="' . $stock_class . ' padding: 5px; border-radius: 3px; font-weight: bold;">' . $stock_status . '</td>
-                <td>' . date('M d, Y h:i A', strtotime($row['last_updated'])) . '</td>
+                <td>' . ($row['last_updated'] ? date('M d, Y h:i A', strtotime($row['last_updated'])) : 'N/A') . '</td>
             </tr>';
+            $last_input_id = $row['input_id'];
         }
         
         $html .= '</tbody></table>';
@@ -1115,6 +1207,13 @@ function generateInventoryStatusReport($conn) {
             $html .= '<div style="background-color: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 15px; margin: 20px 0;">
                 <h4 style="margin-top: 0; color: #991b1b;">⚠️ Low Stock Alert</h4>
                 <p style="margin-bottom: 0;"><strong>' . $low_stock_items . '</strong> items are running critically low and need immediate restocking.</p>
+            </div>';
+        }
+        
+        if ($expired_batches > 0) {
+            $html .= '<div style="background-color: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #991b1b;">⚠️ Expired Batches Alert</h4>
+                <p style="margin-bottom: 0;"><strong>' . $expired_batches . '</strong> batches have expired and should be removed from inventory.</p>
             </div>';
         }
     }
@@ -1310,23 +1409,7 @@ function generateCommodityProductionReport($start_date, $end_date, $conn) {
     return $html;
 }
 
-function generateRegistrationAnalyticsReport($start_date, $end_date, $conn) {
-    $html = '';
-    
-    // Registration statistics
-    $rsbsa_count = $conn->query("SELECT COUNT(*) as count FROM farmers f WHERE f.is_rsbsa = 1 AND f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $ncfrs_count = $conn->query("SELECT COUNT(*) as count FROM farmers f WHERE f.is_ncfrs = 1 AND f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    $fisherfolk_count = $conn->query("SELECT COUNT(*) as count FROM farmers f WHERE f.is_fisherfolk = 1 AND f.registration_date BETWEEN '$start_date' AND '$end_date'")->fetch_assoc()['count'];
-    
-    $html .= '<div class="summary-box">
-        <h3 style="margin-top: 0; color: #15803d;">📋 Registration Analytics Summary</h3>
-        <div class="summary-item"><span class="summary-label">RSBSA Registered:</span> ' . number_format($rsbsa_count) . '</div>
-        <div class="summary-item"><span class="summary-label">NCFRS Registered:</span> ' . number_format($ncfrs_count) . '</div>
-        <div class="summary-item"><span class="summary-label">Fisherfolk Registered:</span> ' . number_format($fisherfolk_count) . '</div>
-    </div>';
-    
-    return $html;
-}
+// Registration Analytics Report removed per requirements
 
 function generateComprehensiveOverviewReport($start_date, $end_date, $conn) {
     $html = '';
@@ -1383,8 +1466,8 @@ if ($table_check && $table_check->num_rows > 0) {
                                 </div>
                                 Reports System
                             </h1>
-                            <p class="text-gray-600 text-lg">Generate comprehensive reports for agricultural management and analytics</p>
-                            <div class="flex items-center mt-4 text-sm text-gray-500">
+                            <p class="text-gray-600 text-lg">Generate comprehensive reports for agricultural management.</p>
+                            <div class="flex items-center mt-4 mb-4 text-sm text-gray-500">
                                 <i class="fas fa-user mr-2"></i>
                                 Logged in as: <span class="font-semibold ml-1"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
                                 <span class="mx-3">•</span>
@@ -1504,12 +1587,9 @@ if ($table_check && $table_check->num_rows > 0) {
                         </div>
                     <?php endif; ?>
 
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                        
-                        <!-- Report Generation Form -->
-                        <div class="xl:col-span-2">
-                            <div class="bg-white rounded-xl shadow-lg p-8">
-                                <div class="border-b border-gray-200 pb-6 mb-8">
+                    <!-- Report Generation Form -->
+                    <div class="bg-white rounded-xl shadow-lg p-8">
+                        <div class="border-b border-gray-200 pb-6 mb-8">
                                     <h3 class="text-2xl font-bold text-gray-900 flex items-center">
                                         <div class="bg-agri-green p-2 rounded-lg mr-3">
                                             <i class="fas fa-file-alt text-white"></i>
@@ -1531,11 +1611,9 @@ if ($table_check && $table_check->num_rows > 0) {
                                             <option value="">Choose a report type...</option>
                                             <option value="farmers_summary">👥 Farmers Summary Report</option>
                                             <option value="input_distribution">📦 Input Distribution Report</option>
-                                            <option value="yield_monitoring">🌾 Yield Monitoring Report</option>
                                             <option value="inventory_status">📋 Current Inventory Status</option>
                                             <option value="barangay_analytics">🗺️ Barangay Analytics Report</option>
                                             <option value="commodity_production">🌱 Commodity Production Report</option>
-                                            <option value="registration_analytics">📋 Registration Analytics Report</option>
                                             <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
                                             <option value="consolidated_yield">🧮 Consolidated Yield of All Commodities</option>
                                         </select>
@@ -1562,7 +1640,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                     
                                     <!-- Report auto-save information removed (feature disabled to conserve storage) -->
                                     
-                                    <div class="flex gap-4 pt-4">
+                                    <div class="flex gap-4 pt-4 justify-center">
                                         <button type="submit" 
                                                 class="btn-generate text-white px-8 py-4 rounded-xl font-semibold flex items-center text-lg shadow-lg bg-agri-green hover:bg-agri-dark transition-colors">
                                             <i class="fas fa-chart-bar mr-3"></i>Generate Report
@@ -1574,105 +1652,8 @@ if ($table_check && $table_check->num_rows > 0) {
                                     </div>
                                 </form>
                                 <!-- Removed auto-reload after submit to avoid unexpected behavior -->
-                            </div>
-                        </div>
+                    </div>
 
-                        <!-- Report History (Compact) -->
-                        <div>
-                            <div class="bg-white rounded-lg shadow-md p-4">
-                                <div class="border-b border-gray-200 pb-3 mb-3">
-                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-                                        <div class="bg-agri-green p-1.5 rounded mr-2">
-                                            <i class="fas fa-history text-white text-sm"></i>
-                                        </div>
-                                        Recent Reports
-                                    </h3>
-                                    <p class="text-gray-600 text-sm mt-1">Previously generated reports</p>
-                                </div>
-                                
-                                <div id="recentReportsContainer">
-                                    <?php if ($saved_reports_result->num_rows > 0): ?>
-                                        <div class="space-y-2 max-h-72 overflow-y-auto">
-                                            <?php while ($report = $saved_reports_result->fetch_assoc()): ?>
-                                                <div class="recent-report-item border border-gray-200 rounded-md p-3 hover:shadow-sm transition-all">
-                                                    <div class="flex items-start justify-between">
-                                                        <div class="flex-1">
-                                                            <div class="font-medium text-gray-900 text-sm mb-1">
-                                                                <?php echo ucfirst(str_replace('_', ' ', $report['report_type'])); ?>
-                                                            </div>
-                                                            <div class="text-xs text-gray-600 mb-1">
-                                                                <i class="fas fa-calendar-alt mr-1"></i>
-                                                                <?php echo date('M j', strtotime($report['start_date'])); ?> - 
-                                                                <?php echo date('M j, Y', strtotime($report['end_date'])); ?>
-                                                            </div>
-                                                            <div class="text-xs text-gray-500">
-                                                                <i class="fas fa-user mr-1"></i>
-                                                                <?php echo htmlspecialchars($report['first_name'] . ' ' . $report['last_name']); ?>
-                                                                <span class="mx-1">•</span>
-                                                                <i class="fas fa-clock mr-1"></i>
-                                                                <?php echo date('M j, h:i A', strtotime($report['timestamp'])); ?>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mt-2 pt-2 border-t border-gray-100">
-                                                        <a href="<?php echo htmlspecialchars($report['file_path']); ?>" 
-                                                           target="_blank"
-                                                           class="inline-flex items-center text-agri-green hover:text-agri-dark text-xs font-medium transition-colors">
-                                                            <i class="fas fa-external-link-alt mr-1"></i>View Report
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            <?php endwhile; ?>
-                                        </div>
-                                        <div class="mt-3 pt-3 border-t border-gray-200">
-                                            <a href="#" class="text-agri-green hover:text-agri-dark font-medium text-xs flex items-center justify-center">
-                                                <i class="fas fa-archive mr-1"></i>View All Reports
-                                            </a>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="text-gray-500 text-sm">No reports found.</div>
-                                    <?php endif; ?>
-                                </div>
-                                <script>
-                                function refreshRecentReports() {
-                                    $.ajax({
-                                        url: 'get_saved_reports.php',
-                                        method: 'GET',
-                                        success: function(data) {
-                                            $('#recentReportsContainer').html(data);
-                                            refreshSavedReportsCount();
-                                        },
-                                        error: function() {
-                                            $('#recentReportsContainer').html('<div class="text-red-500 text-sm">Failed to load reports.</div>');
-                                        }
-                                    });
-                                }
-                                function refreshSavedReportsCount() {
-                                    $.ajax({
-                                        url: 'get_saved_reports_count.php',
-                                        method: 'GET',
-                                        dataType: 'json',
-                                        success: function(data) {
-                                            if (typeof data.count !== 'undefined') {
-                                                $('#savedReportsCount').text(data.count);
-                                            }
-                                        }
-                                    });
-                                }
-                                window.refreshRecentReports = refreshRecentReports;
-                                window.refreshSavedReportsCount = refreshSavedReportsCount;
-                                // Always refresh on page load
-                                $(document).ready(function() {
-                                    refreshSavedReportsCount();
-                                    refreshRecentReports();
-                                });
-                                </script>
-<script>
-    // Refresh when window regains focus (user returns from report tab)
-    window.addEventListener('focus', function() {
-        if (typeof refreshSavedReportsCount === 'function') refreshSavedReportsCount();
-        if (typeof refreshRecentReports === 'function') refreshRecentReports();
-    });
-</script>
+                </div>
 
 <?php include 'includes/notification_complete.php'; ?>

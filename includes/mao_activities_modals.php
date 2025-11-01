@@ -70,6 +70,192 @@
     </div>
 </div>
 
+
+    <style>
+    /* Hover highlight for suggestion rows */
+    .attendance-suggestion:hover { background-color: #f3f4f6; }
+    </style>
+
+    <script>
+    // Farmer attendance search and suggestions (properly scoped and initialized)
+    (function() {
+        let attendanceSuggestionHideTimer = null;
+
+        function esc(str) {
+            return (str || '').replace(/[&<>"']/g, function(c) {
+                return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]) || c;
+            });
+        }
+
+        function getEl(id) { return document.getElementById(id); }
+        function suggestionsEl() { return getEl('register_farmer_suggestions'); }
+        function searchEl() { return getEl('register_farmer_search'); }
+        function hiddenEl() { return getEl('register_farmer_id'); }
+        function selectedBoxEl() { return getEl('register_selected_farmer'); }
+
+        function setSearchValidity(message) {
+            const input = searchEl();
+            if (input) input.setCustomValidity(message || '');
+        }
+
+        function renderSuggestions(items) {
+            const sug = suggestionsEl();
+            if (!sug) return;
+            if (!items || items.length === 0) {
+                sug.innerHTML = '<div class="px-3 py-2 text-muted">No farmers found matching your search.</div>';
+                sug.style.display = 'block';
+                return;
+            }
+            let html = '';
+            items.forEach(farmer => {
+                const fullName = farmer.full_name || '';
+                const barangay = farmer.barangay_name || '';
+                const contact = farmer.contact_number || '';
+                html += `
+                    <div class="attendance-suggestion px-3 py-2 border-bottom" data-id="${esc(farmer.farmer_id)}" data-name="${esc(fullName)}" data-barangay="${esc(barangay)}" data-contact="${esc(contact)}" role="button" style="cursor:pointer;">
+                        <div class="fw-semibold text-dark">${esc(fullName)}</div>
+                        <div class="small text-muted">ID: ${esc(farmer.farmer_id)}${barangay ? ' | ' + esc(barangay) : ''}</div>
+                        ${contact ? `<div class="small text-muted">Contact: ${esc(contact)}</div>` : ''}
+                    </div>`;
+            });
+            sug.innerHTML = html;
+            sug.style.display = 'block';
+        }
+
+        function searchFarmersForAttendanceInternal(query) {
+            const sug = suggestionsEl();
+            const se = searchEl();
+            const hid = hiddenEl();
+            const selBox = selectedBoxEl();
+            if (!sug || !se) return;
+
+            const trimmed = (query || '').trim();
+            setSearchValidity('');
+
+            if (trimmed.length === 0) {
+                sug.innerHTML = '';
+                sug.style.display = 'none';
+                if (hid) hid.value = '';
+                if (selBox) selBox.classList.add('d-none');
+                return;
+            }
+
+            if (hid) hid.value = '';
+            if (selBox) selBox.classList.add('d-none');
+
+            sug.innerHTML = '<div class="px-3 py-2 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Searching...</div>';
+            sug.style.display = 'block';
+
+            fetch('get_farmers.php?action=search&include_archived=false&query=' + encodeURIComponent(trimmed))
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.success && Array.isArray(data.farmers)) {
+                        renderSuggestions(data.farmers);
+                    } else {
+                        renderSuggestions([]);
+                    }
+                })
+                .catch(() => {
+                    sug.innerHTML = '<div class="px-3 py-2 text-danger">Failed to load farmer suggestions.</div>';
+                    sug.style.display = 'block';
+                });
+        }
+
+        // Debounce wrapper to reduce server calls while typing
+        let debounceTimer = null;
+        function searchFarmersForAttendance(query) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => searchFarmersForAttendanceInternal(query), 250);
+        }
+
+        // Expose for inline handlers
+        window.searchFarmersForAttendance = searchFarmersForAttendance;
+        window.showAttendanceSuggestions = function() {
+            clearTimeout(attendanceSuggestionHideTimer);
+            const sug = suggestionsEl();
+            if (sug && sug.innerHTML.trim() !== '') {
+                sug.style.display = 'block';
+            }
+        };
+        function hideAttendanceSuggestions() {
+            const sug = suggestionsEl();
+            if (sug) sug.style.display = 'none';
+        }
+        window.hideAttendanceSuggestionsWithDelay = function() {
+            attendanceSuggestionHideTimer = setTimeout(hideAttendanceSuggestions, 150);
+        };
+
+        window.selectFarmerForAttendance = function(farmerId, fullName, contactNumber, barangay) {
+            const se = searchEl();
+            const hid = hiddenEl();
+            const selBox = selectedBoxEl();
+            const nameEl = getEl('register_selected_farmer_name');
+            const detailsEl = getEl('register_selected_farmer_details');
+
+            if (se) { se.value = fullName; setSearchValidity(''); }
+            if (hid) { hid.value = farmerId; }
+            if (nameEl) { nameEl.textContent = fullName; }
+            if (detailsEl) {
+                let info = 'ID: ' + farmerId;
+                if (barangay) info += ' | ' + barangay;
+                if (contactNumber) info += ' | Contact: ' + contactNumber;
+                detailsEl.textContent = info;
+            }
+            if (selBox) { selBox.classList.remove('d-none'); }
+            hideAttendanceSuggestions();
+        };
+
+        window.clearSelectedAttendanceFarmer = function(skipFocus) {
+            const se = searchEl();
+            const hid = hiddenEl();
+            const selBox = selectedBoxEl();
+            const sug = suggestionsEl();
+            if (hid) hid.value = '';
+            if (se) {
+                se.value = '';
+                setSearchValidity('Please select a farmer from the list.');
+                if (!skipFocus) se.focus();
+            }
+            if (selBox) selBox.classList.add('d-none');
+            if (sug) { sug.innerHTML = ''; sug.style.display = 'none'; }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const sug = suggestionsEl();
+            if (sug) {
+                sug.addEventListener('mousedown', function(e) {
+                    const item = e.target.closest('.attendance-suggestion');
+                    if (!item) return;
+                    e.preventDefault();
+                    window.selectFarmerForAttendance(
+                        item.getAttribute('data-id'),
+                        item.getAttribute('data-name'),
+                        item.getAttribute('data-contact'),
+                        item.getAttribute('data-barangay')
+                    );
+                });
+            }
+
+            const se = searchEl();
+            if (se) {
+                se.addEventListener('focus', function() { setSearchValidity(''); });
+            }
+
+            const form = getEl('registerAttendanceForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const hid = hiddenEl();
+                    const se = searchEl();
+                    if (!hid || !hid.value) {
+                        if (se) { setSearchValidity('Please select a farmer from the list.'); se.reportValidity(); }
+                        e.preventDefault();
+                    }
+                });
+            }
+        });
+    })();
+    </script>
+
 <!-- Add Activity Modal -->
 <div class="modal fade" id="addActivityModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -147,7 +333,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn bg-agri-green text-white border-0">
                         <i class="fas fa-save mr-2"></i>Add Activity
                     </button>
                 </div>
@@ -160,7 +346,7 @@
 <div class="modal fade" id="editActivityModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-blue-600 text-white">
+            <div class="modal-header bg-agri-green text-white">
                 <h5 class="modal-title">
                     <i class="fas fa-edit mr-2"></i>Edit Activity
                 </h5>
@@ -231,7 +417,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn bg-agri-green text-white border-0">
                         <i class="fas fa-save mr-2"></i>Update Activity
                     </button>
                 </div>
@@ -324,3 +510,157 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- Register Farmer Attendance Modal -->
+<div class="modal fade" id="registerAttendanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-agri-green text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Register Farmer Attendance
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="registerAttendanceForm" method="POST" action="mao_activities.php">
+                <input type="hidden" name="action" value="register_attendance">
+                <input type="hidden" name="activity_id" id="register_activity_id">
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-gray-700">Activity</label>
+                        <div class="border rounded px-3 py-2 bg-light">
+                            <div class="fw-semibold" id="register_activity_title">Activity title</div>
+                            <div class="text-muted small">Scheduled on <span id="register_activity_date">Date</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-gray-700">Select Farmer <span class="text-danger">*</span></label>
+                        <div class="position-relative">
+                <input type="text" id="register_farmer_search" class="form-control ps-5" placeholder="Search by last name, first name, or ID..." autocomplete="off" required
+                                   oninput="searchFarmersForAttendance(this.value)"
+                                   onfocus="showAttendanceSuggestions()"
+                                   onblur="hideAttendanceSuggestionsWithDelay()">
+                <i class="fas fa-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <input type="hidden" name="farmer_id" id="register_farmer_id" required>
+
+                            <div id="register_farmer_suggestions" class="position-absolute w-100 bg-white border border-secondary rounded shadow-lg mt-1"
+                                 style="max-height: 210px; overflow-y: auto; z-index: 1060; display: none;"></div>
+                        </div>
+                        <small class="text-muted">Start typing the farmer's last name to search.</small>
+                    </div>
+
+                    <div id="register_selected_farmer" class="alert alert-info d-none">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-user-check me-3 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold" id="register_selected_farmer_name"></div>
+                                <div class="small text-muted" id="register_selected_farmer_details"></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelectedAttendanceFarmer()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn bg-agri-green text-white border-0">
+                        <i class="fas fa-user-plus me-1"></i>Register Farmer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reschedule Activity Modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-agri-green text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-calendar-alt mr-2"></i>Reschedule Activity
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="mao_activities.php">
+                <input type="hidden" name="action" value="reschedule">
+                <input type="hidden" name="activity_id" id="reschedule_activity_id">
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label font-semibold text-gray-700">Activity</label>
+                        <p id="reschedule_title" class="form-control-plaintext border rounded px-3 py-2 bg-gray-50 font-semibold"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label font-semibold text-gray-700">Current Date</label>
+                        <input type="date" id="reschedule_current_date" class="form-control bg-gray-100" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reschedule_new_date" class="form-label font-semibold text-gray-700">New Date <span class="text-red-500">*</span></label>
+                        <input type="date" name="new_date" id="reschedule_new_date" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reschedule_reason" class="form-label font-semibold text-gray-700">Reason for Rescheduling <span class="text-red-500">*</span></label>
+                        <textarea name="reschedule_reason" id="reschedule_reason" class="form-control" rows="3" placeholder="Enter reason for rescheduling..." required maxlength="500"></textarea>
+                        <div class="form-text text-muted">Please provide a brief reason (max 500 characters).</div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn bg-agri-green text-white border-0">
+                        <i class="fas fa-calendar-alt mr-1"></i>Reschedule Activity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Mark as Done Confirmation Modal -->
+<div class="modal fade" id="markDoneModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-agri-green text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle mr-2"></i>Confirm Mark as Done
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="mao_activities.php">
+                <input type="hidden" name="action" value="mark_done">
+                <input type="hidden" name="activity_id" id="markdone_activity_id">
+                <div class="modal-body">
+                    <p class="mb-3">Are you sure you want to mark this activity as <strong>completed</strong>?</p>
+                    <div class="border rounded p-3 bg-light">
+                        <div class="fw-semibold" id="markdone_title">Activity title</div>
+                        <div class="text-muted small">Scheduled on <span id="markdone_date">Date</span></div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0">
+                        This action will update the status to <strong>completed</strong> and log the change.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn bg-agri-green text-white border-0">
+                        <i class="fas fa-check mr-1"></i>Yes, Mark as Done
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+

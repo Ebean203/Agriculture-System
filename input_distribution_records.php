@@ -554,6 +554,13 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                     <i class="fas <?php echo $status_info['icon']; ?> mr-1"></i>
                                                     <?php echo $status_info['text']; ?>
                                                 </span>
+                                                <?php if ($visit_status === 'rescheduled'): ?>
+                                                    <button type="button" class="ml-2 text-blue-600 hover:text-blue-800 align-middle resched-info" 
+                                                            data-id="<?php echo (int)$distribution['log_id']; ?>" 
+                                                            aria-label="View latest reschedule details" title="View latest reschedule details">
+                                                        <i class="fas fa-info-circle"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="px-3 py-4">
                                                 <?php
@@ -562,12 +569,18 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                     echo '<span class="text-gray-400 italic">No actions needed</span>';
                                                 } elseif ($visit_status === 'pending' || $visit_status === 'rescheduled') {
                                                 ?>
-                                                    <button class="ml-2 px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-semibold flex items-center mark-done-btn" data-id="<?php echo $distribution['log_id']; ?>">
-                                                        <i class="fas fa-check mr-1"></i> Mark as Done
-                                                    </button>
-                                                    <button class="ml-2 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-semibold flex items-center reschedule-btn" data-id="<?php echo $distribution['log_id']; ?>">
-                                                        <i class="fas fa-calendar-alt mr-1"></i> Reschedule
-                                                    </button>
+                                                    <div class="flex items-center gap-2">
+                                                        <button title="Mark as Done" aria-label="Mark as Done" 
+                                                                class="p-2 rounded-full hover:bg-green-100 text-green-600 hover:text-green-700"
+                                                                onclick="openDistMarkDone(<?php echo $distribution['log_id']; ?>)">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button title="Reschedule" aria-label="Reschedule" 
+                                                                class="p-2 rounded-full hover:bg-blue-100 text-blue-600 hover:text-blue-700"
+                                                                onclick="openDistReschedule(<?php echo $distribution['log_id']; ?>)">
+                                                            <i class="fas fa-calendar-alt"></i>
+                                                        </button>
+                                                    </div>
                                                 <?php
                                                 } else {
                                                     echo '<span class="text-gray-400 italic">No actions needed</span>';
@@ -590,31 +603,122 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                         <h3 class="text-lg font-bold mb-4 text-gray-900 flex items-center"><i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Reschedule Visitation</h3>
                                                         <form class="reschedule-form" data-id="<?php echo $distribution['log_id']; ?>">
                                                             <label class="block mb-2 text-gray-700">New Visitation Date</label>
-                                                            <input type="date" name="new_date" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" required>
+                                                            <input type="date" name="new_date" class="w-full border border-gray-300 rounded px-3 py-2 mb-3" required>
+                                                            <label class="block mb-2 text-gray-700">Reason for Rescheduling <span class="text-red-600">*</span></label>
+                                                            <textarea name="reschedule_reason" class="w-full border border-gray-300 rounded px-3 py-2 mb-2" rows="3" maxlength="500" required placeholder="Provide a short reason (max 500 chars)"></textarea>
+                                                            <button type="button" class="text-blue-600 text-xs underline mb-4" onclick="viewReschedHistory(<?php echo $distribution['log_id']; ?>)">
+                                                                View previous reschedules
+                                                            </button>
                                                             <div class="flex justify-end gap-2">
                                                                 <button type="button" class="close-reschedule-modal px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800" data-id="<?php echo $distribution['log_id']; ?>">Cancel</button>
-                                                                <button type="submit" class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold">Reschedule</button>
+                                                                <button type="button" class="open-reschedule-confirm px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold" data-id="<?php echo $distribution['log_id']; ?>">Continue</button>
                                                             </div>
                                                         </form>
                                                     </div>
                                                 </div>
-                                                <div id="actionSuccessMsg" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[9999] hidden">
-                                                    <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 text-base font-semibold">
-                                                        <i class="fas fa-check-circle"></i>
-                                                        <span id="actionSuccessText">Action successful!</span>
+                                                <!-- Reschedule Confirmation Modal -->
+                                                <div id="rescheduleConfirmModal-<?php echo $distribution['log_id']; ?>" class="fixed z-50 inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center hidden">
+                                                    <div class="modal-content-custom bg-white rounded-lg shadow-lg p-6 w-full max-w-sm opacity-0 scale-95 transition-all duration-200" style="pointer-events: none;">
+                                                        <h3 class="text-lg font-bold mb-4 text-gray-900 flex items-center"><i class="fas fa-calendar-alt text-blue-500 mr-2"></i>Confirm Reschedule</h3>
+                                                        <p class="mb-4 text-gray-700">Are you sure you want to reschedule?</p>
+                                                        <div class="flex justify-end gap-2">
+                                                            <button type="button" class="close-reschedule-confirm-modal px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800" data-id="<?php echo $distribution['log_id']; ?>">Cancel</button>
+                                                            <button type="button" class="confirm-reschedule px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold" data-id="<?php echo $distribution['log_id']; ?>">Yes, Reschedule</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div id="actionToast" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[9999] hidden">
+                                                    <div id="actionToastInner" class="toast-success px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 text-base font-semibold">
+                                                        <i id="actionToastIcon" class="fas fa-check-circle"></i>
+                                                        <span id="actionToastText">Action successful!</span>
                                                     </div>
                                                 </div>
                                                 <script>
-                                                function showActionSuccess(msg) {
-                                                    var box = document.getElementById('actionSuccessMsg');
-                                                    var text = document.getElementById('actionSuccessText');
-                                                    if (text) text.textContent = msg;
-                                                    if (box) {
-                                                        box.classList.remove('hidden');
-                                                        setTimeout(function() {
-                                                            box.classList.add('hidden');
-                                                        }, 1200);
+                                                // Ellipsis dropdown controls for Distribution rows
+                                                function toggleDistMenu(id){
+                                                    const menu = document.getElementById('distMenu'+id);
+                                                    const all = document.querySelectorAll('[id^="distMenu"]');
+                                                    all.forEach(m=>{ if(m!==menu) m.classList.add('hidden'); });
+                                                    // default show above
+                                                    menu.style.transform='';
+                                                    menu.classList.remove('top-full','mt-2');
+                                                    menu.classList.add('bottom-full','mb-2');
+                                                    menu.classList.toggle('hidden');
+                                                    if(menu.classList.contains('hidden')) return;
+                                                    // keep within table cell top
+                                                    requestAnimationFrame(()=>{
+                                                        const rect = menu.getBoundingClientRect();
+                                                        const cell = menu.closest('td');
+                                                        const cellRect = cell ? cell.getBoundingClientRect() : {top:0};
+                                                        const desiredTop = cellRect.top + 8;
+                                                        if(rect.top < desiredTop){
+                                                            const push = desiredTop - rect.top;
+                                                            menu.style.transform = `translateY(${push}px)`;
+                                                        }
+                                                    });
+                                                }
+                                                function closeDistMenu(id){
+                                                    const menu = document.getElementById('distMenu'+id);
+                                                    if(menu) menu.classList.add('hidden');
+                                                }
+                                                document.addEventListener('click', function(ev){
+                                                    const isBtn = ev.target.closest('button[onclick^="toggleDistMenu("]');
+                                                    const isMenu = ev.target.closest('[id^="distMenu"]');
+                                                    if(!isBtn && !isMenu){
+                                                        document.querySelectorAll('[id^="distMenu"]').forEach(m=>m.classList.add('hidden'));
                                                     }
+                                                });
+                                                function openDistMarkDone(id){
+                                                    // open existing modal for that row
+                                                    const modalId = 'markDoneModal-' + id;
+                                                    const modal = document.getElementById(modalId);
+                                                    if(!modal) return;
+                                                    modal.classList.remove('hidden');
+                                                    const content = modal.querySelector('.modal-content-custom');
+                                                    if(content){
+                                                        setTimeout(()=>{
+                                                            content.classList.remove('opacity-0','scale-95');
+                                                            content.classList.add('opacity-100','scale-100');
+                                                            content.style.pointerEvents='auto';
+                                                        },10);
+                                                    }
+                                                }
+                                                function openDistReschedule(id){
+                                                    const modalId = 'rescheduleModal-' + id;
+                                                    const modal = document.getElementById(modalId);
+                                                    if(!modal) return;
+                                                    modal.classList.remove('hidden');
+                                                    const content = modal.querySelector('.modal-content-custom');
+                                                    if(content){
+                                                        setTimeout(()=>{
+                                                            content.classList.remove('opacity-0','scale-95');
+                                                            content.classList.add('opacity-100','scale-100');
+                                                            content.style.pointerEvents='auto';
+                                                        },10);
+                                                    }
+                                                }
+                                                function showActionToast(msg, type) {
+                                                    var box = document.getElementById('actionToast');
+                                                    var inner = document.getElementById('actionToastInner');
+                                                    var icon = document.getElementById('actionToastIcon');
+                                                    var text = document.getElementById('actionToastText');
+                                                    if (!box || !inner || !icon || !text) return;
+
+                                                    text.textContent = msg;
+                                                    inner.classList.remove('toast-success', 'toast-error');
+                                                    if (type === 'error') {
+                                                        inner.classList.add('toast-error');
+                                                        icon.className = 'fas fa-exclamation-circle';
+                                                    } else {
+                                                        inner.classList.add('toast-success');
+                                                        icon.className = 'fas fa-check-circle';
+                                                    }
+
+                                                    box.classList.remove('hidden');
+                                                    clearTimeout(box.__toastTimer);
+                                                    box.__toastTimer = setTimeout(function() {
+                                                        box.classList.add('hidden');
+                                                    }, 2000);
                                                 }
                                                 document.addEventListener('DOMContentLoaded', function() {
                                                     // Helper to show modal with fade/scale effect
@@ -681,15 +785,15 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                                     statusSpan.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Completed';
                                                                     document.getElementById('markDoneModal-' + id).classList.add('hidden');
                                                                     document.querySelector('button.mark-done-btn[data-id="'+id+'"], button.reschedule-btn[data-id="'+id+'"], #markDoneModal-'+id).closest('td').querySelectorAll('.mark-done-btn, .reschedule-btn').forEach(function(b){b.remove();});
-                                                                    showActionSuccess('Marked as completed!');
+                                                                    showActionToast('Marked as completed!', 'success');
                                                                     setTimeout(function(){ location.reload(); }, 1300);
                                                                 } else {
-                                                                    alert(data.message || 'Failed to update.');
+                                                                    showActionToast(data.message || 'Failed to update.', 'error');
                                                                     button.disabled = false;
                                                                 }
                                                             })
                                                             .catch(() => {
-                                                                alert('Failed to update.');
+                                                                showActionToast('Failed to update.', 'error');
                                                                 button.disabled = false;
                                                             });
                                                         });
@@ -709,41 +813,215 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                 hideModal('rescheduleModal-' + id);
             });
         });
-                                                    // Reschedule form submit
-                                                    document.querySelectorAll('.reschedule-form').forEach(function(form) {
-                                                        form.addEventListener('submit', function(e) {
-                                                            e.preventDefault();
+
+                                                    // Open reschedule confirmation modal when user clicks Continue
+                                                    document.querySelectorAll('.open-reschedule-confirm').forEach(function(btn) {
+                                                        btn.addEventListener('click', function() {
                                                             var id = this.getAttribute('data-id');
-                                                            var newDate = this.querySelector('input[name="new_date"]').value;
-                                                            if (!newDate) return alert('Please select a new visitation date.');
-                                                            var submitBtn = this.querySelector('button[type="submit"]');
-                                                            submitBtn.disabled = true;
+                                                            var form = document.querySelector('.reschedule-form[data-id="'+id+'"]');
+                                                            
+                                                            // Check HTML5 form validity
+                                                            if (!form.checkValidity()) {
+                                                                form.reportValidity();
+                                                                return;
+                                                            }
+                                                            
+                                                            // Hide the reschedule modal and show confirmation modal
+                                                            hideModal('rescheduleModal-' + id);
+                                                            setTimeout(function() {
+                                                                showModal('rescheduleConfirmModal-' + id);
+                                                            }, 250);
+                                                        });
+                                                    });
+
+                                                    // Close reschedule confirmation modal
+                                                    document.querySelectorAll('.close-reschedule-confirm-modal').forEach(function(btn) {
+                                                        btn.addEventListener('click', function() {
+                                                            var id = this.getAttribute('data-id');
+                                                            hideModal('rescheduleConfirmModal-' + id);
+                                                            // Re-open the reschedule modal
+                                                            setTimeout(function() {
+                                                                showModal('rescheduleModal-' + id);
+                                                            }, 250);
+                                                        });
+                                                    });
+
+                                                    // Confirm and submit reschedule
+                                                    document.querySelectorAll('.confirm-reschedule').forEach(function(btn) {
+                                                        btn.addEventListener('click', function() {
+                                                            var id = this.getAttribute('data-id');
+                                                            var form = document.querySelector('.reschedule-form[data-id="'+id+'"]');
+                                                            var newDate = form.querySelector('input[name="new_date"]').value;
+                                                            var reason  = (form.querySelector('textarea[name="reschedule_reason"]').value || '').trim();
+                                                            
+                                                            btn.disabled = true;
                                                             fetch('mark_distribution_complete.php', {
                                                                 method: 'POST',
                                                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                                                body: 'distribution_id=' + encodeURIComponent(id) + '&reschedule=1&new_date=' + encodeURIComponent(newDate)
+                                                                body: 'distribution_id=' + encodeURIComponent(id) + '&reschedule=1&new_date=' + encodeURIComponent(newDate) + '&reschedule_reason=' + encodeURIComponent(reason)
                                                             })
                                                             .then(response => response.json())
                                                             .then(data => {
                                                                 if (data.success) {
-                                                                    var statusSpan = document.querySelector('button.mark-done-btn[data-id="'+id+'"], button.reschedule-btn[data-id="'+id+'"], #rescheduleModal-'+id).closest('td').previousElementSibling.querySelector('.status-badge');
-                                                                    statusSpan.className = 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit status-badge';
-                                                                    statusSpan.innerHTML = '<i class="fas fa-calendar-alt mr-1"></i>Rescheduled';
-                                                                    document.getElementById('rescheduleModal-' + id).classList.add('hidden');
-                                                                    showActionSuccess('Rescheduled successfully!');
+                                                                    hideModal('rescheduleConfirmModal-' + id);
+                                                                    showActionToast('Rescheduled successfully!', 'success');
                                                                     setTimeout(function(){ location.reload(); }, 1300);
-                                                                    // Do NOT remove the action buttons for rescheduled status; leave them visible
                                                                 } else {
-                                                                    alert(data.message || 'Failed to reschedule.');
-                                                                    submitBtn.disabled = false;
+                                                                    hideModal('rescheduleConfirmModal-' + id);
+                                                                    showActionToast(data.message || 'Failed to reschedule.', 'error');
+                                                                    btn.disabled = false;
+                                                                    setTimeout(function(){ showModal('rescheduleModal-' + id); }, 250);
                                                                 }
                                                             })
                                                             .catch(() => {
-                                                                alert('Failed to reschedule.');
-                                                                submitBtn.disabled = false;
+                                                                hideModal('rescheduleConfirmModal-' + id);
+                                                                showActionToast('Failed to reschedule.', 'error');
+                                                                btn.disabled = false;
+                                                                setTimeout(function(){ showModal('rescheduleModal-' + id); }, 250);
                                                             });
                                                         });
                                                     });
+
+                                                    // View reschedule history (lightweight alert for now)
+                                                    window.viewReschedHistory = function(id) {
+                                                        fetch('get_distribution_reschedules.php?log_id=' + encodeURIComponent(id))
+                                                            .then(r => r.json())
+                                                            .then(data => {
+                                                                if (!data || !data.success || !Array.isArray(data.items) || data.items.length === 0) {
+                                                                    alert('No reschedule history yet.');
+                                                                    return;
+                                                                }
+                                                                const lines = data.items.map(i => {
+                                                                    const oldd = i.old_visitation_date || 'N/A';
+                                                                    const newd = i.new_visitation_date || 'N/A';
+                                                                    const who  = i.staff_name || 'System';
+                                                                    const when = i.created_at || '';
+                                                                    return `• ${oldd} → ${newd} — ${i.reason} (${who}, ${when})`;
+                                                                }).join('\n');
+                                                                alert(lines);
+                                                            })
+                                                            .catch(() => alert('Failed to load history.'));
+                                                    }
+
+                                                    // Initialize one-time tooltip logic for latest reschedule details
+                                                    if (!window.__reschedTooltipInit) {
+                                                        window.__reschedTooltipInit = true;
+                                                        window.__reschedCache = {};
+
+                                                        function getTooltipEl() {
+                                                            let el = document.getElementById('reschedTooltip');
+                                                            if (!el) {
+                                                                el = document.createElement('div');
+                                                                el.id = 'reschedTooltip';
+                                                                el.className = 'tooltip-box hidden';
+                                                                document.body.appendChild(el);
+                                                            }
+                                                            return el;
+                                                        }
+
+                                                        function escapeHtml(s){
+                                                            return (s||'').replace(/[&<>"]+/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]});
+                                                        }
+
+                                                        function formatDate(d){
+                                                            if(!d) return 'N/A';
+                                                            const dt = new Date(d.replace(' ', 'T'));
+                                                            if(isNaN(dt)) return d;
+                                                            return dt.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'2-digit'});
+                                                        }
+                                                        function formatDateTime(d){
+                                                            if(!d) return 'N/A';
+                                                            const dt = new Date(d.replace(' ', 'T'));
+                                                            if(isNaN(dt)) return d;
+                                                            return dt.toLocaleString('en-US', {year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+                                                        }
+
+                                                        function positionTooltip(el, anchor){
+                                                            const rect = anchor.getBoundingClientRect();
+                                                            const margin = 8;
+                                                            el.style.left = Math.max(8, rect.right + margin) + 'px';
+                                                            el.style.top  = Math.max(8, rect.top) + 'px';
+                                                        }
+
+                                                        function showTooltipFor(btn){
+                                                            const id = btn.getAttribute('data-id');
+                                                            const tooltip = getTooltipEl();
+                                                            const cached = window.__reschedCache[id];
+
+                                                            function render(item){
+                                                                const html = `
+                                                                    <div class="tooltip-title">Latest Reschedule</div>
+                                                                    <div><span class="tooltip-muted">New date:</span> ${formatDate(item.new_visitation_date)}</div>
+                                                                    <div><span class="tooltip-muted">Reason:</span> ${escapeHtml(item.reason || '—')}</div>
+                                                                    <div class="tooltip-muted mt-1">By ${escapeHtml(item.staff_name || 'System')} on ${formatDateTime(item.created_at)}</div>
+                                                                `;
+                                                                tooltip.innerHTML = html;
+                                                                tooltip.classList.remove('hidden');
+                                                                positionTooltip(tooltip, btn);
+                                                            }
+
+                                                            if (cached) {
+                                                                render(cached);
+                                                                return;
+                                                            }
+
+                                                            tooltip.innerHTML = '<div class="tooltip-title">Loading…</div>';
+                                                            tooltip.classList.remove('hidden');
+                                                            positionTooltip(tooltip, btn);
+
+                                                            fetch('get_distribution_reschedules.php?log_id=' + encodeURIComponent(id))
+                                                                .then(r => r.json())
+                                                                .then(data => {
+                                                                    if (data && data.success && Array.isArray(data.items) && data.items.length > 0) {
+                                                                        const latest = data.items[0];
+                                                                        window.__reschedCache[id] = latest;
+                                                                        render(latest);
+                                                                    } else {
+                                                                        tooltip.innerHTML = '<div class="tooltip-title">No reschedule history found</div>';
+                                                                        positionTooltip(tooltip, btn);
+                                                                    }
+                                                                })
+                                                                .catch(() => {
+                                                                    tooltip.innerHTML = '<div class="tooltip-title">Failed to load</div>';
+                                                                    positionTooltip(tooltip, btn);
+                                                                });
+                                                        }
+
+                                                        function hideTooltip(){
+                                                            const tooltip = document.getElementById('reschedTooltip');
+                                                            if (tooltip) tooltip.classList.add('hidden');
+                                                        }
+
+                                                        // Hover and focus handlers (event delegation)
+                                                        document.body.addEventListener('mouseenter', function(e){
+                                                            const btn = e.target.closest('.resched-info');
+                                                            if (btn) showTooltipFor(btn);
+                                                        }, true);
+                                                        document.body.addEventListener('mouseleave', function(e){
+                                                            const btn = e.target.closest('.resched-info');
+                                                            if (btn) hideTooltip();
+                                                        }, true);
+                                                        document.body.addEventListener('focusin', function(e){
+                                                            const btn = e.target.closest('.resched-info');
+                                                            if (btn) showTooltipFor(btn);
+                                                        });
+                                                        document.body.addEventListener('focusout', function(e){
+                                                            const btn = e.target.closest('.resched-info');
+                                                            if (btn) hideTooltip();
+                                                        });
+                                                        // Click toggles (useful on mobile)
+                                                        document.body.addEventListener('click', function(e){
+                                                            const btn = e.target.closest('.resched-info');
+                                                            const tooltip = document.getElementById('reschedTooltip');
+                                                            if (btn) {
+                                                                if (tooltip && !tooltip.classList.contains('hidden')) hideTooltip();
+                                                                showTooltipFor(btn);
+                                                                e.stopPropagation();
+                                                            } else {
+                                                                hideTooltip();
+                                                            }
+                                                        });
+                                                    }
                                                 });
                                                 </script>
                                             </td>
@@ -912,3 +1190,12 @@ function hideDistributionSuggestions() {
     }
 }
 </script>
+<style>
+/* Simple tooltip styling for reschedule details */
+.tooltip-box{position:fixed;z-index:99999;background:#fff;border:1px solid #e5e7eb;box-shadow:0 10px 15px rgba(0,0,0,0.1);border-radius:8px;padding:8px 12px;min-width:220px;max-width:320px;font-size:12px;color:#111827}
+.tooltip-box.hidden{display:none}
+.tooltip-title{font-weight:600;margin-bottom:4px;color:#111827}
+.tooltip-muted{color:#6b7280}
+.toast-success{background:#16a34a;color:#fff}
+.toast-error{background:#dc2626;color:#fff}
+</style>

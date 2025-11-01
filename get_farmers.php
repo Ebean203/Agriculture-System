@@ -19,7 +19,7 @@ try {
             exit;
         }
         
-        // Search farmers by name, contact number
+    // Search farmers by name, contact number
         $archived_condition = $include_archived ? "" : "f.archived = 0 AND ";
         
         // Add type-specific filtering
@@ -39,19 +39,18 @@ try {
                 break;
         }
         
+        // Only show farmers whose last name starts with the typed query (strict prefix match)
         $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.contact_number, b.barangay_name,
                        f.archived as is_archived
                 FROM farmers f 
                 LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                WHERE {$archived_condition}{$type_condition}(CONCAT(f.first_name, ' ', f.middle_name, ' ', f.last_name) LIKE ? 
-                     OR f.contact_number LIKE ?
-                     OR f.farmer_id LIKE ?)
-                ORDER BY f.first_name, f.last_name
+                WHERE {$archived_condition}{$type_condition}f.last_name LIKE ?
+                ORDER BY f.last_name, f.first_name
                 LIMIT 10";
-        
-        $searchTerm = "%{$query}%";
+
+        $prefix = "{$query}%";           // starts-with only
         $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "sss", $searchTerm, $searchTerm, $searchTerm);
+        mysqli_stmt_bind_param($stmt, "s", $prefix);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
         

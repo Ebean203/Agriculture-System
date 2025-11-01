@@ -264,21 +264,17 @@ foreach ($notifications as $notification) {
                 <!-- Inventory Summary Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <?php
-                    // Calculate summary statistics (safe handling after truncation)
-                    $total_items = 0;
+                    // Calculate summary statistics using master totals from input_categories
+                    $total_items = count($master_totals); // Count unique input types
                     $out_of_stock = 0;
                     $low_stock = 0;
                     
-                    if ($row_count > 0) {
-                        mysqli_data_seek($result, 0);
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            $total_items++;
-                            $current_quantity = intval($row['quantity_on_hand']); // Ensure integer
-                            if ($current_quantity == 0) {
-                                $out_of_stock++;
-                            } elseif ($current_quantity <= 10) {
-                                $low_stock++;
-                            }
+                    // Use master totals for accurate stock counts
+                    foreach ($master_totals as $input_id => $stock) {
+                        if ($stock == 0) {
+                            $out_of_stock++;
+                        } elseif ($stock <= 10) {
+                            $low_stock++;
                         }
                     }
                     ?>
@@ -365,6 +361,15 @@ foreach ($notifications as $notification) {
                     }
                 }
                 
+                // Ensure items with 0 stock are always in critical (if not already there)
+                foreach ($all_items as $input_id => $item) {
+                    $current_stock = isset($master_totals[$input_id]) ? $master_totals[$input_id] : intval($item['quantity_on_hand']);
+                    if ($current_stock == 0) {
+                        $critical_items[] = $item;
+                        unset($all_items[$input_id]);
+                    }
+                }
+                
                 // Remaining items are normal
                 $normal_items = array_values($all_items);
                 ?>
@@ -438,11 +443,6 @@ foreach ($notifications as $notification) {
                 <?php
                 // Function to render inventory cards with status-specific styling
                 function renderInventoryCard($row, $distributions, $status, $notification_lookup) {
-                    // Expiration date display
-                    $expiration_display = '';
-                    if (!empty($row['expiration_date'])) {
-                        $expiration_display = '<div class="mb-2 text-xs text-gray-500"><i class="fas fa-hourglass-half mr-1"></i>Expires: ' . date('M d, Y', strtotime($row['expiration_date'])) . '</div>';
-                    }
                     // Use master total_stock as source of truth for available stock when present
                     global $master_totals;
                     $batch_quantity = intval($row['quantity_on_hand']);
@@ -524,12 +524,6 @@ foreach ($notifications as $notification) {
                         <?php endif; ?>
                         
                         <div class="p-6">
-                            <?php echo $expiration_display; ?>
-                            <?php if (!empty($row['expiration_date'])): ?>
-                            <div class="mb-2 text-xs text-gray-500">
-                                <i class="fas fa-hourglass-half mr-1"></i>Expires: <?php echo date('M d, Y', strtotime($row['expiration_date'])); ?>
-                            </div>
-                            <?php endif; ?>
                             <!-- Header -->
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center">
@@ -595,10 +589,11 @@ foreach ($notifications as $notification) {
                                     <i class="fas fa-plus mr-1"></i> Stock In
                                 </button>
                                 <?php endif; ?>
-                                <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
+                                <button class="flex-1 <?php echo $available_display == 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'; ?> text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-center distribute-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
                                         data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
-                                        data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
+                                        data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>"
+                                        <?php echo $available_display == 0 ? 'disabled' : ''; ?>>
                                     <i class="fas fa-share mr-1"></i> Distribute
                                 </button>
                             </div>
@@ -625,11 +620,6 @@ foreach ($notifications as $notification) {
                     <?php else:
                         mysqli_data_seek($result, 0);
                         while ($row = mysqli_fetch_assoc($result)):
-                            // Expiration date display
-                            $expiration_display = '';
-                            if (!empty($row['expiration_date'])) {
-                                $expiration_display = '<div class="mb-2 text-xs text-gray-500"><i class="fas fa-hourglass-half mr-1"></i>Expires: ' . date('M d, Y', strtotime($row['expiration_date'])) . '</div>';
-                            }
                             $quantity = intval($row['quantity_on_hand']); // Ensure it's always an integer
                             $distributed = isset($distributions[$row['input_id']]) ? intval($distributions[$row['input_id']]) : 0;
                             
@@ -703,7 +693,6 @@ foreach ($notifications as $notification) {
                                 </div>
                                 
                                 <!-- Statistics -->
-                                <?php echo $expiration_display; ?>
                                 <div class="grid grid-cols-3 gap-4 mb-4">
                                     <div class="text-center border-r border-gray-200">
                                         <div class="text-2xl font-bold text-green-600"><?php echo number_format(isset($master_totals[$row['input_id']]) ? $master_totals[$row['input_id']] : $quantity); ?></div>
@@ -720,11 +709,6 @@ foreach ($notifications as $notification) {
                                 </div>
                                 
                                 <!-- Last Updated -->
-                                <?php if (!empty($row['expiration_date'])): ?>
-                                <div class="mb-2 text-xs text-gray-500">
-                                    <i class="fas fa-hourglass-half mr-1"></i>Expires: <?php echo date('M d, Y', strtotime($row['expiration_date'])); ?>
-                                </div>
-                                <?php endif; ?>
                                 <?php if (isset($row['last_updated']) && !empty($row['last_updated'])): ?>
                                 <div class="mb-4 pt-4 border-t border-gray-200">
                                     <p class="text-sm text-gray-600">
@@ -743,10 +727,11 @@ foreach ($notifications as $notification) {
                                             data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
                                         <i class="fas fa-edit mr-1"></i> Update
                                     </button>
-                                    <button class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center distribute-btn" 
+                                    <button class="flex-1 <?php echo $quantity_safe == 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'; ?> text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-center distribute-btn" 
                                             data-input-id="<?php echo htmlspecialchars($input_id); ?>"
                                             data-input-name="<?php echo htmlspecialchars($input_name_original); ?>"
-                                            data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>">
+                                            data-quantity="<?php echo htmlspecialchars($quantity_safe); ?>"
+                                            <?php echo $quantity_safe == 0 ? 'disabled' : ''; ?>>
                                         <i class="fas fa-share mr-1"></i> Distribute
                                     </button>
                                 </div>
@@ -898,7 +883,7 @@ foreach ($notifications as $notification) {
                                     <input type="text" 
                                            class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" 
                                            id="farmer_name" 
-                                           placeholder="Type farmer name..."
+                                           placeholder="Type last name (e.g., Cruz)..."
                                            autocomplete="off"
                                            required
                                            onkeyup="searchFarmers(this.value)"
@@ -911,7 +896,7 @@ foreach ($notifications as $notification) {
                                         <!-- Suggestions will be populated here -->
                                     </div>
                                 </div>
-                                <p class="text-sm text-gray-600 mt-1">Start typing to search for farmers</p>
+                                <p class="text-sm text-gray-600 mt-1">Tip: Type the farmer's last name. Suggestions show “Last, First M.” like in Farmers page.</p>
                             </div>
                             
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1094,88 +1079,52 @@ foreach ($notifications as $notification) {
             loadFarmers();
         });
 
-        function loadFarmers() {
-            fetch('get_farmers.php')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Ensure data is an array, even if empty
-                    farmers = Array.isArray(data) ? data : [];
-                })
-                .catch(error => {
-                    console.error('Error loading farmers:', error);
-                    farmers = []; // Set to empty array on error
-                });
-        }
+        function loadFarmers() { /* Prefetch disabled; we now query per keystroke like farmers.php */ }
 
         function searchFarmers(query) {
             const suggestions = document.getElementById('farmer_suggestions');
             const selectedFarmerField = document.getElementById('selected_farmer_id');
-            
-            if (!suggestions) return; // Exit if element doesn't exist
-            
+            if (!suggestions) return;
             if (!query || query.length < 1) {
                 suggestions.innerHTML = '';
                 suggestions.classList.add('hidden');
                 if (selectedFarmerField) selectedFarmerField.value = '';
                 return;
             }
-
-            // Ensure farmers array exists and is not empty
-            if (!Array.isArray(farmers) || farmers.length === 0) {
-                suggestions.innerHTML = '<div class="px-3 py-2 text-orange-500">No farmers registered yet. Please register farmers first.</div>';
-                suggestions.classList.remove('hidden');
-                return;
-            }
-
-            const filteredFarmers = farmers.filter(farmer => {
-                if (!farmer || !farmer.first_name || !farmer.last_name) return false;
-                const fullName = `${farmer.first_name} ${farmer.last_name}`.toLowerCase();
-                return fullName.includes(query.toLowerCase());
-            });
-
-            if (filteredFarmers.length > 0) {
-                // Check for exact match and auto-select if found
-                const exactMatch = filteredFarmers.find(farmer => {
-                    const fullName = `${farmer.first_name} ${farmer.last_name}`.toLowerCase();
-                    return fullName === query.toLowerCase();
-                });
-                
-                if (exactMatch) {
-                    const selectedFarmerField = document.getElementById('selected_farmer_id');
-                    if (selectedFarmerField) {
-                        selectedFarmerField.value = exactMatch.farmer_id || '';
-                    }
-                }
-                
-                let html = '';
-                filteredFarmers.forEach((farmer, index) => {
-                    const fullName = `${farmer.first_name || ''} ${farmer.last_name || ''}`.trim();
-                    const farmerId = farmer.farmer_id || '';
-                    // Escape quotes and special characters to prevent JavaScript errors
-                    const escapedName = fullName.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                    html += `<div class="suggestion-item px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100" 
-                                  onmousedown="selectFarmer('${farmerId}', '${escapedName}')" 
-                                  data-index="${index}">
-                                <div class="font-medium">${fullName}</div>
-                                <div class="text-sm text-gray-600">ID: ${farmerId}</div>
-                             </div>`;
-                });
-                suggestions.innerHTML = html;
-                suggestions.classList.remove('hidden');
-            } else {
-                // Clear selected farmer if no matches found
-                const selectedFarmerField = document.getElementById('selected_farmer_id');
-                if (selectedFarmerField) {
-                    selectedFarmerField.value = '';
-                }
-                suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found matching your search</div>';
-                suggestions.classList.remove('hidden');
-            }
+            // Query server like farmers.php (prefix by last name)
+            fetch(`get_farmers.php?action=search&query=${encodeURIComponent(query)}`)
+              .then(r => r.json())
+              .then(data => {
+                  if (!data || data.success === false) {
+                      suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found</div>';
+                      suggestions.classList.remove('hidden');
+                      return;
+                  }
+                  const list = Array.isArray(data.farmers) ? data.farmers : [];
+                  if (list.length === 0) {
+                      suggestions.innerHTML = '<div class="px-3 py-2 text-gray-500">No farmers found</div>';
+                      suggestions.classList.remove('hidden');
+                      return;
+                  }
+                  let html = '';
+                  list.forEach((f, index) => {
+                      const name = f.full_name || '';
+                      const id = f.farmer_id || '';
+                      const brgy = f.barangay_name ? ` | ${f.barangay_name}` : '';
+                      const escapedName = name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                      html += `<div class="suggestion-item px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100" 
+                                   onmousedown="selectFarmer('${id}', '${escapedName}')" data-index="${index}">
+                                   <div class="font-medium">${name}</div>
+                                   <div class="text-sm text-gray-600">ID: ${id}${brgy}</div>
+                               </div>`;
+                  });
+                  suggestions.innerHTML = html;
+                  suggestions.classList.remove('hidden');
+              })
+              .catch(() => {
+                  suggestions.innerHTML = '<div class="px-3 py-2 text-red-500">Search failed. Check connection.</div>';
+                  suggestions.classList.remove('hidden');
+              });
         }
 
         function selectFarmer(farmerId, farmerName) {
@@ -1228,35 +1177,44 @@ foreach ($notifications as $notification) {
             const quantity = document.getElementById('quantity_distributed');
             const dateGiven = document.querySelector('input[name="date_given"]');
             const visitationDate = document.getElementById('visitation_date');
+            const availableQtyText = document.getElementById('available_quantity');
             
             // Check if input is selected
             if (!inputId || !inputId.value) {
-                alert('Please select an input to distribute.');
+                showErrorMessage('Please select an input to distribute.');
                 return false;
             }
             
             // Check if farmer is selected
             if (!farmerId || !farmerId.value) {
-                alert('Please select a farmer.');
+                showErrorMessage('Please select a farmer.');
+                return false;
+            }
+            
+            // Get available quantity
+            const availableQty = availableQtyText ? parseInt(availableQtyText.textContent) : 0;
+            
+            // Check if stock is 0
+            if (availableQty === 0) {
+                showErrorMessage('Cannot distribute. This input is currently out of stock.');
                 return false;
             }
             
             // Check quantity
             if (!quantity || !quantity.value || parseInt(quantity.value) <= 0) {
-                alert('Please enter a valid quantity to distribute.');
+                showErrorMessage('Please enter a valid quantity to distribute.');
                 return false;
             }
             
             // Check if quantity exceeds available stock
-            const maxQuantity = parseInt(quantity.max) || 0;
-            if (parseInt(quantity.value) > maxQuantity) {
-                alert(`Quantity cannot exceed available stock (${maxQuantity}).`);
+            if (parseInt(quantity.value) > availableQty) {
+                showErrorMessage(`Quantity to distribute (${quantity.value}) exceeds available stock (${availableQty}). Please enter a quantity less than or equal to ${availableQty}.`);
                 return false;
             }
             
             // Check date given
             if (!dateGiven || !dateGiven.value) {
-                alert('Please select a distribution date.');
+                showErrorMessage('Please select a distribution date.');
                 return false;
             }
             
@@ -1264,7 +1222,7 @@ foreach ($notifications as $notification) {
             const visitationSection = document.getElementById('visitation_section');
             if (visitationSection && !visitationSection.classList.contains('hidden')) {
                 if (!visitationDate || !visitationDate.value) {
-                    alert('Visitation date is required for all input distributions.');
+                    showErrorMessage('Visitation date is required for all input distributions.');
                     return false;
                 }
                 
@@ -1274,7 +1232,7 @@ foreach ($notifications as $notification) {
                     const visitDate = new Date(visitationDate.value);
                     
                     if (visitDate < distributionDate) {
-                        alert('Visitation date cannot be earlier than the distribution date.');
+                        showErrorMessage('Visitation date cannot be earlier than the distribution date.');
                         return false;
                     }
                 }
@@ -1571,18 +1529,6 @@ foreach ($notifications as $notification) {
                         <option value="meter">Meter</option>
                         <option value="head">Head</option>
                     </select>
-                </div>
-                
-                <div class="mb-4">
-              <label for="initial_quantity" class="block text-sm font-medium text-gray-700 mb-2">Initial Quantity</label>
-              <input type="number" id="initial_quantity" name="quantity_on_hand" required min="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter initial stock quantity">
-          </div>
-          <div class="mb-4">
-              <label for="expiration_date" class="block text-sm font-medium text-gray-700 mb-2">Expiration Date (optional)</label>
-              <input type="date" id="expiration_date" name="expiration_date" required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 </div>
                 
                 <div class="flex justify-end space-x-3">

@@ -459,57 +459,59 @@ include 'includes/layout_start.php';
             </div>
         </div>
 
-        <!-- Average Yield -->
-                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-agri-green">
-            <div class="flex items-center">
-                <div class="w-12 h-12 bg-agri-light rounded-lg flex items-center justify-center mr-4">
-                    <i class="fas fa-seedling text-agri-green text-xl"></i>
+    </div>
+
+    <!-- Yield Total Cards by Category -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <?php
+        // Calculate totals per category
+        $category_totals = [
+            1 => ['name' => 'Agronomic Crops', 'icon' => 'fa-wheat-awn', 'color' => 'green', 'yields' => []],
+            2 => ['name' => 'High Value Crops', 'icon' => 'fa-apple-alt', 'color' => 'purple', 'yields' => []],
+            3 => ['name' => 'Livestocks', 'icon' => 'fa-cow', 'color' => 'orange', 'yields' => []],
+            4 => ['name' => 'Poultry', 'icon' => 'fa-dove', 'color' => 'yellow', 'yields' => []]
+        ];
+
+        // Aggregate yields by category and unit
+        foreach ($yield_records as $record) {
+            $cat_id = $record['category_id'] ?? null;
+            if ($cat_id && isset($category_totals[$cat_id])) {
+                $amount = floatval($record['yield_amount'] ?? 0);
+                $unit = trim($record['unit'] ?? '');
+                if ($unit === '') $unit = 'units';
+                
+                if (!isset($category_totals[$cat_id]['yields'][$unit])) {
+                    $category_totals[$cat_id]['yields'][$unit] = 0;
+                }
+                $category_totals[$cat_id]['yields'][$unit] += $amount;
+            }
+        }
+
+        // Display a card for each category
+        foreach ($category_totals as $cat_id => $cat_data):
+            $total_yield_display = '0';
+            if (!empty($cat_data['yields'])) {
+                // Show aggregated totals per unit
+                $parts = [];
+                foreach ($cat_data['yields'] as $unit => $total) {
+                    $parts[] = number_format($total, 1) . ' ' . htmlspecialchars($unit);
+                }
+                $total_yield_display = implode('<br>', $parts);
+            }
+        ?>
+        <!-- <?php echo htmlspecialchars($cat_data['name']); ?> Total -->
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-<?php echo $cat_data['color']; ?>-500">
+            <div class="flex items-start">
+                <div class="w-12 h-12 bg-<?php echo $cat_data['color']; ?>-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                    <i class="fas <?php echo $cat_data['icon']; ?> text-<?php echo $cat_data['color']; ?>-600 text-xl"></i>
                 </div>
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        if ($total_records > 0) {
-                            $total_yield = array_sum(array_column($yield_records, 'yield_amount'));
-                            $avg_yield = $total_yield / $total_records;
-                                    // Determine unit: if all records share the same unit, show it; otherwise indicate mixed units
-                                    $units = array_filter(array_unique(array_map(function($r){ return $r['unit'] ?? ''; }, $yield_records)));
-                                    $unit_label = '';
-                                    if (count($units) === 1 && $units[0] !== '') {
-                                        $unit_label = ' ' . htmlspecialchars($units[0]);
-                                    } else if (count($units) > 1) {
-                                        $unit_label = ' (mixed units)';
-                                    }
-                                    echo number_format($avg_yield, 1) . $unit_label;
-                        } else {
-                                    echo '0';
-                        }
-                    ?></h3>
-                    <p class="text-gray-600">Average Yield</p>
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-gray-900 leading-tight"><?php echo $total_yield_display; ?></h3>
+                    <p class="text-gray-600 text-sm mt-1"><?php echo htmlspecialchars($cat_data['name']); ?></p>
                 </div>
             </div>
-                    <?php
-                        // Use helper to aggregate totals and normalize unit labels
-                        $totals_by_commodity = aggregate_totals_by_commodity_from_array($yield_records);
-                        if (!empty($totals_by_commodity)) {
-                            echo '<div class="mt-4 text-sm text-gray-700">Totals by commodity:</div>';
-                            echo '<ul class="mt-2 text-sm space-y-1">';
-                            $count = 0;
-                            foreach ($totals_by_commodity as $com => $units) {
-                                $parts = [];
-                                foreach ($units as $unit => $amt) {
-                                    $labelUnit = $unit ? normalize_unit_label($unit) : '';
-                                    $parts[] = number_format($amt, 2) . ($labelUnit ? ' ' . htmlspecialchars($labelUnit) : '');
-                                }
-                                echo '<li>' . htmlspecialchars($com) . ': ' . implode('; ', $parts) . '</li>';
-                                $count++;
-                                if ($count >= 8) {
-                                    echo '<li class="text-gray-500">and more...</li>';
-                                    break;
-                                }
-                            }
-                            echo '</ul>';
-                        }
-                    ?>
-                </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 
 

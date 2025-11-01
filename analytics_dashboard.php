@@ -4,7 +4,8 @@ require_once 'check_session.php';
 require_once __DIR__ . '/includes/yield_helpers.php';
 
 // Get date range from request or set defaults
-$start_date = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01')); // First day of current month
+// Default to current year to show more data in summary cards
+$start_date = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-01-01')); // First day of current year
 $end_date = isset($_POST['end_date']) ? $_POST['end_date'] : (isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d')); // Today
 $report_type = 'yield_monitoring'; // Default report type for simplified chart
 $chart_type = '';
@@ -624,6 +625,18 @@ if (document.getElementById('distributionTrendChart')) {
     });
     if (distributionFromInput) distributionFromInput.addEventListener('change', handleDistributionRangeChange);
     if (distributionToInput) distributionToInput.addEventListener('change', handleDistributionRangeChange);
+    // Safe invoker to avoid calling before function is defined
+    function callInitDistributionWhenReady(range, startDate, endDate) {
+        const tryCall = () => {
+            if (typeof initDistributionTrendChart === 'function') {
+                initDistributionTrendChart(range, startDate, endDate);
+            } else {
+                setTimeout(tryCall, 50);
+            }
+        };
+        tryCall();
+    }
+
     function handleDistributionRangeChange() {
         const customRangeDiv = document.getElementById('distributionCustomRange');
         let today = new Date();
@@ -648,7 +661,7 @@ if (document.getElementById('distributionTrendChart')) {
             endDate = distributionToInput.value;
         }
         if (distributionSelectedValue !== 'custom_range' || (distributionFromInput.value && distributionToInput.value)) {
-            initDistributionTrendChart('custom', startDate, endDate);
+            callInitDistributionWhenReady('custom', startDate, endDate);
         }
     }
     // Initial load
@@ -697,7 +710,7 @@ if (document.getElementById('distributionTrendChart')) {
                             <div class="d-flex align-items-center gap-2">
                                 <div class="dropdown modern-dropdown">
                                     <button class="btn btn-light btn-sm dropdown-toggle px-3 py-1" type="button" id="complianceRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <span id="complianceRangeDropdownLabel">Current Month</span>
+                                        <span id="complianceRangeDropdownLabel">Current Year</span>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="complianceRangeDropdown">
                                         <li><a class="dropdown-item" href="#" data-value="current_month">Current Month</a></li>
@@ -725,7 +738,7 @@ if (document.getElementById('complianceBarChart')) {
     const complianceDropdownItems = document.querySelectorAll('#complianceRangeDropdown ~ .dropdown-menu .dropdown-item');
     const complianceFromInput = document.getElementById('complianceFromDate');
     const complianceToInput = document.getElementById('complianceToDate');
-    let complianceSelectedValue = 'current_month';
+    let complianceSelectedValue = 'current_year';
     complianceDropdownItems.forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
@@ -736,6 +749,18 @@ if (document.getElementById('complianceBarChart')) {
     });
     if (complianceFromInput) complianceFromInput.addEventListener('change', handleComplianceRangeChange);
     if (complianceToInput) complianceToInput.addEventListener('change', handleComplianceRangeChange);
+    // Safe invoker to avoid calling before function is defined
+    function callInitComplianceWhenReady(startDate, endDate) {
+        const tryCall = () => {
+            if (typeof initComplianceBarChart === 'function') {
+                initComplianceBarChart(startDate, endDate);
+            } else {
+                setTimeout(tryCall, 50);
+            }
+        };
+        tryCall();
+    }
+
     function handleComplianceRangeChange() {
         const customRangeDiv = document.getElementById('complianceCustomRange');
         let today = new Date();
@@ -759,7 +784,7 @@ if (document.getElementById('complianceBarChart')) {
             endDate = complianceToInput.value;
         }
         if (complianceSelectedValue !== 'custom_range' || (complianceFromInput.value && complianceToInput.value)) {
-            initComplianceBarChart(startDate, endDate);
+            callInitComplianceWhenReady(startDate, endDate);
         }
     }
     // Initial load
@@ -775,7 +800,7 @@ if (document.getElementById('complianceBarChart')) {
                             <div class="d-flex align-items-center gap-2">
                                 <div class="dropdown modern-dropdown">
                                     <button class="btn btn-light btn-sm dropdown-toggle px-3 py-1" type="button" id="commodityRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <span id="commodityRangeDropdownLabel">Current Month</span>
+                                        <span id="commodityRangeDropdownLabel">Current Year</span>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="commodityRangeDropdown">
                                         <li><a class="dropdown-item" href="#" data-value="current_month">Current Month</a></li>
@@ -1405,7 +1430,7 @@ if (document.getElementById('complianceBarChart')) {
             const commodityDropdownItems = document.querySelectorAll('#commodityRangeDropdown ~ .dropdown-menu .dropdown-item');
             const commodityFromInput = document.getElementById('commodityFromDate');
             const commodityToInput = document.getElementById('commodityToDate');
-            let commoditySelectedValue = 'current_month';
+            let commoditySelectedValue = 'current_year';
             commodityDropdownItems.forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();

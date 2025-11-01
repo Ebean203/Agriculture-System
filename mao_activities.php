@@ -3,6 +3,7 @@ session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
 require_once 'includes/activity_logger.php';
+require_once 'includes/name_helpers.php';
 
 $pageTitle = 'MAO Activities Management - Lagonglong FARMS';
 
@@ -75,6 +76,174 @@ if ($_POST) {
                         $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error;
                     }
                 }
+                break;
+                
+            case 'mark_done':
+                $activity_id = $_POST['activity_id'];
+                
+                // Update activity status to completed
+                $stmt = $conn->prepare("UPDATE mao_activities SET status = 'completed', updated_at = NOW() WHERE activity_id = ?");
+                
+                if ($stmt) {
+                    $stmt->bind_param("i", $activity_id);
+                    
+                    if ($stmt->execute()) {
+                        $_SESSION['success_message'] = 'Activity marked as done successfully!';
+                        
+                        // Get activity title for logging
+                        $title_stmt = $conn->prepare("SELECT title FROM mao_activities WHERE activity_id = ?");
+                        $title_stmt->bind_param("i", $activity_id);
+                        $title_stmt->execute();
+                        $title_result = $title_stmt->get_result();
+                        $title_row = $title_result->fetch_assoc();
+                        
+                        // Log the activity
+                        logActivity($conn, 'COMPLETE_ACTIVITY', 'MAO_ACTIVITY', 'Marked activity as done: ' . $title_row['title']);
+                        $title_stmt->close();
+                    } else {
+                        $_SESSION['error_message'] = 'Error marking activity as done: ' . $stmt->error;
+                    }
+                    $stmt->close();
+                } else {
+                    $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error;
+                }
+                break;
+                
+            case 'reschedule':
+                $activity_id = (int)$_POST['activity_id'];
+                $new_date = $_POST['new_date'];
+                $reschedule_reason = trim($_POST['reschedule_reason']);
+
+                // Validate inputs
+                if (empty($new_date)) {
+                    $_SESSION['error_message'] = 'Please select a new date.';
+                    break;
+                }
+                if ($reschedule_reason === '' || strlen($reschedule_reason) < 3) {
+                    $_SESSION['error_message'] = 'Please provide a reason for rescheduling (at least 3 characters).';
+                    break;
+                }
+
+                // Fetch current date and title
+                $curr_stmt = $conn->prepare("SELECT activity_date, title FROM mao_activities WHERE activity_id = ?");
+                if (!$curr_stmt) { $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error; break; }
+                $curr_stmt->bind_param("i", $activity_id);
+                $curr_stmt->execute();
+                $curr_res = $curr_stmt->get_result();
+                $curr = $curr_res->fetch_assoc();
+                $curr_stmt->close();
+
+                if (!$curr) { $_SESSION['error_message'] = 'Activity not found.'; break; }
+                $old_date = $curr['activity_date'];
+                $title_for_log = $curr['title'];
+
+                if ($old_date === $new_date) {
+                    $_SESSION['error_message'] = 'New date must be different from the current scheduled date.';
+                    break;
+                }
+
+                // Transaction: insert history then update main record
+                $conn->begin_transaction();
+                try {
+                    // Insert into history table if it exists
+                    $historyInserted = false;
+                    $dbRes = mysqli_query($conn, 'SELECT DATABASE()');
+                    $dbRow = $dbRes ? mysqli_fetch_row($dbRes) : null;
+                    $dbName = $dbRow ? $dbRow[0] : null;
+                    $histCheck = $conn->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = 'mao_activity_reschedules' LIMIT 1");
+                    if ($histCheck && $dbName) {
+                        $histCheck->bind_param('s', $dbName);
+                        $histCheck->execute();
+                        $histCheck->store_result();
+                        if ($histCheck->num_rows > 0) {
+                            // Insert history
+                            $staff_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+                            $hist_stmt = $conn->prepare("INSERT INTO mao_activity_reschedules (activity_id, old_date, new_date, reason, staff_id) VALUES (?, ?, ?, ?, ?)");
+                            if ($hist_stmt) {
+                                // bind as i s s s i (last can be null)
+                                $hist_stmt->bind_param("isssi", $activity_id, $old_date, $new_date, $reschedule_reason, $staff_id);
+                                $historyInserted = $hist_stmt->execute();
+                                $hist_stmt->close();
+                            }
+                        }
+                        $histCheck->close();
+                    }
+
+                    // Update main activity date
+                    $stmt = $conn->prepare("UPDATE mao_activities SET activity_date = ?, updated_at = NOW() WHERE activity_id = ?");
+                    if (!$stmt) { throw new Exception('Error preparing update: ' . $conn->error); }
+                    $stmt->bind_param("si", $new_date, $activity_id);
+                    if (!$stmt->execute()) { throw new Exception('Error rescheduling activity: ' . $stmt->error); }
+                    $stmt->close();
+
+                    $conn->commit();
+                    $_SESSION['success_message'] = 'Activity rescheduled successfully!' . (!$historyInserted ? ' (History not recorded.)' : '');
+
+                    // Log the activity
+                    $log_details = 'Rescheduled activity: ' . $title_for_log . ' to ' . date('F j, Y', strtotime($new_date)) . ' (Reason: ' . $reschedule_reason . ')';
+                    logActivity($conn, 'RESCHEDULE_ACTIVITY', 'MAO_ACTIVITY', $log_details);
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    $_SESSION['error_message'] = $e->getMessage();
+                }
+                break;
+
+            case 'register_attendance':
+                $activity_id = isset($_POST['activity_id']) ? (int)$_POST['activity_id'] : 0;
+                $farmer_id = isset($_POST['farmer_id']) ? trim($_POST['farmer_id']) : '';
+
+                if ($activity_id <= 0 || $farmer_id === '') {
+                    $_SESSION['error_message'] = 'Please choose an activity and farmer to register.';
+                    break;
+                }
+
+                // Fetch activity title for messaging/logging
+                $activity_title = '';
+                $title_stmt = $conn->prepare("SELECT title FROM mao_activities WHERE activity_id = ?");
+                if ($title_stmt) {
+                    $title_stmt->bind_param('i', $activity_id);
+                    $title_stmt->execute();
+                    $title_result = $title_stmt->get_result();
+                    if ($row = $title_result->fetch_assoc()) {
+                        $activity_title = $row['title'];
+                    }
+                    $title_stmt->close();
+                }
+
+                // Fetch farmer name for messaging/logging
+                $farmer_name = '';
+                $farmer_stmt = $conn->prepare("SELECT first_name, middle_name, last_name, suffix FROM farmers WHERE farmer_id = ?");
+                if ($farmer_stmt) {
+                    $farmer_stmt->bind_param('s', $farmer_id);
+                    $farmer_stmt->execute();
+                    $farmer_result = $farmer_stmt->get_result();
+                    if ($farmer = $farmer_result->fetch_assoc()) {
+                        $farmer_name = formatFarmerName($farmer['first_name'], $farmer['middle_name'], $farmer['last_name'], $farmer['suffix']);
+                    }
+                    $farmer_stmt->close();
+                }
+
+                $insert_stmt = $conn->prepare("INSERT INTO mao_activity_attendance (activity_id, farmer_id) VALUES (?, ?)");
+                if (!$insert_stmt) {
+                    $_SESSION['error_message'] = 'Error preparing attendance registration: ' . $conn->error;
+                    break;
+                }
+
+                $insert_stmt->bind_param('is', $activity_id, $farmer_id);
+
+                if ($insert_stmt->execute()) {
+                    $_SESSION['success_message'] = 'Farmer successfully registered for this activity!';
+                    $log_details = 'Registered farmer ' . ($farmer_name ?: $farmer_id) . ' to activity ' . ($activity_title ?: ('#' . $activity_id));
+                    logActivity($conn, 'REGISTER_ATTENDANCE', 'MAO_ACTIVITY', $log_details);
+                } else {
+                    if ($insert_stmt->errno === 1062) {
+                        $_SESSION['error_message'] = 'This farmer is already registered for the selected activity.';
+                    } else {
+                        $_SESSION['error_message'] = 'Error registering farmer attendance: ' . $insert_stmt->error;
+                    }
+                }
+
+                $insert_stmt->close();
                 break;
         }
     }
@@ -338,28 +507,70 @@ $types_result = $types_stmt->get_result();
                         <div class="activity-card bg-white rounded-lg shadow-md p-6">
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
-                                    <div class="flex items-center mb-3">
-                                        <h3 class="text-xl font-bold text-gray-900 mr-4"><?php echo htmlspecialchars($activity['title']); ?></h3>
-                                        <?php
-                                        $type_class = 'activity-type-default';
-                                        switch (strtolower($activity['activity_type'])) {
-                                            case 'training':
-                                                $type_class = 'activity-type-training';
-                                                break;
-                                            case 'meeting':
-                                                $type_class = 'activity-type-meeting';
-                                                break;
-                                            case 'inspection':
-                                                $type_class = 'activity-type-inspection';
-                                                break;
-                                            case 'seminar':
-                                                $type_class = 'activity-type-seminar';
-                                                break;
-                                        }
-                                        ?>
-                                        <span class="activity-type-badge <?php echo $type_class; ?>">
-                                            <?php echo htmlspecialchars($activity['activity_type']); ?>
-                                        </span>
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div class="flex items-center">
+                                            <h3 class="text-xl font-bold text-gray-900 mr-4"><?php echo htmlspecialchars($activity['title']); ?></h3>
+                                            <?php
+                                            $type_class = 'activity-type-default';
+                                            switch (strtolower($activity['activity_type'])) {
+                                                case 'training':
+                                                    $type_class = 'activity-type-training';
+                                                    break;
+                                                case 'meeting':
+                                                    $type_class = 'activity-type-meeting';
+                                                    break;
+                                                case 'inspection':
+                                                    $type_class = 'activity-type-inspection';
+                                                    break;
+                                                case 'seminar':
+                                                    $type_class = 'activity-type-seminar';
+                                                    break;
+                                            }
+                                            ?>
+                                            <span class="activity-type-badge <?php echo $type_class; ?>">
+                                                <?php echo htmlspecialchars($activity['activity_type']); ?>
+                                            </span>
+                                        </div>
+                                        
+                                        <!-- Menu Button moved here -->
+                                        <div class="relative">
+                                            <button onclick="toggleActivityMenu(<?php echo $activity['activity_id']; ?>)" 
+                                                    class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors">
+                                                <i class="fas fa-ellipsis-v text-xl"></i>
+                                            </button>
+                                            
+                                            <!-- Dropdown Menu (appears above the button) -->
+                                            <div id="activityMenu<?php echo $activity['activity_id']; ?>" 
+                                                 class="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
+                                                <div class="py-1">
+                                                    <button onclick="openViewModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)" 
+                                                            class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
+                                                        <i class="fas fa-eye text-green-600 mr-3 w-5"></i>
+                                                        View Activity
+                                                    </button>
+                                                    <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)" 
+                                                            class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
+                                                        <i class="fas fa-edit text-blue-600 mr-3 w-5"></i>
+                                                        Edit Activity
+                                                    </button>
+                                                    <button onclick="openMarkDoneModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)" 
+                                                            class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
+                                                        <i class="fas fa-check-circle text-green-600 mr-3 w-5"></i>
+                                                        Mark as Done
+                                                    </button>
+                                                    <button onclick="openRegisterAttendanceModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)"
+                                                            class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
+                                                        <i class="fas fa-user-plus text-purple-600 mr-3 w-5"></i>
+                                                        Register Farmer
+                                                    </button>
+                                                    <button onclick="openRescheduleModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)" 
+                                                            class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
+                                                        <i class="fas fa-calendar-alt text-orange-600 mr-3 w-5"></i>
+                                                        Reschedule Activity
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <?php if (!empty($activity['description'])): ?>
@@ -381,17 +592,6 @@ $types_result = $types_stmt->get_result();
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="flex space-x-2 ml-4">
-                                    <button onclick="openViewModal(<?php echo htmlspecialchars(json_encode($activity)); ?>)" 
-                                            class="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600 transition-colors">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($activity)); ?>)" 
-                                            class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 transition-colors">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     <?php endwhile; ?>
@@ -410,6 +610,110 @@ $types_result = $types_stmt->get_result();
     <?php include 'includes/mao_activities_modals.php'; ?>
     
     <script>
+        // Activity Menu Dropdown Functions
+        function toggleActivityMenu(activityId) {
+            const menu = document.getElementById('activityMenu' + activityId);
+            const allMenus = document.querySelectorAll('[id^="activityMenu"]');
+            const wrapper = menu.parentElement; // relative container
+            const card = wrapper.closest('.activity-card');
+
+            // Close all other menus
+            allMenus.forEach(m => {
+                if (m.id !== 'activityMenu' + activityId) m.classList.add('hidden');
+            });
+
+            // Toggle visibility
+            const willShow = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden');
+            if (!willShow) return; // just closed
+
+            // Default placement: above the button
+            menu.style.transform = '';
+            menu.classList.remove('top-full', 'mt-2');
+            menu.classList.add('bottom-full', 'mb-2');
+
+            // Allow layout to paint, then measure and if the menu crosses the card's top,
+            // pin it to the card top (instead of flipping below)
+            requestAnimationFrame(() => {
+                const menuRect = menu.getBoundingClientRect();
+                const cardRect = card ? card.getBoundingClientRect() : { top: 0 };
+
+                const desiredTop = cardRect.top + 8; // small padding from the red line/top edge
+                if (menuRect.top < desiredTop) {
+                    const pushDown = desiredTop - menuRect.top;
+                    // Keep it above the button but slide it down so its top aligns with the card top
+                    menu.style.transform = `translateY(${pushDown}px)`;
+                }
+            });
+        }
+        
+        function closeActivityMenu(activityId) {
+            const menu = document.getElementById('activityMenu' + activityId);
+            menu.classList.add('hidden');
+        }
+        
+        // Close activity menus when clicking outside
+        document.addEventListener('click', function(event) {
+            const isMenuButton = event.target.closest('[onclick^="toggleActivityMenu"]');
+            const isMenuContent = event.target.closest('[id^="activityMenu"]');
+            
+            if (!isMenuButton && !isMenuContent) {
+                const allMenus = document.querySelectorAll('[id^="activityMenu"]');
+                allMenus.forEach(menu => menu.classList.add('hidden'));
+            }
+        });
+        
+        // Open Mark as Done confirmation modal
+        function openMarkDoneModal(activity) {
+            document.getElementById('markdone_activity_id').value = activity.activity_id;
+            document.getElementById('markdone_title').textContent = activity.title;
+            document.getElementById('markdone_date').textContent = new Date(activity.activity_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            const modal = new bootstrap.Modal(document.getElementById('markDoneModal'));
+            modal.show();
+        }
+        
+        // Open Reschedule Modal
+        function openRescheduleModal(activity) {
+            document.getElementById('reschedule_activity_id').value = activity.activity_id;
+            document.getElementById('reschedule_current_date').value = activity.activity_date;
+            document.getElementById('reschedule_new_date').value = activity.activity_date;
+            document.getElementById('reschedule_title').textContent = activity.title;
+            document.getElementById('reschedule_reason').value = '';
+            
+            // Open modal using Bootstrap
+            const modal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
+            modal.show();
+        }
+
+        // Open Register Attendance Modal
+        function openRegisterAttendanceModal(activity) {
+            document.getElementById('register_activity_id').value = activity.activity_id;
+            document.getElementById('register_activity_title').textContent = activity.title;
+            document.getElementById('register_activity_date').textContent = new Date(activity.activity_date).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            const searchInput = document.getElementById('register_farmer_search');
+            const hiddenInput = document.getElementById('register_farmer_id');
+            const suggestionBox = document.getElementById('register_farmer_suggestions');
+            const selectedBox = document.getElementById('register_selected_farmer');
+
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.setCustomValidity('');
+            }
+            if (hiddenInput) hiddenInput.value = '';
+            if (suggestionBox) {
+                suggestionBox.innerHTML = '';
+                suggestionBox.style.display = 'none';
+            }
+            if (selectedBox) selectedBox.classList.add('d-none');
+
+            const modal = new bootstrap.Modal(document.getElementById('registerAttendanceModal'));
+            modal.show();
+        }
+        
         // Navigation Dropdown Functions
         function toggleNavigationDropdown() {
             const dropdown = document.getElementById('navigationDropdown');
