@@ -13,6 +13,18 @@ function getNotifications($conn) {
     // Get low stock alerts
     $stock_notifications = getStockNotifications($conn);
     $notifications = array_merge($notifications, $stock_notifications);
+
+    // Get upcoming MAO activities (today + next 14 days, plus overdue not completed)
+    if (function_exists('mysqli_prepare')) {
+        $activity_notifications = getActivityNotifications($conn, $today);
+        $notifications = array_merge($notifications, $activity_notifications);
+    }
+
+    // Get expiring input batches (expired and within next 30 days)
+    if (function_exists('mysqli_prepare')) {
+        $expiry_notifications = getExpiringInputBatchNotifications($conn, $today);
+        $notifications = array_merge($notifications, $expiry_notifications);
+    }
     
     // Sort notifications by priority and date
     usort($notifications, function($a, $b) {
@@ -31,8 +43,8 @@ function getNotifications($conn) {
 function getVisitationNotifications($conn, $today) {
     $notifications = [];
     
-    // Calculate the date 5 days from now
-    $reminder_date = date('Y-m-d', strtotime($today . ' + 5 days'));
+    // Calculate the date 7 days from now (1 week prior reminders)
+    $reminder_date = date('Y-m-d', strtotime($today . ' + 7 days'));
     // Query for upcoming and overdue visitations from mao_distribution_log table
     $query = "
         SELECT 
@@ -108,6 +120,132 @@ function getVisitationNotifications($conn, $today) {
         }
     }
     
+    return $notifications;
+}
+
+/**
+ * Upcoming/overdue MAO activities notifications
+ * - Urgent: today or overdue
+ * - Warning: tomorrow to 7 days
+ * - Info: 8 to 14 days
+ */
+function getActivityNotifications($conn, $today) {
+    $notifications = [];
+    // Activities within the next 14 days or overdue and not completed
+    $query = "
+        SELECT ma.activity_id, ma.title, ma.location, ma.activity_date, ma.status,
+               DATEDIFF(ma.activity_date, ?) AS days_until
+        FROM mao_activities ma
+        WHERE ma.activity_date IS NOT NULL
+          AND (ma.status IS NULL OR ma.status <> 'completed')
+          AND (
+                ma.activity_date <= DATE_ADD(?, INTERVAL 14 DAY)
+          )
+        ORDER BY ma.activity_date ASC
+    ";
+    $stmt = mysqli_prepare($conn, $query);
+    if (!$stmt) { return $notifications; }
+    mysqli_stmt_bind_param($stmt, "ss", $today, $today);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    if ($res && mysqli_num_rows($res) > 0) {
+        while ($row = mysqli_fetch_assoc($res)) {
+            $days = (int)$row['days_until'];
+            $dateStr = $row['activity_date'] ? date('M j, Y', strtotime($row['activity_date'])) : '';
+            if ($days < 0) {
+                $msg = "OVERDUE Activity (was {$dateStr}): {$row['title']}" . (!empty($row['location']) ? " at {$row['location']}" : '');
+                $priority = 0; $type = 'urgent'; $title = 'Overdue Activity';
+            } elseif ($days === 0) {
+                $msg = "Activity TODAY: {$row['title']}" . (!empty($row['location']) ? " at {$row['location']}" : '') . " ({$dateStr})";
+                $priority = 1; $type = 'urgent'; $title = 'Activity Today';
+            } elseif ($days === 1) {
+                $msg = "Activity TOMORROW: {$row['title']}" . (!empty($row['location']) ? " at {$row['location']}" : '') . " ({$dateStr})";
+                $priority = 2; $type = 'warning'; $title = 'Activity Tomorrow';
+            } elseif ($days <= 7) {
+                $msg = "Activity in {$days} days: {$row['title']}" . (!empty($row['location']) ? " at {$row['location']}" : '') . " ({$dateStr})";
+                $priority = 3; $type = 'warning'; $title = 'Upcoming Activity';
+            } elseif ($days <= 14) {
+                $msg = "Activity in {$days} days: {$row['title']}" . (!empty($row['location']) ? " at {$row['location']}" : '') . " ({$dateStr})";
+                $priority = 4; $type = 'info'; $title = 'Upcoming Activity';
+            } else {
+                continue;
+            }
+            $notifications[] = [
+                'id' => 'act_' . $row['activity_id'],
+                'type' => $type,
+                'category' => 'activity',
+                'title' => $title,
+                'message' => $msg,
+                'date' => $row['activity_date'] ?? '',
+                'priority' => $priority,
+                'icon' => 'fas fa-calendar',
+                'data' => $row
+            ];
+        }
+    }
+    if ($stmt) { mysqli_stmt_close($stmt); }
+    return $notifications;
+}
+
+/**
+ * Expiring inventory batch notifications
+ * - Urgent: expired or expires today
+ * - Warning: expires within 7 days, else within 30 days low-priority warning
+ */
+function getExpiringInputBatchNotifications($conn, $today) {
+    $notifications = [];
+    $query = "
+        SELECT 
+            mi.inventory_id,
+            mi.input_id,
+            mi.quantity_on_hand,
+            mi.expiration_date,
+            ic.input_name,
+            ic.unit,
+            DATEDIFF(mi.expiration_date, ?) AS days_left
+        FROM mao_inventory mi
+        JOIN input_categories ic ON mi.input_id = ic.input_id
+        WHERE mi.expiration_date IS NOT NULL
+          AND mi.expiration_date <= DATE_ADD(?, INTERVAL 10 DAY)
+          AND COALESCE(mi.quantity_on_hand,0) > 0
+        ORDER BY mi.expiration_date ASC, mi.inventory_id ASC
+    ";
+    $stmt = mysqli_prepare($conn, $query);
+    if (!$stmt) { return $notifications; }
+    mysqli_stmt_bind_param($stmt, "ss", $today, $today);
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    if ($res && mysqli_num_rows($res) > 0) {
+        while ($row = mysqli_fetch_assoc($res)) {
+            $days = (int)$row['days_left'];
+            $dateStr = $row['expiration_date'] ? date('M j, Y', strtotime($row['expiration_date'])) : '';
+            if ($days < 0) {
+                $msg = "EXPIRED batch: {$row['input_name']} (expired {$dateStr})";
+                $priority = 0; $type = 'urgent'; $title = 'Expired Batch';
+            } elseif ($days === 0) {
+                $msg = "Batch expires TODAY: {$row['input_name']}";
+                $priority = 1; $type = 'urgent'; $title = 'Expiring Today';
+            } elseif ($days <= 7) {
+                $msg = "Batch expiring in {$days} day(s): {$row['input_name']} ({$dateStr})";
+                $priority = 2; $type = 'warning'; $title = 'Expiring Soon';
+            } else { // 8-10 days
+                $msg = "Batch expiring in {$days} days: {$row['input_name']} ({$dateStr})";
+                $priority = 3; $type = 'warning'; $title = 'Expiring in 10 Days';
+            }
+            $notifications[] = [
+                'id' => 'expiry_' . $row['inventory_id'],
+                'type' => $type,
+                'category' => 'expiry',
+                'title' => $title,
+                'message' => $msg,
+                'date' => $row['expiration_date'] ?? '',
+                'priority' => $priority,
+                'icon' => 'fas fa-hourglass-half',
+                'data' => $row
+            ];
+        }
+    }
+    if ($stmt) { mysqli_stmt_close($stmt); }
     return $notifications;
 }
 

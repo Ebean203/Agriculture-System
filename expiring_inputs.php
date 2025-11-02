@@ -8,11 +8,20 @@ require_once 'includes/notification_system.php';
 $pageTitle = 'Expiring Batches - Lagonglong FARMS';
 
 // Fetch batches with expiration dates
+// Optional filters from notifications
+$filter_inventory_id = isset($_GET['inventory_id']) ? (int)$_GET['inventory_id'] : 0;
+$filter_input_id = isset($_GET['input_id']) ? (int)$_GET['input_id'] : 0;
+
 $query = "SELECT mi.inventory_id, mi.input_id, ic.input_name, ic.unit, mi.quantity_on_hand, mi.expiration_date, mi.is_expired, ic.total_stock
           FROM mao_inventory mi
           JOIN input_categories ic ON mi.input_id = ic.input_id
-          WHERE mi.expiration_date IS NOT NULL
-          ORDER BY mi.expiration_date ASC";
+          WHERE mi.expiration_date IS NOT NULL";
+if ($filter_inventory_id > 0) {
+    $query .= " AND mi.inventory_id = " . $filter_inventory_id;
+} elseif ($filter_input_id > 0) {
+    $query .= " AND mi.input_id = " . $filter_input_id;
+}
+$query .= " ORDER BY mi.expiration_date ASC";
 // Fetch batches
 $res = mysqli_query($conn, $query);
 if (!$res) {
@@ -55,6 +64,21 @@ if (!empty($_SESSION['error'])) {
             <h1 class="text-2xl font-bold">Expiring Batches</h1>
             <p class="text-sm text-gray-600">Batches ordered by earliest expiration. Warning at 10 days before expiration.</p>
         </div>
+        <?php if ($filter_inventory_id || $filter_input_id): ?>
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded">
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-blue-800">
+                    Showing results for
+                    <?php if ($filter_inventory_id): ?>
+                        Inventory Batch ID <strong>#<?php echo $filter_inventory_id; ?></strong>
+                    <?php else: ?>
+                        Input <strong>#<?php echo $filter_input_id; ?></strong>
+                    <?php endif; ?>
+                </div>
+                <a href="expiring_inputs.php" class="text-blue-700 hover:underline text-sm">View all</a>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="flex items-center justify-end mb-4">
             <div class="text-sm mr-4">
                 <span class="font-medium">Inventory Alerts:</span>

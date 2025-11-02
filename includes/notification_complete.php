@@ -82,6 +82,9 @@ window.notificationDropdown = {
             
             // Prepare data for click handler
             const inputId = notification.data && notification.data.input_id ? notification.data.input_id : '';
+            const activityId = notification.data && notification.data.activity_id ? notification.data.activity_id : '';
+            const inventoryId = notification.data && notification.data.inventory_id ? notification.data.inventory_id : '';
+            const logId = notification.data && (notification.data.log_id || notification.data.id) ? (notification.data.log_id || notification.data.id) : '';
             const itemName = notification.data && notification.data.item_name ? notification.data.item_name : '';
             const farmerName = notification.data && notification.data.farmer_name ? notification.data.farmer_name : '';
             const farmerId = notification.data && notification.data.farmer_id ? notification.data.farmer_id : '';
@@ -94,7 +97,7 @@ window.notificationDropdown = {
                      data-input-id="${inputId}"
                      data-farmer-name="${farmerName}"
                      data-farmer-id="${farmerId}"
-                     onclick="handleNotificationClick('${notification.id}', '${notification.category}', '${itemName}', '${inputId}', '${farmerName}', '${farmerId}')">
+                     onclick="handleNotificationClick('${notification.id}', '${notification.category}', '${itemName}', '${inputId}', '${farmerName}', '${farmerId}', '${activityId}', '${inventoryId}', '${logId}')">
                     <div class="flex items-start space-x-3">
                         <div class="flex-shrink-0">
                             <i class="${iconClass}"></i>
@@ -140,6 +143,10 @@ window.notificationDropdown = {
             } else {
                 return 'fas fa-info-circle text-yellow-600';
             }
+        } else if (category === 'activity') {
+            return 'fas fa-calendar text-blue-600';
+        } else if (category === 'expiry') {
+            return 'fas fa-hourglass-half text-yellow-700';
         }
         return 'fas fa-info-circle text-blue-600';
     },
@@ -228,7 +235,7 @@ function toggleNotificationDropdown() {
 }
 
 // Global click handler functions for notifications
-function handleNotificationClick(notificationId, category, itemName, inputId, farmerName, farmerId) {
+function handleNotificationClick(notificationId, category, itemName, inputId, farmerName, farmerId, activityId = '', inventoryId = '', logId = '') {
     console.log('Notification clicked:', {
         notificationId: notificationId,
         category: category,
@@ -242,10 +249,10 @@ function handleNotificationClick(notificationId, category, itemName, inputId, fa
     window.notificationDropdown.close();
     
     // Navigate to appropriate page with specific item focus
-    navigateToNotificationPage(category, itemName, inputId, farmerName, farmerId);
+    navigateToNotificationPage(category, itemName, inputId, farmerName, farmerId, activityId, inventoryId, logId);
 }
 
-function navigateToNotificationPage(category, itemName, inputId, farmerName, farmerId) {
+function navigateToNotificationPage(category, itemName, inputId, farmerName, farmerId, activityId = '', inventoryId = '', logId = '') {
     console.log('Navigating to:', {
         category: category,
         itemName: itemName,
@@ -273,13 +280,31 @@ function navigateToNotificationPage(category, itemName, inputId, farmerName, far
             // Redirect to input distribution records page with farmer filter
             // Prefer farmer_id for exact matching, fallback to farmer name
             if (farmerId && farmerId !== '') {
-                window.location.href = 'input_distribution_records.php?farmer_id=' + farmerId + '&farmer=' + encodeURIComponent(farmerName);
+                window.location.href = 'input_distribution_records.php?farmer_id=' + farmerId + '&farmer=' + encodeURIComponent(farmerName) + (logId ? ('&log_id=' + encodeURIComponent(logId)) : '');
             } else if (farmerName && farmerName !== '') {
-                window.location.href = 'input_distribution_records.php?farmer=' + encodeURIComponent(farmerName);
+                window.location.href = 'input_distribution_records.php?farmer=' + encodeURIComponent(farmerName) + (logId ? ('&log_id=' + encodeURIComponent(logId)) : '');
             } else if (itemName && itemName !== '') {
-                window.location.href = 'input_distribution_records.php?search=' + encodeURIComponent(itemName);
+                window.location.href = 'input_distribution_records.php?search=' + encodeURIComponent(itemName) + (logId ? ('&log_id=' + encodeURIComponent(logId)) : '');
             } else {
                 window.location.href = 'input_distribution_records.php';
+            }
+            break;
+        case 'activity':
+            // Go to MAO Activities page filtered by activity_id
+            if (activityId && activityId !== '') {
+                window.location.href = 'mao_activities.php?activity_id=' + encodeURIComponent(activityId);
+            } else {
+                window.location.href = 'mao_activities.php';
+            }
+            break;
+        case 'expiry':
+            // Go to Expiring Inputs list filtered by inventory_id or input
+            if (inventoryId && inventoryId !== '') {
+                window.location.href = 'expiring_inputs.php?inventory_id=' + encodeURIComponent(inventoryId);
+            } else if (inputId && inputId !== '') {
+                window.location.href = 'expiring_inputs.php?input_id=' + encodeURIComponent(inputId);
+            } else {
+                window.location.href = 'expiring_inputs.php';
             }
             break;
         case 'farmer':
