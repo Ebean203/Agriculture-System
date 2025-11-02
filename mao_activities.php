@@ -337,22 +337,6 @@ $types_result = $types_stmt->get_result();
 ?>
 <?php $pageTitle = 'MAO Activities Management - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <?php if (!empty($activity_id_filter)): ?>
-                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-lg shadow-sm">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <i class="fas fa-filter text-blue-600 text-xl mr-3"></i>
-                            <div>
-                                <h3 class="text-sm font-semibold text-blue-900">Viewing Notification Result</h3>
-                                <p class="text-sm text-blue-700">Showing activity with ID <span class="font-bold">#<?php echo htmlspecialchars($activity_id_filter); ?></span></p>
-                            </div>
-                        </div>
-                        <a href="mao_activities.php" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
-                            <i class="fas fa-times-circle mr-1"></i>View All Activities
-                        </a>
-                    </div>
-                </div>
-            <?php endif; ?>
             <!-- Page Header -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
                 <div class="flex flex-col lg:flex-row lg:items-center gap-6">
