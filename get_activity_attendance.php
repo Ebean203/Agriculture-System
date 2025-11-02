@@ -91,7 +91,7 @@ try {
     $attendance_result = $attendance_stmt->get_result();
 
     $attendees = [];
-    $allowedSuffixes = ['JR', 'SR', 'II', 'III', 'IV', 'V', 'VI'];
+    $allowedSuffixes = ['JR', 'SR', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
     while ($row = $attendance_result->fetch_assoc()) {
         $hasFarmer = !empty($row['farmer_id']);
