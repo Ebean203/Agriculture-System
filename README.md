@@ -163,6 +163,14 @@ This section enumerates the system’s major operations, their purpose, main scr
 - Fetch Notifications (`get_notifications.php`): Returns either counts (when `count_only=true`) or full notification list plus unread count using functions from `includes/notification_system.php` (not shown). JSON structure includes `success`, `notifications[]`, `unread_count`, `total_count`.
 - Notification UI integrated in `nav.php` (bell icon toggles dynamic panel with scrollable list).
 
+Categories currently surfaced in the app (no sensitive data exposed):
+- Visitation reminders for distributions due in the next 7 days (and overdue)
+- Low/Critical stock levels from MAO inventory
+- Upcoming/Overdue MAO activities (today, tomorrow, next 14 days)
+- Expiring input batches (already expired and up to 10 days ahead)
+
+Clicking a notification opens the related page filtered to the specific item (e.g., a particular activity or batch).
+
 ### 10. Staff & Roles Management
 - Add Staff (`staff_actions.php` POST `action=add_staff`): Admin-only. Validates uniqueness of username; validates role_id; hashes password (bcrypt via `password_hash`); inserts into `mao_staff`; logs activity (action_type `staff`). Returns status via session messages.
 - Listing/Management (`staff.php`): Interface (inferred) for staff listing, referencing roles and actions script.
@@ -179,6 +187,8 @@ This section enumerates the system’s major operations, their purpose, main scr
 ### 13. PDF/HTML Export Utilities
 - Farmers Export: `pdf_export.php?action=export_pdf` builds HTML with custom `SimplePDF` class (misnamed; outputs HTML attachment) including summary stats and styling.
 - Distribution Export: `input_distribution_records.php?action=export_pdf` streams filtered distribution dataset.
+
+- Dedicated distribution export endpoint: `export_distribution_pdf.php` for generating distribution summaries.
 
 ### 14. Validation & Error Handling Patterns
 - Server-side validation for required fields, numeric constraints, dates (`DateTime::createFromFormat`), file type/size for uploads.
@@ -221,3 +231,73 @@ This section enumerates the system’s major operations, their purpose, main scr
 ## License & Contact
 
 This system is for the Lagonglong Municipal Agriculture Office. Contact the system administrator for support and access.
+
+## Transactions (complete list)
+
+This is a concise index of user-facing transactions/features available in the system, grouped by module. File names are provided for easy reference. No sensitive information is included.
+
+- Authentication & Sessions
+   - Login, logout, and session timeout (login.php, logout.php, check_session.php)
+
+- Farmers Registry
+   - Register, view, edit farmer records (farmers.php, farmer_regmodal.php, farmer_editmodal.php)
+   - Search and auto-suggest by name/contact (search_farmers.php, get_farmers.php)
+   - Upload and manage farmer photos (upload_farmer_photo.php; uploads/farmer_photos/)
+   - Program flags and registries: RSBSA, NCFRS, FishR (rsbsa_records.php, ncfrs_records.php, fishr_records.php)
+   - Boat registration records (boat_records.php)
+   - Geotagging capture (geotagging_modal.php)
+
+- Commodities & Categories
+   - Manage commodity list (commodities.php)
+   - Category and suggestion endpoints (get_commodity_categories.php, get_commodity_suggestions.php)
+   - Yield unit lookup and farmer-commodity linking (get_yield_unit.php, get_farmer_commodities.php)
+
+- Inventory Management
+   - Create new input items (add_new_input.php)
+   - View and adjust MAO inventory (mao_inventory.php, update_inventory.php)
+   - Mark stock-out batches and related flows (stockout_batch.php)
+   - Expiring inputs view (expiring_inputs.php)
+   - Input visitation requirement check (get_input_visitation_status.php)
+
+- Input Distribution & Visitation
+   - Distribute inputs to farmers (distribute_input.php)
+   - View history and filter/paginate (input_distribution_records.php)
+   - Mark visitation as completed (mark_distribution_complete.php)
+   - Reschedule visitation and view history (mark_distribution_complete.php with reschedule flags; get_distribution_reschedules.php)
+   - Distribution exports (input_distribution_records.php?action=export_pdf, export_distribution_pdf.php)
+
+- MAO Activities
+   - Create and manage activities (mao_activities.php, includes/mao_activities_modals.php)
+   - View all activities (all_activities.php)
+   - Activity status updates and filtering by activity_id via URL
+
+- Analytics & Dashboards
+   - Main dashboard with KPIs (index.php)
+   - Analytics dashboard with charts (analytics_dashboard.php)
+   - Chart data services (get_report_data.php, get_top_producers.php)
+
+- Notifications
+   - Aggregated notifications feed and badge counts (includes/notification_system.php, get_notifications.php, includes/notification_complete.php)
+   - Categories: visitation reminders (7‑day), low/critical stock, MAO activities (today/tomorrow/next 14 days, overdue), expiring input batches (10‑day window)
+   - Click-through navigation to filtered pages (nav.php wiring)
+
+- Reports
+   - Generate and save HTML reports (reports.php)
+   - List and count saved reports (get_saved_reports.php, get_saved_reports_count.php)
+   - Report count endpoints for dashboard widgets (get_report_count.php)
+
+- Staff & Roles
+   - Staff listing/management and actions (staff.php, staff_actions.php)
+   - Role association and enforcement in-page (via includes/layout_start.php + session checks)
+
+- Activity Logging & Utilities
+   - System-wide activity logging (includes/activity_logger.php)
+   - Recent activities widget and icons (includes/recent_activities.php, includes/activity_icons.php)
+   - Helpers: visitation, yield, naming, PDF utilities (includes/visitation_helpers.php, includes/yield_helpers.php, includes/name_helpers.php, includes/pdf_utilities.php)
+
+- UI & Layout
+   - Shared layout, sidebar, navigation (includes/layout_start.php, includes/sidebar.php, nav.php)
+   - Asset management (includes/assets.php; loads Bootstrap, Tailwind, jQuery, Chart.js, FontAwesome)
+
+Notes:
+- Database credentials and any sensitive configuration are intentionally excluded here. Configure those locally in `conn.php` without committing secrets.
