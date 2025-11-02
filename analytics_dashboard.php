@@ -981,6 +981,40 @@ if (document.getElementById('complianceBarChart')) {
             unit = units[0];
         }
         let chartLabel = 'Yield Monitoring';
+        const isBarChart = currentChartType === 'bar';
+        const datalabelFormatter = function(value, context) {
+            let idx = context.dataIndex;
+            let unitLabel = (Array.isArray(units) && units.length > 0) ? (units[idx] || unit) : unit;
+            let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
+            let baseLabel = value + ' ' + unitLabel;
+            if (isBarChart) {
+                return comm ? baseLabel + '\n' + comm : baseLabel;
+            }
+            if (comm) {
+                return [baseLabel, comm];
+            }
+            return baseLabel;
+        };
+        const datalabelOptions = {
+            display: true,
+            color: function() {
+                return isBarChart ? '#ffffff' : '#222';
+            },
+            anchor: isBarChart ? 'center' : 'end',
+            align: isBarChart ? 'center' : 'top',
+            clamp: !isBarChart,
+            offset: isBarChart ? 0 : 18,
+            font: function(context) {
+                if (isBarChart) {
+                    return { weight: 'bold', size: 12 };
+                }
+                const hasCommodity = Array.isArray(commodities) && commodities[context.dataIndex];
+                return { weight: 'bold', size: hasCommodity ? 13 : 14 };
+            },
+            formatter: datalabelFormatter,
+            lineHeight: isBarChart ? 1.1 : 1.2,
+            padding: { top: isBarChart ? 0 : 6, bottom: isBarChart ? 0 : 0 }
+        };
         // Use datalabels plugin to show correct unit per data point
         analyticsChart = new Chart(ctx, {
             type: currentChartType,
@@ -994,35 +1028,7 @@ if (document.getElementById('complianceBarChart')) {
                     borderWidth: 2,
                     fill: currentChartType === 'line',
                     tension: 0.4,
-                    datalabels: {
-                        display: true,
-                        color: '#222',
-                        anchor: 'end',
-                        align: 'top',
-                        clamp: true,
-                        offset: 10,
-                        font: { weight: 'bold', size: 14 },
-                        formatter: function(value, context) {
-                            let idx = context.dataIndex;
-                            let unitLabel = (Array.isArray(units) && units.length > 0) ? (units[idx] || unit) : unit;
-                            let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
-                            if (comm) {
-                                return [value + ' ' + unitLabel, comm.toLowerCase()];
-                            }
-                            return value + ' ' + unitLabel;
-                        },
-                        font: function(context) {
-                            // Make the second line (commodity name) smaller
-                            if (context.dataIndex !== undefined && context.dataset.data.length > 1) {
-                                return {
-                                    weight: 'bold',
-                                    size: 14
-                                };
-                            }
-                            return { weight: 'bold', size: 14 };
-                        },
-                        lineHeight: 1.1
-                    }
+                    datalabels: Object.assign({}, datalabelOptions)
                 }]
             },
             options: {
@@ -1030,22 +1036,7 @@ if (document.getElementById('complianceBarChart')) {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: true },
-                    datalabels: {
-                        display: true,
-                        color: '#222',
-                        anchor: 'end',
-                        align: 'top',
-                        font: { weight: 'bold', size: 14 },
-                        formatter: function(value, context) {
-                            let idx = context.dataIndex;
-                            let unitLabel = (Array.isArray(units) && units.length > 0) ? (units[idx] || unit) : unit;
-                            let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
-                            if (comm) {
-                                return value + ' ' + unitLabel + ' of ' + comm;
-                            }
-                            return value + ' ' + unitLabel;
-                        }
-                    },
+                    datalabels: datalabelOptions,
                     tooltip: {
                         callbacks: {
                             title: function(context) {
@@ -1323,17 +1314,69 @@ if (document.getElementById('complianceBarChart')) {
             params.end_date = endDate;
         }
         $.getJSON('get_report_data.php', params, function(res) {
+            const labels = res.labels || [];
+            const dataPoints = (res.data || []).map(value => {
+                if (typeof value === 'number') return value;
+                const parsed = parseFloat(value);
+                return Number.isFinite(parsed) ? parsed : 0;
+            });
+            const totalValue = dataPoints.reduce((sum, val) => sum + (Number.isFinite(val) ? val : 0), 0);
             if (window.commodityYieldPieChart) window.commodityYieldPieChart.destroy();
             window.commodityYieldPieChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: res.labels || [],
+                    labels: labels,
                     datasets: [{
-                        data: res.data || [],
+                        data: dataPoints,
                         backgroundColor: ['#16a34a','#f59e42','#3b82f6','#e11d48','#fbbf24','#6366f1','#10b981']
                     }]
                 },
-                options: {responsive:true, plugins:{legend:{position:'bottom'}}}
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        datalabels: {
+                            color: function(context) {
+                                const bgColors = context.dataset.backgroundColor || [];
+                                const baseColor = Array.isArray(bgColors) ? bgColors[context.dataIndex] : bgColors;
+                                if (typeof baseColor !== 'string') return '#1f2937';
+                                let hex = baseColor.replace('#','');
+                                if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+                                const r = parseInt(hex.slice(0,2), 16);
+                                const g = parseInt(hex.slice(2,4), 16);
+                                const b = parseInt(hex.slice(4,6), 16);
+                                if ([r,g,b].some(isNaN)) return '#1f2937';
+                                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                                return luminance > 0.55 ? '#1f2937' : '#ffffff';
+                            },
+                            font: function(context) {
+                                const percentage = totalValue ? (dataPoints[context.dataIndex] / totalValue) * 100 : 0;
+                                const baseSize = percentage >= 15 ? 14 : 12;
+                                return { weight: '600', size: baseSize };
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            offset: 0,
+                            clamp: false,
+                            padding: 4,
+                            formatter: function(value, context) {
+                                if (!Number.isFinite(value) || value <= 0) return '';
+                                const label = labels[context.dataIndex] || '';
+                                if (!totalValue) {
+                                    return label ? `${label}` : '';
+                                }
+                                const percentage = (value / totalValue) * 100;
+                                if (percentage < 2) return ''; // avoid clutter on very thin slices
+                                const rounded = percentage >= 10 ? Math.round(percentage) : parseFloat(percentage.toFixed(1));
+                                if (label) {
+                                    return `${label}\n${rounded}%`;
+                                }
+                                return `${rounded}%`;
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
             });
         });
     }
