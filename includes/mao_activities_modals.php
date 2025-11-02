@@ -485,7 +485,7 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
         year: 'numeric', 
-                            <th class="text-uppercase text-muted small fw-semibold text-center" style="width: 180px;">Registered On</th>
+        month: 'long',
         day: 'numeric' 
     });
 }
