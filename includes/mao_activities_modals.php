@@ -485,7 +485,7 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
         year: 'numeric', 
-        month: 'long', 
+                            <th class="text-uppercase text-muted small fw-semibold text-center" style="width: 180px;">Registered On</th>
         day: 'numeric' 
     });
 }
@@ -662,5 +662,96 @@ document.addEventListener('DOMContentLoaded', function() {
             </form>
         </div>
     </div>
+</div>
+
+
+<!-- View Attendance Modal -->
+<div class="modal fade" id="viewAttendanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-agri-green text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-users mr-2"></i>Activity Attendance
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Activity Info -->
+                <div class="border rounded p-3 mb-4 bg-light">
+                    <h6 class="fw-bold mb-2" id="attendance_activity_title">Activity Title</h6>
+                    <div class="row text-sm">
+                        <div class="col-md-6">
+                            <i class="fas fa-calendar text-agri-green mr-2"></i>
+                            <span id="attendance_activity_date">Date</span>
+                        </div>
+                        <div class="col-md-6">
+                            <i class="fas fa-map-marker-alt text-agri-green mr-2"></i>
+                            <span id="attendance_activity_location">Location</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Count -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Registered Farmers</h6>
+                    <span class="badge bg-agri-green" id="attendance_count">0 attendees</span>
+                </div>
+
+                <!-- Loading State -->
+                <div id="attendance_loading" class="text-center py-5">
+                    <div class="spinner-border text-agri-green" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading attendance data...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="attendance_error" class="alert alert-danger d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="attendance_error_message">Error loading attendance data</span>
+                </div>
+
+                <!-- No Attendees State -->
+                <div id="attendance_empty" class="text-center py-5 d-none">
+                    <i class="fas fa-user-slash text-gray-300" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-3">No farmers have registered for this activity yet.</p>
+                </div>
+
+                <!-- Attendees List -->
+                <div id="attendance_list" class="d-none">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-uppercase text-muted small fw-semibold">Farmer Name</th>
+                                    <th class="text-uppercase text-muted small fw-semibold text-center" style="width: 200px;">Registered On</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance_table_body">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="attendance_pagination" class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 mt-3 d-none">
+                        <span class="text-muted small" id="attendance_pagination_info"></span>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="attendance_prev_btn">
+                                <i class="fas fa-chevron-left me-1"></i>Previous
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="attendance_next_btn">
+                                Next<i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times mr-1"></i>Close
+                </button>
+            </div>
+        </div>
     </div>
+</div>
+
 

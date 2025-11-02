@@ -346,102 +346,84 @@ $types_result = $types_stmt->get_result();
                             <i class="fas fa-plus mr-2"></i>Add New Activity
                         </button>
 
-                        <div class="flex gap-3 whitespace-nowrap">
-                        <!-- Page Navigation (rightmost) -->
                         <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center" onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
+                            <button type="button" onclick="toggleNavigationDropdown()" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                                <i class="fas fa-map-signs text-agri-green mr-2"></i>
+                                Go to Page
+                                <i id="navigationArrow" class="fas fa-chevron-down ml-2 text-sm transition-transform duration-200"></i>
                             </button>
-                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Dashboard</div>
-                                    <a href="index.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-home text-blue-600 mr-3"></i>
-                                        Dashboard
-                                    </a>
-                                    <a href="analytics_dashboard.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-chart-bar text-purple-600 mr-3"></i>
-                                        Analytics Dashboard
-                                    </a>
-                                </div>
-                                
-                                <!-- MAO Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">MAO Management</div>
-                                    <a href="mao_inventory.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-warehouse text-green-600 mr-3"></i>
-                                        MAO Inventory
-                                    </a>
-                                    <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-tasks text-orange-600 mr-3"></i>
-                                        MAO Activities
-                                    </a>
-                                    <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-truck text-blue-600 mr-3"></i>
-                                        Distribution Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Records Management Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
-                                    <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-users text-green-600 mr-3"></i>
-                                        Farmers Registry
-                                    </a>
-                                    <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-id-card text-blue-600 mr-3"></i>
-                                        RSBSA Records
-                                    </a>
-                                    <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-fish text-cyan-600 mr-3"></i>
-                                        NCFRS Records
-                                    </a>
-                                    <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-anchor text-blue-600 mr-3"></i>
-                                        FishR Records
-                                    </a>
-                                    <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-ship text-navy-600 mr-3"></i>
-                                        Boat Records
-                                    </a>
-                                </div>
-                                
-                                <!-- Monitoring & Reports Section -->
-                                <div class="border-b border-gray-200">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
-                                    <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-seedling text-green-600 mr-3"></i>
-                                        Yield Monitoring
-                                    </a>
-                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                        Reports
-                                    </a>
-                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-list text-gray-600 mr-3"></i>
-                                        All Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Settings Section -->
-                                <div>
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-user-tie text-purple-600 mr-3"></i>
-                                        Staff Management
-                                    </a>
-                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                        Settings
-                                    </a>
+
+                            <div id="navigationDropdown" class="hidden absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-40">
+                                <div class="py-2">
+                                    <!-- Operations Section -->
+                                    <div class="border-b border-gray-200 pb-2 mb-2">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Operations</div>
+                                        <a href="mao_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-tasks text-orange-600 mr-3"></i>
+                                            MAO Activities
+                                        </a>
+                                        <a href="input_distribution_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-truck text-blue-600 mr-3"></i>
+                                            Distribution Records
+                                        </a>
+                                    </div>
+
+                                    <!-- Records Management Section -->
+                                    <div class="border-b border-gray-200 pb-2 mb-2">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Records Management</div>
+                                        <a href="farmers.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-users text-green-600 mr-3"></i>
+                                            Farmers Registry
+                                        </a>
+                                        <a href="rsbsa_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-id-card text-blue-600 mr-3"></i>
+                                            RSBSA Records
+                                        </a>
+                                        <a href="ncfrs_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-fish text-cyan-600 mr-3"></i>
+                                            NCFRS Records
+                                        </a>
+                                        <a href="fishr_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-anchor text-blue-600 mr-3"></i>
+                                            FishR Records
+                                        </a>
+                                        <a href="boat_records.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-ship text-navy-600 mr-3"></i>
+                                            Boat Records
+                                        </a>
+                                    </div>
+
+                                    <!-- Monitoring & Reports Section -->
+                                    <div class="border-b border-gray-200 pb-2 mb-2">
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Monitoring & Reports</div>
+                                        <a href="yield_monitoring.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-seedling text-green-600 mr-3"></i>
+                                            Yield Monitoring
+                                        </a>
+                                        <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-file-alt text-red-600 mr-3"></i>
+                                            Reports
+                                        </a>
+                                        <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-list text-gray-600 mr-3"></i>
+                                            All Activities
+                                        </a>
+                                    </div>
+
+                                    <!-- Settings Section -->
+                                    <div>
+                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
+                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-user-tie text-purple-600 mr-3"></i>
+                                            Staff Management
+                                        </a>
+                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
+                                            Settings
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        
                         </div>
                     </div>
                 </div>
@@ -562,6 +544,11 @@ $types_result = $types_stmt->get_result();
                                                             class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
                                                         <i class="fas fa-user-plus text-purple-600 mr-3 w-5"></i>
                                                         Register Farmer
+                                                    </button>
+                                                    <button onclick="openViewAttendanceModal(<?php echo $activity['activity_id']; ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)"
+                                                            class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
+                                                        <i class="fas fa-users text-indigo-600 mr-3 w-5"></i>
+                                                        View Attendance
                                                     </button>
                                                     <button onclick="openRescheduleModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)" 
                                                             class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
@@ -713,7 +700,203 @@ $types_result = $types_stmt->get_result();
             const modal = new bootstrap.Modal(document.getElementById('registerAttendanceModal'));
             modal.show();
         }
+
+        const attendanceState = {
+            items: [],
+            currentPage: 1,
+            pageSize: 10
+        };
+
+        function renderAttendanceTable() {
+            const tbody = document.getElementById('attendance_table_body');
+            if (!tbody) {
+                return;
+            }
+
+            const listContainer = document.getElementById('attendance_list');
+            const emptyState = document.getElementById('attendance_empty');
+            const pagination = document.getElementById('attendance_pagination');
+            const paginationInfo = document.getElementById('attendance_pagination_info');
+            const prevBtn = document.getElementById('attendance_prev_btn');
+            const nextBtn = document.getElementById('attendance_next_btn');
+
+            const totalItems = attendanceState.items.length;
+
+            tbody.innerHTML = '';
+
+            if (totalItems === 0) {
+                if (listContainer) listContainer.classList.add('d-none');
+                if (emptyState) emptyState.classList.remove('d-none');
+                if (pagination) pagination.classList.add('d-none');
+                return;
+            }
+
+            if (emptyState) emptyState.classList.add('d-none');
+            if (listContainer) listContainer.classList.remove('d-none');
+
+            const totalPages = Math.ceil(totalItems / attendanceState.pageSize) || 1;
+            if (attendanceState.currentPage > totalPages) {
+                attendanceState.currentPage = totalPages;
+            }
+
+            const startIndex = (attendanceState.currentPage - 1) * attendanceState.pageSize;
+            const endIndex = Math.min(startIndex + attendanceState.pageSize, totalItems);
+            const pageItems = attendanceState.items.slice(startIndex, endIndex);
+
+            pageItems.forEach((attendee) => {
+                const row = document.createElement('tr');
+
+                const nameCell = document.createElement('td');
+                nameCell.classList.add('fw-semibold');
+                nameCell.textContent = attendee.full_name;
+
+                const dateCell = document.createElement('td');
+                dateCell.classList.add('text-center', 'text-muted', 'small');
+
+                if (attendee.registered_at) {
+                    const registeredDate = new Date(attendee.registered_at);
+                    if (!isNaN(registeredDate.getTime())) {
+                        dateCell.textContent = registeredDate.toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric'
+                        });
+                    } else {
+                        dateCell.textContent = 'Not recorded';
+                    }
+                } else {
+                    dateCell.textContent = 'Not recorded';
+                }
+
+                row.appendChild(nameCell);
+                row.appendChild(dateCell);
+                tbody.appendChild(row);
+            });
+
+            if (pagination && paginationInfo && prevBtn && nextBtn) {
+                paginationInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems}`;
+                pagination.classList.toggle('d-none', totalPages <= 1);
+                prevBtn.disabled = attendanceState.currentPage <= 1;
+                nextBtn.disabled = attendanceState.currentPage >= totalPages;
+            }
+        }
+
+        function changeAttendancePage(delta) {
+            const totalPages = Math.ceil(attendanceState.items.length / attendanceState.pageSize) || 1;
+            const targetPage = attendanceState.currentPage + delta;
+            if (targetPage < 1 || targetPage > totalPages) {
+                return;
+            }
+            attendanceState.currentPage = targetPage;
+            renderAttendanceTable();
+        }
+
+        // Open View Attendance Modal
+        function openViewAttendanceModal(activityId) {
+            attendanceState.items = [];
+            attendanceState.currentPage = 1;
+
+            const loadingEl = document.getElementById('attendance_loading');
+            const errorEl = document.getElementById('attendance_error');
+            const errorMessageEl = document.getElementById('attendance_error_message');
+            const emptyEl = document.getElementById('attendance_empty');
+            const listEl = document.getElementById('attendance_list');
+            const paginationEl = document.getElementById('attendance_pagination');
+            const tbody = document.getElementById('attendance_table_body');
+
+            if (loadingEl) loadingEl.classList.remove('d-none');
+            if (errorEl) errorEl.classList.add('d-none');
+            if (emptyEl) emptyEl.classList.add('d-none');
+            if (listEl) listEl.classList.add('d-none');
+            if (paginationEl) paginationEl.classList.add('d-none');
+            if (tbody) tbody.innerHTML = '';
+
+            const modal = new bootstrap.Modal(document.getElementById('viewAttendanceModal'));
+            modal.show();
+
+            fetch('get_activity_attendance.php?activity_id=' + activityId)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (loadingEl) loadingEl.classList.add('d-none');
+
+                    if (!data.success) {
+                        if (errorEl) errorEl.classList.remove('d-none');
+                        if (errorMessageEl) {
+                            errorMessageEl.textContent = data.message || 'Failed to load attendance data';
+                        }
+                        return;
+                    }
+
+                    const activityDetails = data.activity || {};
+                    const titleEl = document.getElementById('attendance_activity_title');
+                    const dateEl = document.getElementById('attendance_activity_date');
+                    const locationEl = document.getElementById('attendance_activity_location');
+
+                    if (titleEl) {
+                        titleEl.textContent = activityDetails.title || 'Activity Details';
+                    }
+
+                    if (dateEl) {
+                        if (activityDetails.activity_date) {
+                            const parsedDate = new Date(activityDetails.activity_date);
+                            dateEl.textContent = !isNaN(parsedDate.getTime())
+                                ? parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                                : activityDetails.activity_date;
+                        } else {
+                            dateEl.textContent = 'Date not available';
+                        }
+                    }
+
+                    if (locationEl) {
+                        locationEl.textContent = activityDetails.location || 'Location not available';
+                    }
+
+                    attendanceState.items = Array.isArray(data.attendees) ? data.attendees.slice() : [];
+                    attendanceState.currentPage = 1;
+
+                    const totalCount = attendanceState.items.length;
+                    const countEl = document.getElementById('attendance_count');
+                    if (countEl) {
+                        countEl.textContent = totalCount + ' ' + (totalCount === 1 ? 'attendee' : 'attendees');
+                    }
+
+                    if (totalCount === 0) {
+                        if (emptyEl) emptyEl.classList.remove('d-none');
+                        return;
+                    }
+
+                    renderAttendanceTable();
+                })
+                .catch(error => {
+                    console.error('Error fetching attendance:', error);
+                    if (loadingEl) loadingEl.classList.add('d-none');
+                    if (errorEl) errorEl.classList.remove('d-none');
+                    if (errorMessageEl) {
+                        errorMessageEl.textContent = 'An error occurred while loading attendance data: ' + error.message;
+                    }
+                });
+        }
+
         
+        document.addEventListener('DOMContentLoaded', function() {
+            const prevBtn = document.getElementById('attendance_prev_btn');
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    changeAttendancePage(-1);
+                });
+            }
+
+            const nextBtn = document.getElementById('attendance_next_btn');
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    changeAttendancePage(1);
+                });
+            }
+        });
+
         // Navigation Dropdown Functions
         function toggleNavigationDropdown() {
             const dropdown = document.getElementById('navigationDropdown');

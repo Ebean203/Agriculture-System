@@ -126,10 +126,6 @@ foreach ($notifications as $notification) {
                                         <i class="fas fa-plus-circle text-green-600 mr-2"></i>
                                         New Input Type
                                     </button>
-                                    <button onclick="openAddToExistingModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-                                        <i class="fas fa-layer-group text-blue-600 mr-2"></i>
-                                        Add to Existing
-                                    </button>
                                     <hr class="my-1 border-gray-200">
                                     <button onclick="openAddNewCommodityModal()" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
                                         <i class="fas fa-seedling text-orange-600 mr-2"></i>
@@ -333,45 +329,41 @@ foreach ($notifications as $notification) {
                 </div>
 
                 <?php
-                // Categorize items based on notification status (using already loaded notifications)
+                // Categorize items based on stock levels (with notification overrides)
                 $critical_items = [];
                 $warning_items = [];
                 $normal_items = [];
-                
-                // Get all inventory items
+
                 mysqli_data_seek($result, 0);
-                $all_items = [];
                 while ($row = mysqli_fetch_assoc($result)) {
-                    $all_items[$row['input_id']] = $row;
-                }
-                
-                // Categorize based on notifications
-                foreach ($notifications as $notification) {
-                    if ($notification['category'] === 'inventory' && isset($notification['data']['input_id'])) {
-                        $input_id = $notification['data']['input_id'];
-                        if (isset($all_items[$input_id])) {
-                            if ($notification['type'] === 'urgent') {
-                                $critical_items[] = $all_items[$input_id];
-                            } elseif ($notification['type'] === 'warning') {
-                                $warning_items[] = $all_items[$input_id];
-                            }
-                            // Remove from all_items to avoid duplication
-                            unset($all_items[$input_id]);
+                    $input_id = $row['input_id'];
+                    $current_stock = isset($master_totals[$input_id]) ? (int)$master_totals[$input_id] : (int)$row['quantity_on_hand'];
+
+                    if ($current_stock <= 5) {
+                        $severity = 'critical';
+                    } elseif ($current_stock <= 10) {
+                        $severity = 'warning';
+                    } else {
+                        $severity = 'normal';
+                    }
+
+                    if (isset($notification_lookup[$input_id])) {
+                        $notificationType = $notification_lookup[$input_id]['type'];
+                        if ($notificationType === 'urgent') {
+                            $severity = 'critical';
+                        } elseif ($notificationType === 'warning' && $severity === 'normal') {
+                            $severity = 'warning';
                         }
                     }
-                }
-                
-                // Ensure items with 0 stock are always in critical (if not already there)
-                foreach ($all_items as $input_id => $item) {
-                    $current_stock = isset($master_totals[$input_id]) ? $master_totals[$input_id] : intval($item['quantity_on_hand']);
-                    if ($current_stock == 0) {
-                        $critical_items[] = $item;
-                        unset($all_items[$input_id]);
+
+                    if ($severity === 'critical') {
+                        $critical_items[] = $row;
+                    } elseif ($severity === 'warning') {
+                        $warning_items[] = $row;
+                    } else {
+                        $normal_items[] = $row;
                     }
                 }
-                
-                // Remaining items are normal
-                $normal_items = array_values($all_items);
                 ?>
 
                 <!-- Reset result pointer for main inventory grid -->
@@ -1518,17 +1510,9 @@ foreach ($notifications as $notification) {
                 
                 <div class="mb-4">
                     <label for="unit" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
-                    <select id="unit" name="unit" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                        <option value="">Select Unit</option>
-                        <option value="sack">Sack</option>
-                        <option value="pack">Pack</option>
-                        <option value="kg">Kilogram</option>
-                        <option value="liter">Liter</option>
-                        <option value="unit">Unit</option>
-                        <option value="meter">Meter</option>
-                        <option value="head">Head</option>
-                    </select>
+                    <input type="text" id="unit" name="unit" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                           placeholder="e.g., sack, kilogram, liter">
                 </div>
                 
                 <div class="flex justify-end space-x-3">
@@ -1544,50 +1528,7 @@ foreach ($notifications as $notification) {
             </form>
         </div>
     </div>
-
-    <!-- Add to Existing Input Type Modal -->
-    <div id="addToExistingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Add Stock to Existing Input</h3>
-            </div>
-            <form action="add_new_input.php" method="POST" class="p-6">
-                <input type="hidden" name="action" value="add_stock">
-                <div class="mb-4">
-                    <label for="existing_input" class="block text-sm font-medium text-gray-700 mb-2">Select Input Type</label>
-                    <select id="existing_input" name="input_id" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Choose existing input type...</option>
-                        <?php
-                        mysqli_data_seek($result, 0);
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            echo '<option value="' . $row['input_id'] . '">' . htmlspecialchars($row['input_name']) . ' (' . htmlspecialchars($row['unit']) . ')</option>';
-                        }
-                        ?>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="add_quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Add</label>
-                    <input type="number" id="add_quantity" name="add_quantity" required min="1"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter quantity to add">
-                </div>
-                <div class="mb-4">
-                    <label for="add_expiration_date" class="block text-sm font-medium text-gray-700 mb-2">Expiration Date <span class="text-red-500">*</span></label>
-                    <input type="date" id="add_expiration_date" name="expiration_date" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="closeAddToExistingModal()"
-                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                        Add Stock
-                    </button>
-                </div>
-            </form>
+    
     <!-- Manual Stock Out Expired Batch Modal -->
     <div id="stockOutExpiredModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
@@ -1620,21 +1561,6 @@ foreach ($notifications as $notification) {
                     <button type="submit"
                             class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
                         Stock Out
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="closeAddToExistingModal()"
-                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                        Add Stock
                     </button>
                 </div>
             </form>
@@ -1703,16 +1629,6 @@ foreach ($notifications as $notification) {
             document.getElementById('addNewInputTypeModal').classList.add('hidden');
         }
 
-        // Open Add to Existing Modal
-        function openAddToExistingModal() {
-            document.getElementById('addToExistingModal').classList.remove('hidden');
-        }
-
-        // Close Add to Existing Modal
-        function closeAddToExistingModal() {
-            document.getElementById('addToExistingModal').classList.add('hidden');
-        }
-
         // Open Add New Commodity Modal
         function openAddNewCommodityModal() {
             document.getElementById('addNewCommodityModal').classList.remove('hidden');
@@ -1734,15 +1650,11 @@ foreach ($notifications as $notification) {
         // Close modals when clicking outside
         window.addEventListener('click', function(event) {
             const newInputModal = document.getElementById('addNewInputTypeModal');
-            const existingModal = document.getElementById('addToExistingModal');
             const commodityModal = document.getElementById('addNewCommodityModal');
             const dropdown = document.getElementById('addInputDropdown');
             
             if (event.target === newInputModal) {
                 closeAddNewInputTypeModal();
-            }
-            if (event.target === existingModal) {
-                closeAddToExistingModal();
             }
             if (event.target === commodityModal) {
                 closeAddNewCommodityModal();
