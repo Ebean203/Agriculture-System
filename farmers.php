@@ -3,6 +3,7 @@ session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
 require_once 'validation_functions.php';
+require_once 'includes/activity_logger.php';
 
 $pageTitle = 'Farmers Management';
 
@@ -324,6 +325,20 @@ function handleFarmerRegistration($conn, $post_data) {
 
         $conn->commit();
         $conn->autocommit(true);
+
+        // Log activity: Added new farmer
+        $fullNameParts = [
+            trim($validated['first_name'] ?? ''),
+            trim($validated['middle_name'] ?? ''),
+            trim($validated['last_name'] ?? ''),
+            trim($validated['suffix'] ?? '')
+        ];
+        $fullName = trim(preg_replace('/\s+/', ' ', implode(' ', array_filter($fullNameParts))));
+        $actionText = "Added new farmer: {$fullName} ({$farmer_id})";
+        $detailsText = 'Barangay ID: ' . ($validated['barangay_id'] ?? '');
+        if (function_exists('logActivity')) {
+            @logActivity($conn, $actionText, 'farmer', $detailsText);
+        }
 
         return ['success' => true, 'message' => 'Farmer registered successfully!', 'farmer_id' => $farmer_id];
     } catch (Exception $e) {

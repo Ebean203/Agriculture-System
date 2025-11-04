@@ -13,6 +13,8 @@ function getActivityIcon($type) {
             return ['fas fa-wheat-awn', 'bg-orange-100 text-orange-600'];
         case 'input':
             return ['fas fa-boxes', 'bg-indigo-100 text-indigo-600'];
+        case 'reschedule':
+            return ['fas fa-calendar-alt', 'bg-pink-100 text-pink-600'];
         default:
             return ['fas fa-check-circle', 'bg-gray-100 text-gray-600'];
     }

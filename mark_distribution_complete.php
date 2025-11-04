@@ -1,6 +1,7 @@
 <?php
 require_once 'check_session.php';
 require_once 'conn.php';
+require_once 'includes/activity_logger.php';
 header('Content-Type: application/json');
 
 if ($_SESSION['role'] !== 'admin') {
@@ -57,6 +58,18 @@ if (isset($_POST['reschedule']) && $_POST['reschedule'] == '1' && isset($_POST['
         $stmt->close();
 
         $conn->commit();
+
+        // Log activity for reschedule action
+        if ($ok && function_exists('logActivity')) {
+            $actionText = "Rescheduled distribution #{$distribution_id} to {$new_date}";
+            $detailsText = 'Reason: ' . $reason;
+            // Include old date if available
+            if (!empty($old_date)) {
+                $detailsText .= " (from: {$old_date})";
+            }
+            @logActivity($conn, $actionText, 'reschedule', $detailsText);
+        }
+
         echo json_encode(['success' => (bool)$ok, 'message' => $ok ? 'Distribution rescheduled.' : 'Failed to reschedule.']);
     } catch (Throwable $e) {
         $conn->rollback();

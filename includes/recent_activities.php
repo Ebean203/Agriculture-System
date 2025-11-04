@@ -50,8 +50,13 @@ mysqli_stmt_close($stmt);
                         <p class="text-sm font-medium text-gray-900">
                             <?php echo htmlspecialchars($activity['action']); ?>
                         </p>
+                        <?php if (!empty($activity['details'])): ?>
+                            <p class="text-xs text-gray-500 mb-0">
+                                <?php echo htmlspecialchars($activity['details']); ?>
+                            </p>
+                        <?php endif; ?>
                         <p class="text-xs text-gray-400">
-                            <?php echo date('M j, Y g:i A', strtotime($activity['timestamp'])); ?>
+                            by <?php echo htmlspecialchars($activity['staff_name']); ?> • <?php echo date('M j, Y g:i A', strtotime($activity['timestamp'])); ?>
                         </p>
                     </div>
                 </div>

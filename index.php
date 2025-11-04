@@ -668,14 +668,36 @@ $stmt->close();
                                                     $icon = 'fas fa-leaf';
                                                     $icon_color = 'text-yellow-600';
                                                     break;
+                                                case 'reschedule':
+                                                    $icon = 'fas fa-calendar-alt';
+                                                    $icon_color = 'text-pink-600';
+                                                    break;
                                                 default:
                                                     $icon = 'fas fa-check-circle';
                                                     $icon_color = 'text-agri-green';
                                             }
                                             ?>
                                             <i class="<?php echo $icon . ' ' . $icon_color; ?> mr-2"></i>
-                                            <span class="text-sm">
-                                                <?php echo htmlspecialchars($activity['action']); ?>
+                                            <span class="text-sm leading-tight">
+                                                <?php
+                                                // Build friendlier message; some older logs used "+1"/numeric
+                                                $rawAction = trim((string)($activity['action'] ?? ''));
+                                                $type = strtolower((string)($activity['action_type'] ?? ''));
+                                                $actionText = $rawAction;
+                                                if ($type === 'farmer' && ($rawAction === '' || preg_match('/^\+?\d+$/', $rawAction))) {
+                                                    $actionText = 'Added new farmer';
+                                                } elseif ($rawAction !== '' && preg_match('/^[A-Z_]+$/', $rawAction)) {
+                                                    // Turn legacy ACTION_TOKENS into 'Action Tokens'
+                                                    $actionText = ucwords(strtolower(str_replace('_', ' ', $rawAction)));
+                                                }
+                                                echo htmlspecialchars($actionText);
+                                                ?>
+                                                <?php if (!empty($activity['details'])): ?>
+                                                    <br><span class="text-xs text-gray-600"><?php echo htmlspecialchars($activity['details']); ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($activity['first_name']) || !empty($activity['last_name'])): ?>
+                                                    <br><span class="text-xs text-gray-400">by <?php echo htmlspecialchars(trim(($activity['first_name'] ?? '') . ' ' . ($activity['last_name'] ?? ''))); ?></span>
+                                                <?php endif; ?>
                                             </span>
                                         </span>
                                         <span class="text-xs text-gray-400">
