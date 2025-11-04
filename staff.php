@@ -475,7 +475,7 @@ if ($stmt) {
         function confirmArchive() {
             if (staffToArchive) {
                 // Here you would typically send an AJAX request to archive the staff
-                alert('Staff member archived successfully! (This would be implemented with actual archive functionality)');
+                if (window.AgriToast) { AgriToast.success('Staff member archived successfully.'); }
                 closeArchiveModal();
             }
         }

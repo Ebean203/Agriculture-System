@@ -9,6 +9,29 @@ function imageToBase64($path) {
     return 'data:' . $type . ';base64,' . base64_encode($data);
 }
 
+// Name helpers: normalize suffix and build display name
+function normalizeSuffixDisplay($suffix) {
+    $s = trim((string)$suffix);
+    if ($s === '') return '';
+    // Normalize by stripping non-alphanumerics then lowercasing for comparison
+    $norm = strtolower(preg_replace('/[^a-z0-9]/i', '', $s));
+    $invalid = [
+        'na','nA','none','null','undefined','nil','nill','no','notapplicable','napplicable','nan'
+    ];
+    if ($norm === '' || in_array($norm, $invalid, true)) return '';
+    return $s; // keep original formatting for valid suffixes (e.g., Jr., Sr., III)
+}
+
+function buildFullName($first, $middle, $last, $suffix) {
+    $suffix = normalizeSuffixDisplay($suffix);
+    $parts = [];
+    foreach ([$first, $middle, $last, $suffix] as $p) {
+        $p = trim((string)$p);
+        if ($p !== '') $parts[] = $p;
+    }
+    return trim(implode(' ', $parts));
+}
+
 // Consolidated Yield Report Function
 function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
     $html = '';
@@ -64,11 +87,7 @@ function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
         $cat = $row['category_name'];
         $com = $row['commodity_name'];
         $brgy = $row['barangay_name'];
-        $unit = $row['unit'];
-        // If unit not provided in yield record, attempt to get from commodities table map
-        if (empty($unit) && isset($commodity_units[$com]) && !empty($commodity_units[$com])) {
-            $unit = $commodity_units[$com];
-        }
+        $unit = $row['unit']; // keep raw unit from records; we'll normalize later per-commodity
         $is_head = in_array($cat, $head_categories);
         $label = $is_head ? 'Number of Heads' : 'Total Yield';
         $yield_data[$cat][$com][$brgy] = [
@@ -92,17 +111,14 @@ function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
         $cat_display = $categories[$cat_id] ?? $cat_name;
         $html .= '<h3 style="margin-top:24px; color:#0f766e;">' . htmlspecialchars($cat_display) . '</h3>';
         foreach ($commodities[$cat_id] as $com => $com_id) {
-            // Find unit and label from yield_data if exists, else default
-            $sample = null;
-            // yield_data is keyed by category_name, so use $cat_display
-            foreach ($yield_data[$cat_display][$com] ?? [] as $brgy => $info) { $sample = $info; break; }
-            $unit = $sample ? $sample['unit'] : '';
-            // Fallback to commodity_units map if unit is not present in yield records
-            if (empty($unit) && isset($commodity_units[$com]) && !empty($commodity_units[$com])) {
-                $unit = $commodity_units[$com];
+            // Resolve unit: prefer commodity-level unit; fallback to any yield unit in period; else unspecified
+            $unit = $commodity_units[$com_id] ?? '';
+            if (empty($unit)) {
+                $sample = null;
+                foreach (($yield_data[$cat_display][$com] ?? []) as $info) { $sample = $info; break; }
+                if ($sample && !empty($sample['unit'])) { $unit = $sample['unit']; }
             }
-            // If still empty, query yield_monitoring for this commodity and period to get recorded unit
-            if (empty($unit) && isset($com_id)) {
+            if (empty($unit)) {
                 $u_stmt = $conn->prepare("SELECT COALESCE(MAX(unit),'') AS unit FROM yield_monitoring WHERE commodity_id = ? AND record_date BETWEEN ? AND ?");
                 if ($u_stmt) {
                     $u_stmt->bind_param('iss', $com_id, $start_date, $end_date);
@@ -110,36 +126,32 @@ function generateConsolidatedYieldReport($start_date, $end_date, $conn) {
                     $u_res = $u_stmt->get_result();
                     if ($u_res && $u_res->num_rows > 0) {
                         $urow = $u_res->fetch_assoc();
-                        if (!empty($urow['unit'])) {
-                            $unit = $urow['unit'];
-                        }
+                        if (!empty($urow['unit'])) { $unit = $urow['unit']; }
                     }
                     $u_stmt->close();
                 }
             }
-            $is_head = $sample ? $sample['is_head'] : in_array($cat_display, $head_categories);
+
+            $is_head = in_array($cat_display, $head_categories);
             $label = $is_head ? 'Number of Heads' : 'Total Yield';
             $unit_label = (!$is_head && $unit) ? ' (' . htmlspecialchars($unit) . ')' : '';
             $label_full = $label . $unit_label;
-            $unit_header = $unit ? ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($unit) . ')</span>' : ' <span style="font-size:12px; color:#ef4444;">(unit unspecified)</span>';
+            $unit_header = $unit ? ' <span style="font-size:12px; color:#888;">(' . htmlspecialchars($unit) . ')</span>' : '';
             $html .= '<h4 style="margin-bottom:5px;">' . htmlspecialchars($com) . $unit_header . '</h4>';
-            // If there are no yield records for this commodity in the selected period, show a uniform table indicating no data
-            $has_yield_for_commodity = !empty($yield_data[$cat][$com]);
+
+            // Always render table for every commodity and every barangay; show 0 for missing yields
             $html .= '<table style="margin-bottom:20px; width:100%; border-collapse:collapse;">';
             $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($label_full) . '</th></tr></thead><tbody>';
-            if (!$has_yield_for_commodity) {
-                $html .= '<tr><td colspan="2" style="border:1px solid #e5e7eb; padding:12px; text-align:center; color:#6b7280;">No available yield data recorded for this commodity in the selected period.</td></tr>';
-                $html .= '</tbody></table>';
-                continue;
-            }
+
             $total = 0;
             foreach ($barangays as $brgy_id => $brgy_name) {
-                $amount = isset($yield_data[$cat][$com][$brgy_name]) ? $yield_data[$cat][$com][$brgy_name]['amount'] : 0;
-                $display_amount = number_format($amount, 2) . ($unit ? ' ' . htmlspecialchars($unit) : ' <span style="color:#ef4444;">(unit unspecified)</span>');
+                $amount = isset($yield_data[$cat_display][$com][$brgy_name]) ? $yield_data[$cat_display][$com][$brgy_name]['amount'] : 0;
+                $display_amount = number_format($amount, 2) . ($unit ? ' ' . htmlspecialchars($unit) : '');
                 $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($brgy_name) . '</td><td style="border:1px solid #e5e7eb; padding:8px;">' . $display_amount . '</td></tr>';
                 $total += $amount;
             }
-            $display_total = number_format($total, 2) . ($unit ? ' ' . htmlspecialchars($unit) : ' <span style="color:#ef4444;">(unit unspecified)</span>');
+
+            $display_total = number_format($total, 2) . ($unit ? ' ' . htmlspecialchars($unit) : '');
             $html .= '<tr style="font-weight:bold; background:#f0fdf4;"><td style="border:1px solid #16a34a; padding:8px;">Total</td><td style="border:1px solid #16a34a; padding:8px;">' . $display_total . '</td></tr>';
             $html .= '</tbody></table>';
         }
@@ -355,6 +367,30 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
         .summary-label {
             font-weight: bold;
             color: #15803d;
+        }
+        /* Section headings and spacing enhancements */
+        h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f766e;
+            margin-top: 28px;
+            margin-bottom: 12px;
+        }
+        /* Make all section titles (currently h3 in generators) render like H2 */
+        h3 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f766e;
+            margin-top: 28px;
+            margin-bottom: 12px;
+        }
+        /* Add extra breathing room around data sections */
+        table {
+            margin-top: 24px;
+            margin-bottom: 24px;
+        }
+        .summary-box {
+            margin: 24px 0;
         }
         .footer {
             margin-top: 30px;
@@ -577,6 +613,21 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
                 background-color: #dcfce7 !important;
                 color: #166534 !important;
             }
+            /* Print: ensure headings are prominent and spacing is ample */
+            h2, h3 {
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                color: #15803d !important;
+                margin: 10px 0 6px 0 !important;
+                page-break-after: avoid;
+            }
+            table {
+                margin-top: 12px !important;
+                margin-bottom: 12px !important;
+            }
+            .summary-box {
+                margin: 10px 0 !important;
+            }
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -665,7 +716,7 @@ function generateReportContent($report_type, $start_date, $end_date, $conn) {
                 
             } catch (error) {
                 console.error("Error in printReport function:", error);
-                alert("Error occurred while trying to print. Using fallback print method.");
+                if (window.AgriToast) { AgriToast.error("Error occurred while trying to print. Using fallback print method."); }
                 window.print();
             }
         }
@@ -891,11 +942,7 @@ function generateFarmersSummaryReport($start_date, $end_date, $conn) {
             <tbody>';
         
         while ($row = $farmers_result->fetch_assoc()) {
-            $suffix = isset($row['suffix']) ? trim($row['suffix']) : '';
-            if (in_array(strtolower($suffix), ['n/a', 'na'])) {
-                $suffix = '';
-            }
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
+            $full_name = buildFullName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
             $html .= '<tr>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['gender']) . '</td>
@@ -1002,7 +1049,7 @@ function generateInputDistributionReport($start_date, $end_date, $conn) {
             <tbody>';
         
         while ($row = $distributions_result->fetch_assoc()) {
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $row['suffix']);
+            $full_name = buildFullName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
             $visitation = $row['visitation_date'] ? date('M d, Y', strtotime($row['visitation_date'])) : 'N/A';
             
             $html .= '<tr>
@@ -1389,7 +1436,7 @@ function generateCommodityProductionReport($start_date, $end_date, $conn) {
                         $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . $rank . '</td>';
                         $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($t['farmer_name']) . '</td>';
                         $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($t['barangay_name'] ?? 'N/A') . '</td>';
-                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['total_yield'], 2) . ($unit ? ' ' . htmlspecialchars($unit) : ' <span style="color:#ef4444;">(unit unspecified)</span>') . '</td>';
+                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['total_yield'], 2) . ($unit ? ' ' . htmlspecialchars($unit) : '') . '</td>';
                         $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['land_area'], 2) . '</td></tr>';
                         $rank++;
                     }

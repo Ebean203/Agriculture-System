@@ -7,6 +7,10 @@ $month = $_GET['month'] ?? date('m');
 $year = $_GET['year'] ?? date('Y');
 $barangay = $_GET['barangay'] ?? '';
 $range = isset($_GET['range']) ? $_GET['range'] : 'monthly';
+// Optional filters commonly reused
+$input_id = isset($_GET['input_id']) ? (int)$_GET['input_id'] : 0;
+$start_date_param = isset($_GET['start_date']) ? $_GET['start_date'] : null;
+$end_date_param = isset($_GET['end_date']) ? $_GET['end_date'] : null;
 
  $data = [];
  $labels = [];
@@ -199,7 +203,7 @@ switch ($type) {
         mysqli_stmt_close($stmt);
         break;
     case 'input_distribution':
-        // Support for range: monthly, 3months, 6months, annual
+        // Support for range: monthly, 3months, 6months, annual, custom
         $params = [];
         $types = '';
         $date_select = '';
@@ -207,7 +211,17 @@ switch ($type) {
         $order_by = '';
         $where = 'WHERE 1';
         $today = date('Y-m-d');
-        if ($range === 'monthly') {
+
+        if ($range === 'custom' && $start_date_param && $end_date_param) {
+            // Explicit date window from UI
+            $date_select = 'DATE_FORMAT(date_given, "%Y-%m") as period';
+            $group_by = 'period';
+            $order_by = 'period ASC';
+            $where .= ' AND DATE(date_given) BETWEEN ? AND ?';
+            $params[] = $start_date_param;
+            $params[] = $end_date_param;
+            $types .= 'ss';
+        } elseif ($range === 'monthly') {
             $date_select = 'DATE_FORMAT(date_given, "%Y-%m") as period';
             $group_by = 'period';
             $order_by = 'period ASC';
@@ -240,7 +254,7 @@ switch ($type) {
             $params[] = $today;
             $types .= 'ss';
         } else {
-            // Default to monthly
+            // Default to current month if unknown range
             $date_select = 'DATE_FORMAT(date_given, "%Y-%m") as period';
             $group_by = 'period';
             $order_by = 'period ASC';
@@ -249,11 +263,19 @@ switch ($type) {
             $params[] = $month;
             $types .= 'ss';
         }
+
         if ($barangay) {
-            $where .= ' AND f.barangay = ?';
-            $params[] = $barangay;
-            $types .= 's';
+            // Expect barangay as ID
+            $where .= ' AND f.barangay_id = ?';
+            $params[] = (int)$barangay;
+            $types .= 'i';
         }
+        if ($input_id) {
+            $where .= ' AND mdl.input_id = ?';
+            $params[] = $input_id;
+            $types .= 'i';
+        }
+
         $query = "SELECT $date_select, SUM(quantity_distributed) as total_inputs FROM mao_distribution_log mdl JOIN farmers f ON mdl.farmer_id = f.farmer_id $where GROUP BY $group_by ORDER BY $order_by";
         $stmt = mysqli_prepare($conn, $query);
         if (!empty($params)) {

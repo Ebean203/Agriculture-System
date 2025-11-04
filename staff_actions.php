@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $staff_name = $first_name . ' ' . $last_name;
             logActivity($conn, "Added new staff member: $staff_name", 'staff', "Staff ID: $new_staff_id, Position: $position, Role: {$role_data['role']}");
             
-            $_SESSION['success'] = "Staff member '$staff_name' added successfully with role '{$role_data['role']}'.";
+            $_SESSION['success'] = "Staff member added successfully.";
         } else {
             $_SESSION['error'] = "Failed to add staff member. Please try again. Error: " . mysqli_error($conn);
         }

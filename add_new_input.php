@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once 'includes/activity_logger.php';
             logActivity($conn, "Added new input type: $input_name", 'inventory', "Input: $input_name, Unit: $unit, Initial Stock: 0");
             
-            $_SESSION['success'] = "New input type '$input_name' added successfully with initial stock of 0. You can now stock in using 'Add to Existing Input'.";
+            $_SESSION['success'] = "Input type added successfully.";
         } else {
             $_SESSION['error'] = "Failed to add new input type. Please try again.";
         }
@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Log activity
             require_once 'includes/activity_logger.php';
             logActivity($conn, "Stock-in: Added $add_quantity {$input_data['unit']} to {$input_data['input_name']} (Batch)", 'inventory', "Input ID: $input_id, Added: $add_quantity, Expiry: $expiration_date");
-            $_SESSION['success'] = "Successfully added $add_quantity {$input_data['unit']} to {$input_data['input_name']} as a new batch.";
+            $_SESSION['success'] = "Stock batch added successfully.";
         } else {
             $_SESSION['error'] = "Failed to add stock batch. Please try again.";
     }
@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once 'includes/activity_logger.php';
             logActivity($conn, "Added new commodity: $commodity_name in category {$category_data['category_name']}", 'commodity', "Commodity: $commodity_name, Category: {$category_data['category_name']}");
             
-            $_SESSION['success'] = "New commodity '$commodity_name' added successfully in category '{$category_data['category_name']}'.";
+            $_SESSION['success'] = "Commodity added successfully.";
         } else {
             $_SESSION['error'] = "Failed to add new commodity. Please try again. Error: " . mysqli_error($conn);
         }

@@ -216,8 +216,7 @@ try {
     // Commit transaction
     mysqli_commit($conn);
     // Create success message - all inputs now require visitation
-    $success_message = "Input distributed successfully to {$farmer_data['first_name']} {$farmer_data['last_name']}! Visitation scheduled for " . date('M d, Y', strtotime($visitation_date)) . ".";
-    $_SESSION['success'] = $success_message;
+    $_SESSION['success'] = "Input distributed successfully.";
     
 } catch (Exception $e) {
     // Rollback transaction
@@ -235,7 +234,7 @@ try {
         $error_message .= "Please try again.";
     }
     
-    $_SESSION['error'] = $error_message;
+    $_SESSION['error'] = "Failed to distribute input.";
 }
 
 header("Location: mao_inventory.php");

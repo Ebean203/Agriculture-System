@@ -58,11 +58,7 @@ if ($_POST) {
     }
 }
 
-// Get session messages
-$success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
-$error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
-unset($_SESSION['success_message']);
-unset($_SESSION['error_message']);
+// Flash toasts will be emitted by includes/toast_flash.php included in layout_start
 
 // Initialize default values
 $total_farmers = $total_boats = $total_commodities = $total_inventory = $recent_yields = 0;
@@ -210,20 +206,6 @@ if ($result) {
 $stmt->close();
 ?>
 <?php $pageTitle = 'Lagonglong FARMS - Dashboard'; include 'includes/layout_start.php'; ?>
-    <!-- Success/Error Messages -->
-    <?php if (!empty($success_message)): ?>
-        <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if (!empty($error_message)): ?>
-        <div class="alert alert-danger alert-dismissible fade show m-4" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
 
         <div class="max-w-7xl mx-auto py-2">
             <!-- Welcome Section -->

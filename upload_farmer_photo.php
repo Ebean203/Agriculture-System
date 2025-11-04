@@ -115,7 +115,7 @@ try {
     }
     
     // Success response
-    $_SESSION['success_message'] = "Photo uploaded successfully for farmer: " . $farmer_data['full_name'];
+    $_SESSION['success_message'] = "Photo uploaded successfully.";
     
     echo json_encode([
         'success' => true, 

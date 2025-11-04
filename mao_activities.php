@@ -35,11 +35,11 @@ if ($_POST) {
                             // Log the activity
                             logActivity($conn, 'ADD_ACTIVITY', 'MAO_ACTIVITY', 'Added new MAO activity: ' . $title);
                         } else {
-                            $_SESSION['error_message'] = 'Error adding activity: ' . $stmt->error;
+                            $_SESSION['error_message'] = 'Failed to add activity.';
                         }
                         $stmt->close();
                     } else {
-                        $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error;
+                        $_SESSION['error_message'] = 'Failed to add activity.';
                     }
                 }
                 break;
@@ -69,11 +69,11 @@ if ($_POST) {
                             // Log the activity
                             logActivity($conn, 'UPDATE_ACTIVITY', 'MAO_ACTIVITY', 'Updated MAO activity: ' . $title);
                         } else {
-                            $_SESSION['error_message'] = 'Error updating activity: ' . $stmt->error;
+                            $_SESSION['error_message'] = 'Failed to update activity.';
                         }
                         $stmt->close();
                     } else {
-                        $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error;
+                        $_SESSION['error_message'] = 'Failed to update activity.';
                     }
                 }
                 break;
@@ -101,11 +101,11 @@ if ($_POST) {
                         logActivity($conn, 'COMPLETE_ACTIVITY', 'MAO_ACTIVITY', 'Marked activity as done: ' . $title_row['title']);
                         $title_stmt->close();
                     } else {
-                        $_SESSION['error_message'] = 'Error marking activity as done: ' . $stmt->error;
+                        $_SESSION['error_message'] = 'Failed to mark activity as done.';
                     }
                     $stmt->close();
                 } else {
-                    $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error;
+                    $_SESSION['error_message'] = 'Failed to mark activity as done.';
                 }
                 break;
                 
@@ -126,7 +126,7 @@ if ($_POST) {
 
                 // Fetch current date and title
                 $curr_stmt = $conn->prepare("SELECT activity_date, title FROM mao_activities WHERE activity_id = ?");
-                if (!$curr_stmt) { $_SESSION['error_message'] = 'Error preparing statement: ' . $conn->error; break; }
+                if (!$curr_stmt) { $_SESSION['error_message'] = 'Failed to reschedule activity.'; break; }
                 $curr_stmt->bind_param("i", $activity_id);
                 $curr_stmt->execute();
                 $curr_res = $curr_stmt->get_result();
@@ -171,20 +171,25 @@ if ($_POST) {
 
                     // Update main activity date
                     $stmt = $conn->prepare("UPDATE mao_activities SET activity_date = ?, updated_at = NOW() WHERE activity_id = ?");
-                    if (!$stmt) { throw new Exception('Error preparing update: ' . $conn->error); }
+                    if (!$stmt) { throw new Exception('Failed to reschedule.'); }
                     $stmt->bind_param("si", $new_date, $activity_id);
-                    if (!$stmt->execute()) { throw new Exception('Error rescheduling activity: ' . $stmt->error); }
+                    if (!$stmt->execute()) { throw new Exception('Failed to reschedule activity.'); }
                     $stmt->close();
 
                     $conn->commit();
-                    $_SESSION['success_message'] = 'Activity rescheduled successfully!' . (!$historyInserted ? ' (History not recorded.)' : '');
+                    // Keep user message simple; don't surface internal history status
+                    $_SESSION['success_message'] = 'Activity rescheduled successfully!';
+                    // Optionally log that history was not recorded (table missing or insert failed)
+                    if (!$historyInserted) {
+                        try { error_log('[MAO] Reschedule history not recorded for activity_id=' . $activity_id); } catch (Exception $e) {}
+                    }
 
                     // Log the activity
                     $log_details = 'Rescheduled activity: ' . $title_for_log . ' to ' . date('F j, Y', strtotime($new_date)) . ' (Reason: ' . $reschedule_reason . ')';
                     logActivity($conn, 'RESCHEDULE_ACTIVITY', 'MAO_ACTIVITY', $log_details);
                 } catch (Exception $e) {
                     $conn->rollback();
-                    $_SESSION['error_message'] = $e->getMessage();
+                    $_SESSION['error_message'] = 'Failed to reschedule activity.';
                 }
                 break;
 
@@ -225,21 +230,21 @@ if ($_POST) {
 
                 $insert_stmt = $conn->prepare("INSERT INTO mao_activity_attendance (activity_id, farmer_id) VALUES (?, ?)");
                 if (!$insert_stmt) {
-                    $_SESSION['error_message'] = 'Error preparing attendance registration: ' . $conn->error;
+                    $_SESSION['error_message'] = 'Failed to register attendance.';
                     break;
                 }
 
                 $insert_stmt->bind_param('is', $activity_id, $farmer_id);
 
                 if ($insert_stmt->execute()) {
-                    $_SESSION['success_message'] = 'Farmer successfully registered for this activity!';
+                    $_SESSION['success_message'] = 'Farmer registered successfully.';
                     $log_details = 'Registered farmer ' . ($farmer_name ?: $farmer_id) . ' to activity ' . ($activity_title ?: ('#' . $activity_id));
                     logActivity($conn, 'REGISTER_ATTENDANCE', 'MAO_ACTIVITY', $log_details);
                 } else {
                     if ($insert_stmt->errno === 1062) {
                         $_SESSION['error_message'] = 'This farmer is already registered for the selected activity.';
                     } else {
-                        $_SESSION['error_message'] = 'Error registering farmer attendance: ' . $insert_stmt->error;
+                        $_SESSION['error_message'] = 'Failed to register attendance.';
                     }
                 }
 
@@ -253,11 +258,7 @@ if ($_POST) {
     exit();
 }
 
-// Get session messages
-$success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
-$error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
-unset($_SESSION['success_message']);
-unset($_SESSION['error_message']);
+// Session toasts are handled globally in includes/toast_flash.php (via layout_start)
 
 // Get search and filter parameters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -435,6 +436,8 @@ $types_result = $types_stmt->get_result();
                     </div>
                 </div>
             </div>
+
+            <!-- Toasts are emitted globally by includes/toast_flash.php -->
 
             <!-- Search and Filter Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -935,16 +938,4 @@ $types_result = $types_stmt->get_result();
     <!-- Include Notification System -->
     <?php include 'includes/notification_complete.php'; ?>
     
-    <script>
-        // Auto-hide success messages after 2 seconds
-        document.addEventListener('DOMContentLoaded', function() {
-            const successAlert = document.querySelector('.alert-success');
-            if (successAlert) {
-                setTimeout(function() {
-                    const alert = new bootstrap.Alert(successAlert);
-                    alert.close();
-                }, 2000); // 2 seconds
-            }
-        });
-    </script>
 

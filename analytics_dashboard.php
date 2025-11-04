@@ -294,6 +294,17 @@ mysqli_stmt_close($stmt);
 
 // Get barangays for dropdown
 $barangays = getBarangays($conn);
+// Fetch inputs for distribution filter
+$inputs_for_filter = [];
+$stmt_inputs = $conn->prepare("SELECT input_id, input_name FROM input_categories ORDER BY input_name");
+if ($stmt_inputs) {
+    $stmt_inputs->execute();
+    $res_inputs = $stmt_inputs->get_result();
+    if ($res_inputs) {
+        while ($row = $res_inputs->fetch_assoc()) { $inputs_for_filter[] = $row; }
+    }
+    $stmt_inputs->close();
+}
 ?>
 <?php $pageTitle = 'Visual Analytics Dashboard - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-0 px-4 sm:px-6 lg:px-8" style="margin-top:-32px;padding-top:0;">
@@ -587,7 +598,21 @@ r        .gradient-bg {
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h5 class="card-title mb-0">Input Distribution Volume</h5>
-                                <div class="d-flex flex-column align-items-end" style="min-width: 220px;">
+                                <div class="d-flex flex-column align-items-end" style="min-width: 260px;">
+                                    <!-- Input combobox with autosuggest -->
+                                    <div class="mb-1 position-relative w-100">
+                                        <input type="text" id="distributionInputSearch" class="form-control form-control-sm" placeholder="All Inputs" autocomplete="off">
+                                        <input type="hidden" id="distributionInputId" value="">
+                                        <button type="button" id="clearDistributionInput" class="btn btn-link p-0 text-muted" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); text-decoration:none;">&times;</button>
+                                        <div id="distributionInputSuggestions" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 220px; overflow-y: auto; display:none;"></div>
+                                    </div>
+                                    <!-- Barangay combobox with autosuggest -->
+                                    <div class="mb-1 position-relative w-100">
+                                        <input type="text" id="distributionBarangaySearch" class="form-control form-control-sm" placeholder="All Barangays" autocomplete="off">
+                                        <input type="hidden" id="distributionBarangayId" value="">
+                                        <button type="button" id="clearDistributionBarangay" class="btn btn-link p-0 text-muted" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); text-decoration:none;">&times;</button>
+                                        <div id="distributionBarangaySuggestions" class="list-group position-absolute w-100" style="z-index: 1050; max-height: 220px; overflow-y: auto; display:none;"></div>
+                                    </div>
                                     <div class="dropdown modern-dropdown mb-1">
                                         <button class="btn btn-light btn-sm dropdown-toggle px-3 py-1" type="button" id="distributionRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                             <span id="distributionRangeDropdownLabel">Current Month</span>
@@ -614,6 +639,14 @@ if (document.getElementById('distributionTrendChart')) {
     const distributionDropdownItems = document.querySelectorAll('#distributionRangeDropdown ~ .dropdown-menu .dropdown-item');
     const distributionFromInput = document.getElementById('distributionFromDate');
     const distributionToInput = document.getElementById('distributionToDate');
+    const distributionInputSearch = document.getElementById('distributionInputSearch');
+    const distributionInputId = document.getElementById('distributionInputId');
+    const distributionInputSuggestions = document.getElementById('distributionInputSuggestions');
+    const distributionBarangaySearch = document.getElementById('distributionBarangaySearch');
+    const distributionBarangayId = document.getElementById('distributionBarangayId');
+    const distributionBarangaySuggestions = document.getElementById('distributionBarangaySuggestions');
+    const allInputs = <?php echo json_encode($inputs_for_filter ?? []); ?>;
+    const allBarangays = <?php echo json_encode($barangays ?? []); ?>;
     let distributionSelectedValue = 'current_month';
     distributionDropdownItems.forEach(item => {
         item.addEventListener('click', function(e) {
@@ -625,6 +658,108 @@ if (document.getElementById('distributionTrendChart')) {
     });
     if (distributionFromInput) distributionFromInput.addEventListener('change', handleDistributionRangeChange);
     if (distributionToInput) distributionToInput.addEventListener('change', handleDistributionRangeChange);
+
+    // --- Autosuggest helpers ---
+    function bindCombo(inputEl, hiddenIdEl, suggestionsEl, dataList, labelKey, idKey) {
+        let currentIndex = -1; // keyboard highlight index
+        let lastItems = [];
+        function clearActive() {
+            Array.from(suggestionsEl.querySelectorAll('.list-group-item')).forEach(el => el.classList.remove('active'));
+        }
+        function setActive(index) {
+            clearActive();
+            const children = suggestionsEl.querySelectorAll('.list-group-item');
+            if (index >= 0 && index < children.length) {
+                children[index].classList.add('active');
+                children[index].scrollIntoView({ block: 'nearest' });
+            }
+        }
+        function filterList(term) {
+            const t = term.trim().toLowerCase();
+            if (!t) return dataList.slice(0, 10);
+            return dataList.filter(it => String(it[labelKey]).toLowerCase().includes(t)).slice(0, 10);
+        }
+        function render(list) {
+            suggestionsEl.innerHTML = '';
+            currentIndex = -1;
+            lastItems = list || [];
+            if (!list.length) { suggestionsEl.style.display = 'none'; return; }
+            list.forEach((item, idx) => {
+                const a = document.createElement('a');
+                a.href = '#';
+                a.className = 'list-group-item list-group-item-action';
+                a.textContent = item[labelKey];
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    inputEl.value = item[labelKey];
+                    hiddenIdEl.value = item[idKey];
+                    suggestionsEl.style.display = 'none';
+                    handleDistributionRangeChange();
+                });
+                suggestionsEl.appendChild(a);
+            });
+            suggestionsEl.style.display = 'block';
+        }
+        inputEl.addEventListener('input', () => {
+            const list = filterList(inputEl.value);
+            render(list);
+            // Clear selection if user edits text
+            if (hiddenIdEl.value) hiddenIdEl.value = '';
+        });
+        inputEl.addEventListener('focus', () => {
+            if (inputEl.value.trim() === '') render(filterList(''));
+        });
+        inputEl.addEventListener('blur', () => setTimeout(() => suggestionsEl.style.display = 'none', 120));
+        // Keyboard navigation (ArrowUp/Down, Enter, Tab, Escape)
+        inputEl.addEventListener('keydown', (e) => {
+            const visible = suggestionsEl.style.display !== 'none' && suggestionsEl.childElementCount > 0;
+            if (e.key === 'Escape') { suggestionsEl.style.display = 'none'; return; }
+            if (!visible) return; 
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentIndex = Math.min(currentIndex + 1, suggestionsEl.childElementCount - 1);
+                setActive(currentIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentIndex = Math.max(currentIndex - 1, 0);
+                setActive(currentIndex);
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if (currentIndex >= 0 && currentIndex < lastItems.length) {
+                    const it = lastItems[currentIndex];
+                    inputEl.value = it[labelKey];
+                    hiddenIdEl.value = it[idKey];
+                    suggestionsEl.style.display = 'none';
+                    handleDistributionRangeChange();
+                }
+            }
+        });
+
+        // Clear button handlers if present
+        const clearBtnId = inputEl.id === 'distributionInputSearch' ? 'clearDistributionInput' : (inputEl.id === 'distributionBarangaySearch' ? 'clearDistributionBarangay' : null);
+        if (clearBtnId) {
+            const clearBtn = document.getElementById(clearBtnId);
+            const updateClear = () => {
+                if (!clearBtn) return;
+                if (inputEl.value && inputEl.value.trim() !== '') clearBtn.style.visibility = 'visible';
+                else clearBtn.style.visibility = 'hidden';
+            };
+            if (clearBtn) {
+                updateClear();
+                inputEl.addEventListener('input', updateClear);
+                clearBtn.addEventListener('click', function(){
+                    inputEl.value = '';
+                    hiddenIdEl.value = '';
+                    suggestionsEl.style.display = 'none';
+                    updateClear();
+                    handleDistributionRangeChange();
+                });
+            }
+        }
+    }
+
+    bindCombo(distributionInputSearch, distributionInputId, distributionInputSuggestions, allInputs, 'input_name', 'input_id');
+    bindCombo(distributionBarangaySearch, distributionBarangayId, distributionBarangaySuggestions, allBarangays, 'barangay_name', 'barangay_id');
     // Safe invoker to avoid calling before function is defined
     function callInitDistributionWhenReady(range, startDate, endDate) {
         const tryCall = () => {
@@ -1253,6 +1388,11 @@ if (document.getElementById('complianceBarChart')) {
             params.start_date = startDate;
             params.end_date = endDate;
         }
+        const inputId = distributionInputId ? distributionInputId.value : '';
+        const inputName = distributionInputSearch ? distributionInputSearch.value : '';
+        if (inputId) params.input_id = inputId;
+        const barangayId = distributionBarangayId ? distributionBarangayId.value : '';
+        if (barangayId) params.barangay = barangayId;
         $.getJSON('get_report_data.php', params, function(res) {
             if (distributionTrendChartInstance) distributionTrendChartInstance.destroy();
             distributionTrendChartInstance = new Chart(ctx, {
@@ -1260,7 +1400,7 @@ if (document.getElementById('complianceBarChart')) {
                 data: {
                     labels: res.labels || [],
                     datasets: [{
-                        label: 'Inputs Distributed',
+                        label: inputId ? ('Inputs Distributed (' + inputName + ')') : 'Inputs Distributed',
                         data: res.data || [],
                         backgroundColor: '#f59e42'
                     }]

@@ -870,7 +870,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                             .then(r => r.json())
                                                             .then(data => {
                                                                 if (!data || !data.success || !Array.isArray(data.items) || data.items.length === 0) {
-                                                                    alert('No reschedule history yet.');
+                                                                    if (window.AgriToast) { AgriToast.show({ type: 'info', message: 'No reschedule history yet.', duration: 2500 }); }
                                                                     return;
                                                                 }
                                                                 const lines = data.items.map(i => {
@@ -880,9 +880,9 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                                     const when = i.created_at || '';
                                                                     return `• ${oldd} → ${newd} — ${i.reason} (${who}, ${when})`;
                                                                 }).join('\n');
-                                                                alert(lines);
+                                                                if (window.AgriToast) { AgriToast.show({ type: 'info', message: lines, duration: 5000 }); }
                                                             })
-                                                            .catch(() => alert('Failed to load history.'));
+                                                            .catch(() => { if (window.AgriToast) { AgriToast.error('Failed to load history.'); } });
                                                     }
 
                                                     // Initialize one-time tooltip logic for latest reschedule details
@@ -1096,7 +1096,7 @@ function exportToPDF() {
         }, 3000);
     } catch (e) {
         console.error('Export to PDF failed:', e);
-        alert('Sorry, something went wrong while generating the export.');
+        if (window.AgriToast) { AgriToast.error('Sorry, something went wrong while generating the export.'); }
     }
 }
 </script>

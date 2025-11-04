@@ -76,7 +76,7 @@ if ($_POST['action'] == 'add_stock') {
             mysqli_stmt_close($stmt);
             // Log activity
             logActivity($conn, "Added $quantity units to {$input_data['input_name']} inventory (Stock Replenishment)", 'input', "Input ID: $input_id, Quantity Added: $quantity");
-            $_SESSION['success'] = "Stock added successfully!";
+            $_SESSION['success'] = "Stock added successfully.";
         } else {
             $_SESSION['error'] = "Error adding stock: " . mysqli_error($conn);
         }
@@ -99,7 +99,7 @@ if ($_POST['action'] == 'add_stock') {
             // Log activity
             logActivity($conn, "Initialized {$input_data['input_name']} inventory with $quantity units", 'input', "Input ID: $input_id, Initial Quantity: $quantity");
             
-            $_SESSION['success'] = "Stock added successfully!";
+            $_SESSION['success'] = "Stock added successfully.";
         } else {
             $_SESSION['error'] = "Error adding stock: " . mysqli_error($conn);
         }
@@ -182,7 +182,7 @@ if ($_POST['action'] == 'update_stock') {
             $input_stmt->close();
             // Log activity
             logActivity($conn, "Adjusted {$input_data['input_name']} inventory from $old_quantity to $new_quantity units (Stock Correction)", 'input', "Input ID: $input_id, Old Quantity: $old_quantity, New Quantity: $new_quantity");
-            $_SESSION['success'] = "Stock updated successfully!";
+            $_SESSION['success'] = "Stock updated successfully.";
         } else {
             $_SESSION['error'] = "Error updating stock: " . $update_stmt->error;
         }
@@ -203,7 +203,7 @@ if ($_POST['action'] == 'update_stock') {
             $input_stmt->close();
             // Log activity
             logActivity($conn, "Initialized {$input_data['input_name']} inventory with $new_quantity units", 'input', "Input ID: $input_id, Initial Quantity: $new_quantity");
-            $_SESSION['success'] = "Stock updated successfully!";
+            $_SESSION['success'] = "Stock updated successfully.";
         } else {
             $_SESSION['error'] = "Error updating stock: " . $insert_stmt->error;
         }

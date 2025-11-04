@@ -69,8 +69,8 @@
                             <div class="row">
                                 <div class="col-md-8 mb-3">
                                     <label for="farmer_photo_geotag" class="form-label">Farmer Photo <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" id="farmer_photo_geotag" name="farmer_photo" 
-                                           accept="image/*" capture="camera" required>
+                     <input type="file" class="form-control" id="farmer_photo_geotag" name="farmer_photo" 
+                         accept="image/jpeg,image/jpg,image/png" capture="camera" required>
                                     <small class="text-muted">
                                         <i class="fas fa-info-circle me-1"></i>
                                         Take a photo with GPS location enabled for automatic geo-tagging
@@ -279,14 +279,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Validate farmer selection
     const farmerId = document.getElementById('selected_farmer_id').value;
     if (!farmerId) {
-        alert('❌ Please select a farmer first!');
+        if (window.AgriToast) { AgriToast.error('Please select a farmer first.'); }
         return;
     }
     
     // Validate photo selection
     const photoInput = document.getElementById('farmer_photo_geotag');
     if (!photoInput.files.length) {
-        alert('❌ Please select a photo first!');
+        if (window.AgriToast) { AgriToast.error('Please select a photo first.'); }
+        return;
+    }
+    // Client-side type check to avoid server error alerts
+    const allowedTypes = ['image/jpeg','image/jpg','image/png'];
+    const fileType = photoInput.files[0].type;
+    if (!allowedTypes.includes(fileType)) {
+        if (window.AgriToast) { AgriToast.error('Only JPEG and PNG images are allowed.'); }
         return;
     }
     
@@ -305,36 +312,22 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Show success message
-            alert('✅ Photo uploaded successfully for ' + data.farmer_name + '!');
-            
             // Close modal first
             const modal = bootstrap.Modal.getInstance(document.getElementById('geotaggingModal'));
             if (modal) modal.hide();
-            
-            // Show success notification and refresh page after 2 seconds
-            const successDiv = document.createElement('div');
-            successDiv.innerHTML = `
-                <div class="alert alert-success alert-dismissible fade show position-fixed" 
-                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <strong>Success!</strong> Photo uploaded successfully for ${data.farmer_name}!
-                    <div class="small mt-1">Page will refresh in 2 seconds...</div>
-                </div>
-            `;
-            document.body.appendChild(successDiv);
-            
-            // Refresh page after 2 seconds
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+
+            // Simple toast only
+            if (window.AgriToast) { AgriToast.success('Photo uploaded successfully.'); }
+
+            // Refresh page after a short delay so toast is visible
+            setTimeout(() => { window.location.reload(); }, 1600);
         } else {
-            // Show error message
-            alert('❌ Error: ' + data.message);
+            // Error toast only
+            if (window.AgriToast) { AgriToast.error(data.message || 'Failed to upload photo.'); }
         }
     })
     .catch(error => {
-        alert('❌ An error occurred while uploading the photo. Please try again.');
+        if (window.AgriToast) { AgriToast.error('An error occurred while uploading the photo.'); }
     })
     .finally(() => {
         // Reset button

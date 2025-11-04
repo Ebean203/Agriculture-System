@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $visit_notes
             );
             if ($stmt->execute()) {
-                $_SESSION['success_message'] = "Yield record added successfully!";
+                $_SESSION['success_message'] = "Yield record added successfully.";
                 header("Location: yield_monitoring.php");
                 exit();
             } else {
@@ -171,10 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
-// Get messages from session and clear them
-$success_message = $_SESSION['success_message'] ?? null;
-$error_message = $_SESSION['error_message'] ?? null;
-unset($_SESSION['success_message'], $_SESSION['error_message']);
+// Toast messages handled globally via includes/toast_flash.php
 
 // Get filter parameters from GET
 $farmer_filter = isset($_GET['farmer']) ? trim($_GET['farmer']) : '';
@@ -281,11 +278,19 @@ try {
         $types .= "i";
     }
     
-    // Date filter
+    // Date filter: support last N days (7, 30, 90)
     if (!empty($date_filter)) {
-        $where_clause .= " AND DATE(ym.record_date) = ?";
-        $params[] = $date_filter;
-        $types .= "s";
+        if (ctype_digit($date_filter)) {
+            // Relative range: include today
+            $where_clause .= " AND DATE(ym.record_date) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+            $params[] = (int)$date_filter;
+            $types .= "i";
+        } else {
+            // Fallback: exact date if a YYYY-MM-DD slipped in
+            $where_clause .= " AND DATE(ym.record_date) = ?";
+            $params[] = $date_filter;
+            $types .= "s";
+        }
     }
     
     // Fetch yield records with farmer and commodity information
@@ -325,18 +330,7 @@ include 'includes/layout_start.php';
 ?>
 
 <main class="app-content">
-    <!-- Success/Error Messages -->
-    <?php if (isset($success_message)): ?>
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-            <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success_message); ?>
-        </div>
-    <?php endif; ?>
-    
-    <?php if (isset($error_message)): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <i class="fas fa-exclamation-circle mr-2"></i><?php echo htmlspecialchars($error_message); ?>
-        </div>
-    <?php endif; ?>
+    <!-- Toasts are emitted globally by includes/toast_flash.php -->
     
     <?php if (isset($errors) && !empty($errors)): ?>
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -555,11 +549,15 @@ include 'includes/layout_start.php';
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">Search Farmer</label>
                     <div class="relative">
-                        <input type="text" name="farmer_search" autocomplete="off" placeholder="Search by farmer name..." 
+                        <input type="text" id="farmer_search" name="farmer_search" autocomplete="off" placeholder="Search by farmer name..." 
                                value="<?php echo htmlspecialchars($_GET['farmer_search'] ?? ''); ?>"
                                class="search-input w-full px-4 py-2 pl-10 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        <input type="hidden" name="farmer_id" value="<?php echo htmlspecialchars($_GET['farmer_id'] ?? ''); ?>">
+                        <input type="hidden" id="farmer_id" name="farmer_id" value="<?php echo htmlspecialchars($_GET['farmer_id'] ?? ''); ?>">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                        <button type="button" id="farmer_clear_btn" title="Clear" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden" style="background:transparent;border:none;">
+                            &times;
+                        </button>
+                        <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
                     </div>
                 </div>
                 <div>
@@ -743,11 +741,38 @@ function initializeFarmerAutocomplete() {
     const suggestions = document.getElementById('farmer_suggestions');
     let searchTimeout;
 
+    // Guard if elements are missing
+    if (!farmerSearch || !farmerId || !suggestions) {
+        return;
+    }
+
+    // Keyboard navigation state
+    let activeIndex = -1;
+    function clearActive() {
+        suggestions.querySelectorAll('.farmer-suggestion-item').forEach(el => {
+            el.classList.remove('bg-gray-200');
+            el.classList.remove('ring-1');
+            el.classList.remove('ring-agri-green');
+        });
+    }
+    function setActive(i) {
+        const items = suggestions.querySelectorAll('.farmer-suggestion-item');
+        if (!items.length) return;
+        activeIndex = Math.max(0, Math.min(i, items.length - 1));
+        clearActive();
+        const el = items[activeIndex];
+        el.classList.add('bg-gray-200');
+        el.classList.add('ring-1');
+        el.classList.add('ring-agri-green');
+        el.scrollIntoView({ block: 'nearest' });
+    }
+
     farmerSearch.addEventListener('input', function() {
         const query = this.value.trim();
         
         // Clear previous timeout
         clearTimeout(searchTimeout);
+        activeIndex = -1;
         
         if (query.length < 1) {
             suggestions.innerHTML = '';
@@ -766,6 +791,29 @@ function initializeFarmerAutocomplete() {
         }, 300);
     });
 
+    // Keyboard navigation on input
+    farmerSearch.addEventListener('keydown', function(e) {
+        const items = suggestions.querySelectorAll('.farmer-suggestion-item');
+        const visible = !suggestions.classList.contains('hidden') && items.length > 0;
+        if (e.key === 'Escape') {
+            suggestions.classList.add('hidden');
+            return;
+        }
+        if (!visible) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive(activeIndex + 1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(activeIndex - 1);
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            if (activeIndex >= 0 && activeIndex < items.length) {
+                e.preventDefault();
+                items[activeIndex].click();
+            }
+        }
+    });
+
     // Hide suggestions when clicking outside
     document.addEventListener('click', function(e) {
         if (!farmerSearch.contains(e.target) && !suggestions.contains(e.target)) {
@@ -774,6 +822,23 @@ function initializeFarmerAutocomplete() {
             }, 200); // Delay to allow click events on suggestions
         }
     });
+
+    // Clear button
+    const clearBtn = document.getElementById('farmer_clear_btn');
+    if (clearBtn) {
+        const updateClear = () => {
+            if (farmerSearch.value && farmerSearch.value.trim() !== '') clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+        };
+        updateClear();
+        farmerSearch.addEventListener('input', updateClear);
+        clearBtn.addEventListener('click', function(){
+            farmerSearch.value = '';
+            farmerId.value = '';
+            suggestions.classList.add('hidden');
+            updateClear();
+        });
+    }
 }
 
 function searchFarmers(query) {
@@ -832,10 +897,17 @@ function searchFarmers(query) {
                                 }
                             });
                     });
+                    // Mouse move highlights
+                    item.addEventListener('mouseenter', function(){
+                        clearActive();
+                        this.classList.add('bg-gray-200');
+                    });
                     
                     suggestions.appendChild(item);
                 });
                 suggestions.classList.remove('hidden');
+                // Reset keyboard index when new results render
+                activeIndex = -1;
             } else {
                 const noResults = document.createElement('div');
                 noResults.className = 'px-3 py-2 text-gray-500 text-center';
@@ -961,7 +1033,7 @@ document.getElementById('yieldVisitForm').addEventListener('submit', function(e)
     
     if (!isValid) {
         e.preventDefault();
-        alert('Please fill in all required fields.');
+        if (window.AgriToast) { AgriToast.error('Please fill in all required fields.'); }
         return false;
     }
     

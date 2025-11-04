@@ -865,10 +865,7 @@ function generateFarmerViewHTML($farmer) {
     return $html;
 }
 
-// Get messages from session and clear them
-$success_message = $_SESSION['success_message'] ?? null;
-$error_message = $_SESSION['error_message'] ?? null;
-unset($_SESSION['success_message'], $_SESSION['error_message']);
+// Toasts will be handled globally by includes/toast_flash.php
 
 // Pagination settings
 $records_per_page = 10;
@@ -1053,22 +1050,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         });
     </script>
 </head>
-    <!-- Alert Messages -->
-    <?php if (isset($success_message)): ?>
-        <div class="alert alert-success alert-dismissible fade show mx-6 mt-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i>
-            <?php echo htmlspecialchars($success_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if (isset($error_message)): ?>
-        <div class="alert alert-danger alert-dismissible fade show mx-6 mt-4" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>
-            <?php echo htmlspecialchars($error_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
+    <!-- Toasts are emitted globally by includes/toast_flash.php -->
 
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Header Section -->
@@ -1419,12 +1401,12 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                         document.getElementById('viewFarmerContent').innerHTML = data.html;
                         new bootstrap.Modal(document.getElementById('viewFarmerModal')).show();
                     } else {
-                        alert('Error loading farmer details: ' + data.message);
+                        if (window.AgriToast) { AgriToast.error('Error loading farmer details: ' + (data.message || 'Unknown error')); }
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error loading farmer details');
+                    if (window.AgriToast) { AgriToast.error('Error loading farmer details'); }
                 });
         }
 

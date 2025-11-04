@@ -137,27 +137,7 @@ function buildFilterUrl($new_params = []) {
     </style>
 
 
-    <!-- Success/Error Messages -->
-    <?php
-    $success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
-    $error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
-    unset($_SESSION['success_message']);
-    unset($_SESSION['error_message']);
-    ?>
-
-    <?php if (!empty($success_message)): ?>
-        <div class="alert alert-success alert-dismissible fade show m-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i><?php echo htmlspecialchars($success_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if (!empty($error_message)): ?>
-        <div class="alert alert-danger alert-dismissible fade show m-4" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error_message); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
+    <!-- Toasts are emitted globally by includes/toast_flash.php -->
 
     <div class="px-6 py-4">
             <!-- Header Section (Uniform White Card Design) -->

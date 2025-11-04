@@ -428,7 +428,7 @@ function removeCommodityRow(row) {
     
     // Prevent removal if it's the only row
     if (commodityRows.length <= 1) {
-        alert('At least one commodity is required.');
+        if (window.AgriToast) { AgriToast.error('At least one commodity is required.'); }
         return;
     }
     
@@ -551,7 +551,7 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
     // Validate commodities first
     if (!validateDuplicateCommodities()) {
         e.preventDefault();
-        alert('Please remove duplicate commodities before submitting.');
+        if (window.AgriToast) { AgriToast.error('Please remove duplicate commodities before submitting.'); }
         return false;
     }
 
@@ -564,7 +564,7 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
 
     if (!hasValidCommodity) {
         e.preventDefault();
-        alert('At least one commodity must be selected.');
+        if (window.AgriToast) { AgriToast.error('At least one commodity must be selected.'); }
         return false;
     }
 
@@ -577,7 +577,7 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
 
     if (!hasPrimary) {
         e.preventDefault();
-        alert('Please select which commodity is the primary one.');
+        if (window.AgriToast) { AgriToast.error('Please select which commodity is the primary one.'); }
         return false;
     }
 
@@ -599,7 +599,7 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
                 });
             }
             if (isDuplicate) {
-                alert('A farmer with the same name and birth date already exists.');
+                if (window.AgriToast) { AgriToast.error('A farmer with the same name and birth date already exists.'); }
                 return false;
             } else {
                 e.target.submit();

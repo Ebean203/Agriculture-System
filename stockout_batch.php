@@ -119,7 +119,7 @@ try {
     $details = "Stocked out {$quantity} from batch {$inventory_id} (input_id={$input_id}).";
     logActivity($conn, "Stock Out Batch", 'inventory', $details);
 
-    $_SESSION['success'] = "Stock out successful. Removed {$quantity} from batch {$inventory_id}.";
+    $_SESSION['success'] = "Stock removed successfully.";
     header('Location: expiring_inputs.php');
     exit;
 

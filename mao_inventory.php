@@ -75,6 +75,16 @@ if ($mt_res) {
     }
 }
 
+// Fetch all input types so the UI can render items even if they have no batches yet
+$all_inputs = [];
+$inputs_query = "SELECT input_id, input_name, unit, COALESCE(total_stock,0) AS total_stock FROM input_categories ORDER BY input_name";
+$inputs_res = mysqli_query($conn, $inputs_query);
+if ($inputs_res) {
+    while ($ir = mysqli_fetch_assoc($inputs_res)) {
+        $all_inputs[] = $ir;
+    }
+}
+
 // Get notifications for inventory categorization
 require_once 'includes/notification_system.php';
 $notifications = getNotifications($conn);
@@ -329,15 +339,14 @@ foreach ($notifications as $notification) {
                 </div>
 
                 <?php
-                // Categorize items based on stock levels (with notification overrides)
+                // Categorize items based on stock levels using ALL input types (even if no batches yet)
                 $critical_items = [];
                 $warning_items = [];
                 $normal_items = [];
 
-                mysqli_data_seek($result, 0);
-                while ($row = mysqli_fetch_assoc($result)) {
-                    $input_id = $row['input_id'];
-                    $current_stock = isset($master_totals[$input_id]) ? (int)$master_totals[$input_id] : (int)$row['quantity_on_hand'];
+                foreach ($all_inputs as $inp) {
+                    $input_id = $inp['input_id'];
+                    $current_stock = isset($master_totals[$input_id]) ? (int)$master_totals[$input_id] : (int)$inp['total_stock'];
 
                     if ($current_stock <= 5) {
                         $severity = 'critical';
@@ -355,6 +364,14 @@ foreach ($notifications as $notification) {
                             $severity = 'warning';
                         }
                     }
+
+                    // Normalize to the structure expected by renderInventoryCard
+                    $row = [
+                        'input_id' => $inp['input_id'],
+                        'input_name' => $inp['input_name'],
+                        'unit' => $inp['unit'],
+                        'quantity_on_hand' => $current_stock,
+                    ];
 
                     if ($severity === 'critical') {
                         $critical_items[] = $row;
@@ -754,10 +771,11 @@ foreach ($notifications as $notification) {
                         <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="input_id" required>
                             <option value="">Select Input Type</option>
                             <?php
-                            if ($row_count > 0) {
-                                mysqli_data_seek($result, 0);
-                                while ($row = mysqli_fetch_assoc($result)) {
-                                    echo "<option value='{$row['input_id']}'>{$row['input_name']} ({$row['unit']})</option>";
+                            if (!empty($all_inputs)) {
+                                foreach ($all_inputs as $opt) {
+                                    $opt_name = htmlspecialchars($opt['input_name']);
+                                    $opt_unit = htmlspecialchars($opt['unit']);
+                                    echo "<option value='{$opt['input_id']}'>{$opt_name} ({$opt_unit})</option>";
                                 }
                             } else {
                                 echo "<option value='' disabled>No input categories available</option>";
@@ -1239,13 +1257,13 @@ foreach ($notifications as $notification) {
             
             // Check if input is selected
             if (!inputId || !inputId.value) {
-                alert('Please select an input to update.');
+                if (window.AgriToast) { AgriToast.error('Please select an input to update.'); }
                 return false;
             }
             
             // Check quantity
             if (!newQuantity || !newQuantity.value || parseInt(newQuantity.value) < 0) {
-                alert('Please enter a valid quantity (0 or more).');
+                if (window.AgriToast) { AgriToast.error('Please enter a valid quantity (0 or more).'); }
                 return false;
             }
             
@@ -1333,16 +1351,7 @@ foreach ($notifications as $notification) {
             }
         }
 
-        // Show success/error messages using HTML notifications
-        <?php if (isset($_SESSION['success'])): ?>
-            showSuccessMessage(<?php echo json_encode($_SESSION['success']); ?>);
-            <?php unset($_SESSION['success']); ?>
-        <?php endif; ?>
-
-        <?php if (isset($_SESSION['error'])): ?>
-            showErrorMessage(<?php echo json_encode($_SESSION['error']); ?>);
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
+        // Toasts are handled globally via includes/toast_flash.php.
     </script>
     
                 <!-- Unified Inventory Section -->

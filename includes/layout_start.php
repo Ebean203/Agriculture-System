@@ -66,6 +66,8 @@ require_once __DIR__ . '/../check_session.php';
             try { window.toggleNavigationDropdown = function(){ return false; }; } catch(e) {}
         })();
     </script>
+    <?php // Global toast for session messages
+    include __DIR__ . '/toast_flash.php'; ?>
     <div class="app-shell">
         <div class="app-sidebar-col">
             <?php include __DIR__ . '/sidebar.php'; ?>

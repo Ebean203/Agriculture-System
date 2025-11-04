@@ -48,15 +48,7 @@ foreach ($stock_notifications as $sn) {
 $stock_map = [];
 
 include 'includes/layout_start.php';
-// Show success or error messages from session
-if (!empty($_SESSION['success'])) {
-    echo '<div class="alert alert-success bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded mb-4">' . htmlspecialchars($_SESSION['success']) . '</div>';
-    unset($_SESSION['success']);
-}
-if (!empty($_SESSION['error'])) {
-    echo '<div class="alert alert-danger bg-red-100 border border-red-400 text-red-800 px-4 py-3 rounded mb-4">' . htmlspecialchars($_SESSION['error']) . '</div>';
-    unset($_SESSION['error']);
-}
+// Toasts are emitted globally by includes/toast_flash.php
 ?>
 <div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
     <div class="bg-white rounded-lg shadow p-6 mb-6">

@@ -453,7 +453,7 @@ function validateEditForm() {
     }
     
     if (errors.length > 0) {
-        alert('Please fix the following errors:\n\n' + errors.join('\n'));
+        if (window.AgriToast) { AgriToast.error('Please fix the highlighted errors.'); }
         return false;
     }
     
@@ -502,12 +502,12 @@ function editFarmer(farmerId) {
                 // Show the modal
                 new bootstrap.Modal(document.getElementById('editFarmerModal')).show();
             } else {
-                alert('Error loading farmer data: ' + data.message);
+                if (window.AgriToast) { AgriToast.error('Error loading farmer data: ' + (data.message || 'Unknown error')); }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error loading farmer data');
+            if (window.AgriToast) { AgriToast.error('Error loading farmer data'); }
         });
 }
 

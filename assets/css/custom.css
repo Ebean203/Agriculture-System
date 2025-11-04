@@ -51,6 +51,43 @@
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1) !important;
 }
 
+/* Ensure Agri Green buttons don't turn white on hover/focus/active (Bootstrap 5) */
+/* Use Bootstrap CSS variables so the generic .btn:hover rules keep our color */
+.btn.bg-agri-green {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: #16a34a;          /* base green */
+  --bs-btn-border-color: #15803d; /* dark border */
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #16a34a;     /* keep same green on hover */
+  --bs-btn-hover-border-color: #15803d;
+  --bs-btn-focus-shadow-rgb: 22, 163, 74;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #15803d;    /* slightly darker when pressed */
+  --bs-btn-active-border-color: #14532d;
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: #16a34a;
+  --bs-btn-disabled-border-color: #15803d;
+}
+
+/* Extra safety: explicitly fix states in case other CSS overrides variables */
+.btn.bg-agri-green,
+.btn.bg-agri-green:hover,
+.btn.bg-agri-green:focus,
+.btn.bg-agri-green:active,
+.btn.bg-agri-green.active,
+.show>.dropdown-toggle.btn.bg-agri-green {
+  background-color: #16a34a !important;
+  border-color: #15803d !important;
+  color: #fff !important;
+}
+
+.btn.bg-agri-green:focus { box-shadow: 0 0 0 .25rem rgba(22,163,74,.25) !important; }
+.btn.bg-agri-green:disabled, .btn.bg-agri-green.disabled {
+  background-color: #16a34a !important;
+  border-color: #15803d !important;
+  color: #fff !important;
+}
+
 /* Modern card and button refresh */
 .card-shadow { box-shadow: 0 10px 25px -10px rgba(0,0,0,.15) !important; }
 .rounded-xl { border-radius: 14px !important; }
@@ -76,3 +113,45 @@
   font-family: "Font Awesome 6 Brands";
   font-weight: 400;
 }
+
+/* Alertify-like toasts (no external lib) */
+.agri-toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1080; /* above modals header but below notification dropdown */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none; /* allow clicks to pass unless over toast */
+}
+.agri-toast {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 420px;
+  background: #111827; /* gray-900 */
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.15);
+  padding: 12px 44px 12px 14px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  animation: agriToastSlideIn .25s ease-out;
+}
+.agri-toast--success { background: #16a34a; }
+.agri-toast--error { background: #dc2626; }
+.agri-toast__icon { font-size: 16px; line-height: 1; margin-top: 2px; }
+.agri-toast__message { font-size: 14px; line-height: 1.35; }
+.agri-toast__close {
+  position: absolute; top: 8px; right: 8px; border: 0; background: transparent; color: #fff; opacity: .85; width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.agri-toast__close:hover { opacity: 1; background: rgba(255,255,255,.15); }
+.agri-toast__progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.35); transform-origin: left; }
+.agri-toast--success .agri-toast__progress { background: rgba(255,255,255,.6); }
+.agri-toast--error .agri-toast__progress { background: rgba(255,255,255,.8); }
+
+@keyframes agriToastSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes agriToastSlideOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }

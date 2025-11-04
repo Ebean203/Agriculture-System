@@ -6,6 +6,14 @@ if ($offline_mode === null) {
     // Default to CDN, but fallback to offline if CDN CSS fails to load
     $offline_mode = false;
 }
+// Simple cache-busting for custom.css so style changes are visible immediately
+$customCssRel = 'assets/css/custom.css';
+$customCssAbs = __DIR__ . '/../assets/css/custom.css';
+$customCssVer = file_exists($customCssAbs) ? filemtime($customCssAbs) : time();
+$toastJsRel = 'assets/js/agri-toast.js';
+$toastJsAbs = __DIR__ . '/../assets/js/agri-toast.js';
+$toastJsVer = file_exists($toastJsAbs) ? filemtime($toastJsAbs) : time();
+
 if ($offline_mode) {
     // Local assets
     echo '<link href="assets/css/bootstrap.min.css" rel="stylesheet">';
@@ -40,9 +48,11 @@ if ($offline_mode) {
             }
         }
     </script>';
-    echo '<link href="assets/css/custom.css" rel="stylesheet">';
+    // Always include our custom overrides after frameworks
+    echo '<link href="' . $customCssRel . '?v=' . $customCssVer . '" rel="stylesheet">';
     echo '<script src="assets/js/jquery.min.js"></script>';
     echo '<script src="assets/js/bootstrap.bundle.min.js"></script>';
+    echo '<script src="' . $toastJsRel . '?v=' . $toastJsVer . '"></script>';
 } else {
     // CDN assets (for when you have internet)
     echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" onerror="this.onerror=null;this.href=\'assets/css/bootstrap.min.css\';">';
@@ -73,8 +83,11 @@ if ($offline_mode) {
             }
         }
     </script>';
+    // Include our custom overrides CSS after Bootstrap & FA even when using CDN
+    echo '<link href="' . $customCssRel . '?v=' . $customCssVer . '" rel="stylesheet">';
     echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js" onerror="this.onerror=null;this.src=\'assets/js/jquery.min.js\';"></script>';
     echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" onerror="this.onerror=null;this.src=\'assets/js/bootstrap.bundle.min.js\';"></script>';
+    echo '<script src="' . $toastJsRel . '?v=' . $toastJsVer . '"></script>';
 }
 ?>
 

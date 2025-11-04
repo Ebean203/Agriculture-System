@@ -205,6 +205,17 @@
                                                 }
                                             }
                                         }
+                                        // Also try to auto-fill the Unit field using last used unit for this commodity (if empty)
+                                        try {
+                                            var unitInput = document.getElementById('unit');
+                                            var commodityName = selected && selected.textContent ? selected.textContent.trim() : '';
+                                            if (unitInput && (!unitInput.value || unitInput.value.trim() === '') && commodityName) {
+                                                fetch('get_yield_unit.php?commodity=' + encodeURIComponent(commodityName))
+                                                    .then(function(r){ return r.ok ? r.json() : {}; })
+                                                    .then(function(j){ if (j && j.unit && (!unitInput.value || unitInput.value.trim() === '')) unitInput.value = j.unit; })
+                                                    .catch(function(){});
+                                            }
+                                        } catch(e) {}
                                     });
                                 }
                             });
@@ -230,16 +241,10 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-6 mb-3 position-relative">
                                     <label for="distributed_input" class="form-label">Distributed Input</label>
-                                    <select class="form-select" id="distributed_input" name="distributed_input">
-                                        <option value="">Select input type...</option>
-                                        <option value="Urea">Urea</option>
-                                        <option value="Complete">Complete</option>
-                                        <option value="Ammonium Sulfate">Ammonium Sulfate</option>
-                                        <option value="Organic Fertilizer">Organic Fertilizer</option>
-                                        <option value="Other">Other</option>
-                                    </select>
+                                    <input type="text" class="form-control" id="distributed_input" name="distributed_input" placeholder="e.g., Urea, Complete, Ammonium Sulfate" autocomplete="off">
+                                    <div id="distributed_input_suggestions" class="list-group position-absolute w-100" style="z-index:1050; max-height: 200px; overflow-y:auto; display:none;"></div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="visit_date" class="form-label">Visit Date</label>
@@ -247,15 +252,10 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-6 mb-3 position-relative">
                                     <label for="unit" class="form-label">Unit</label>
-                                    <select class="form-select" id="unit" name="unit">
-                                        <option value="">Select unit...</option>
-                                        <option value="kg">Kilograms</option>
-                                        <option value="bags">Bags</option>
-                                        <option value="sacks">Sacks</option>
-                                        <option value="heads">Heads</option>
-                                    </select>
+                                    <input type="text" class="form-control" id="unit" name="unit" placeholder="e.g., kg, sacks, crates" autocomplete="off">
+                                    <div id="unit_suggestions" class="list-group position-absolute w-100" style="z-index:1050; max-height: 200px; overflow-y:auto; display:none;"></div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="quality_grade" class="form-label">Quality Grade</label>
@@ -525,13 +525,7 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Unit</label>
-                            <select class="form-select" id="edit_unit" name="unit">
-                                <option value="">Select unit...</option>
-                                <option value="kg">Kilograms</option>
-                                <option value="bags">Bags</option>
-                                <option value="sacks">Sacks</option>
-                                <option value="heads">Heads</option>
-                            </select>
+                            <input type="text" class="form-control" id="edit_unit" name="unit" placeholder="e.g., kg, sacks, crates">
                         </div>
                     </div>
 
@@ -540,16 +534,18 @@
                             <label class="form-label">Visit Date</label>
                             <input type="date" class="form-control" id="edit_visit_date" name="visit_date">
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3 position-relative">
                             <label class="form-label">Distributed Input</label>
-                            <input type="text" class="form-control" id="edit_distributed_input" name="distributed_input">
+                            <input type="text" class="form-control" id="edit_distributed_input" name="distributed_input" autocomplete="off">
+                            <div id="edit_distributed_input_suggestions" class="list-group position-absolute w-100" style="z-index:1050; max-height: 200px; overflow-y:auto; display:none;"></div>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3 position-relative">
                             <label class="form-label">Quality Grade</label>
-                            <select class="form-select" id="edit_quality_grade" name="quality_grade">
+                            <input type="text" class="form-control" id="edit_unit" name="unit" placeholder="e.g., kg, sacks, crates" autocomplete="off">
+                            <div id="edit_unit_suggestions" class="list-group position-absolute w-100" style="z-index:1050; max-height: 200px; overflow-y:auto; display:none;"></div>
                                 <option value="">Select grade...</option>
                                 <option value="Grade A">Grade A - Excellent</option>
                                 <option value="Grade B">Grade B - Good</option>
@@ -736,24 +732,126 @@ document.addEventListener('DOMContentLoaded', function() {
                 const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                 modal.hide();
 
-                // Optionally show a small success alert
-                const successDiv = document.createElement('div');
-                successDiv.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6';
-                successDiv.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + (data.message || 'Record updated');
-                const main = document.querySelector('main.app-content');
-                if (main) main.prepend(successDiv);
-                setTimeout(() => { successDiv.remove(); }, 2500);
+                // Unified toast notification
+                if (window.AgriToast) { AgriToast.success(data.message || 'Record updated.'); }
             } else {
-                alert('Error updating record: ' + (data.message || 'Unknown error'));
+                if (window.AgriToast) { AgriToast.error('Error updating record: ' + (data.message || 'Unknown error')); }
             }
         }).catch(err => {
             console.error('Edit request failed', err);
-            alert('Request failed. See console for details.');
+            if (window.AgriToast) { AgriToast.error('Request failed. See console for details.'); }
         }).finally(() => {
             submitBtn.innerHTML = origText;
             submitBtn.disabled = false;
         });
     });
+});
+
+// --- Generic autosuggest binder (bootstrap list-group style) ---
+function bindSuggest(inputEl, boxEl, fetchFn, onSelect) {
+    if (!inputEl || !boxEl) return;
+    let timer = null;
+    let itemsCache = [];
+    let idx = -1;
+    function clearActive() {
+        Array.from(boxEl.querySelectorAll('.list-group-item')).forEach(el => el.classList.remove('active'));
+    }
+    function setActive(i) {
+        clearActive();
+        const nodes = boxEl.querySelectorAll('.list-group-item');
+        if (i >= 0 && i < nodes.length) {
+            nodes[i].classList.add('active');
+            nodes[i].scrollIntoView({ block: 'nearest' });
+        }
+    }
+    function render(items) {
+        boxEl.innerHTML = '';
+        idx = -1;
+        itemsCache = items || [];
+        if (!itemsCache.length) { boxEl.style.display = 'none'; return; }
+        itemsCache.forEach((it, i) => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action';
+            a.textContent = it.label || it;
+            a.addEventListener('click', function(e){
+                e.preventDefault();
+                inputEl.value = it.label || it;
+                boxEl.style.display = 'none';
+                if (onSelect) onSelect(it);
+            });
+            boxEl.appendChild(a);
+        });
+        boxEl.style.display = 'block';
+    }
+    function doFetch() { fetchFn(inputEl.value).then(render).catch(() => render([])); }
+    inputEl.addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(doFetch, 150); });
+    inputEl.addEventListener('focus', doFetch);
+    inputEl.addEventListener('blur', function(){ setTimeout(() => boxEl.style.display = 'none', 120); });
+    inputEl.addEventListener('keydown', function(e){
+        const visible = boxEl.style.display !== 'none' && boxEl.childElementCount > 0;
+        if (e.key === 'Escape') { boxEl.style.display = 'none'; return; }
+        if (!visible) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            idx = Math.min(idx + 1, boxEl.childElementCount - 1);
+            setActive(idx);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            idx = Math.max(idx - 1, 0);
+            setActive(idx);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (idx >= 0 && idx < itemsCache.length) {
+                const it = itemsCache[idx];
+                inputEl.value = it.label || it;
+                boxEl.style.display = 'none';
+                if (onSelect) onSelect(it);
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    // Add form: Distributed Input suggestions from input_categories
+    bindSuggest(
+        document.getElementById('distributed_input'),
+        document.getElementById('distributed_input_suggestions'),
+        function(q){ return fetch('get_input_suggestions.php?q=' + encodeURIComponent(q||''))
+            .then(r=>r.json()).then(j=> (j && j.items) ? j.items : []); },
+        null
+    );
+    // Add form: Unit suggestions from yield_monitoring by commodity
+    bindSuggest(
+        document.getElementById('unit'),
+        document.getElementById('unit_suggestions'),
+        function(q){
+            var cid = (document.getElementById('commodity_id')||{}).value || '';
+            var url = 'get_unit_suggestions.php?commodity_id=' + encodeURIComponent(cid) + '&q=' + encodeURIComponent(q||'');
+            return fetch(url).then(r=>r.json()).then(j=> (j && j.items) ? j.items : []);
+        },
+        null
+    );
+
+    // Edit form: Distributed Input suggestions
+    bindSuggest(
+        document.getElementById('edit_distributed_input'),
+        document.getElementById('edit_distributed_input_suggestions'),
+        function(q){ return fetch('get_input_suggestions.php?q=' + encodeURIComponent(q||''))
+            .then(r=>r.json()).then(j=> (j && j.items) ? j.items : []); },
+        null
+    );
+    // Edit form: Unit suggestions by selected edit commodity
+    bindSuggest(
+        document.getElementById('edit_unit'),
+        document.getElementById('edit_unit_suggestions'),
+        function(q){
+            var cid = (document.getElementById('edit_commodity_id')||{}).value || '';
+            var url = 'get_unit_suggestions.php?commodity_id=' + encodeURIComponent(cid) + '&q=' + encodeURIComponent(q||'');
+            return fetch(url).then(r=>r.json()).then(j=> (j && j.items) ? j.items : []);
+        },
+        null
+    );
 });
 
 document.addEventListener('DOMContentLoaded', function() {
