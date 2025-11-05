@@ -46,6 +46,7 @@ debug.log
 
 # Configuration files with sensitive information
 config.php
+conn.php
 *config.ini
 
 # Composer dependencies
