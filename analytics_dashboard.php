@@ -307,12 +307,12 @@ if ($stmt_inputs) {
 }
 ?>
 <?php $pageTitle = 'Visual Analytics Dashboard - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
-            <div class="max-w-7xl mx-auto py-0 px-4 sm:px-6 lg:px-8" style="margin-top:-32px;padding-top:0;">
-                <!-- Local Chart.js files for offline use -->
-                <script src="assets/js/chart.min.js"></script>
-                <script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
-    
-    <style>
+
+<!-- Local Chart.js files for offline use -->
+<script src="assets/js/chart.min.js"></script>
+<script src="assets/js/chartjs-plugin-datalabels.min.js"></script>
+
+<style>
         /* Custom dropdown styles for user menu */
         #dropdownMenu {
             display: none;
@@ -333,7 +333,7 @@ if ($stmt_inputs) {
         #dropdownArrow.rotate {
             transform: rotate(180deg);
         }
-r        .gradient-bg {
+        .gradient-bg {
             background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
         }
         .chart-container {
@@ -354,60 +354,21 @@ r        .gradient-bg {
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
-</head>
-<body class="bg-gray-50">
-    
 
 <div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <!-- Header Section (Uniform White Card Design) -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                    <div class="flex items-start">
-                        <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mr-3">
-                            <i class="fas fa-chart-line text-purple-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-                            <p class="text-gray-600">Interactive data visualization and insights</p>
-                            <div class="flex items-center text-gray-500 mt-2">
-                                <i class="fas fa-calendar-alt mr-2"></i>
-                                <span>Data Range: <?php echo date('M j, Y', strtotime($start_date)); ?> - <?php echo date('M j, Y', strtotime($end_date)); ?></span>
-                            </div>
-                        </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-purple-600 text-xl"></i>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <!-- Go to Page (rightmost) -->
-                        <div class="relative">
-                            <button class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center font-medium" onclick="toggleNavigationDropdown()">
-                                <i class="fas fa-compass mr-2"></i>Go to Page
-                                <i class="fas fa-chevron-down ml-2 transition-transform" id="navigationArrow"></i>
-                            </button>
-                            <div id="navigationDropdown" class="absolute left-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-[60] hidden overflow-y-auto" style="max-height: 500px;">
-                                <!-- Dashboard Section (quick links) -->
-                                    <a href="reports.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-file-alt text-red-600 mr-3"></i>
-                                        Reports
-                                    </a>
-                                    <a href="all_activities.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-list text-gray-600 mr-3"></i>
-                                        All Activities
-                                    </a>
-                                </div>
-                                
-                                <!-- Settings Section -->
-                                <div>
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                        Staff Management
-                                    </a>
-                                    <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                        <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                        System Settings
-                                    </a>
-                                </div>
-                            </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+                        <p class="text-gray-600">Interactive data visualization and insights</p>
+                        <div class="flex items-center text-gray-500 mt-2">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span>Data Range: <?php echo date('M j, Y', strtotime($start_date)); ?> - <?php echo date('M j, Y', strtotime($end_date)); ?></span>
                         </div>
                     </div>
                 </div>
@@ -518,6 +479,11 @@ r        .gradient-bg {
                         <label for="filterEndDate" class="form-label">End Date</label>
                         <input type="date" id="filterEndDate" name="end_date" value="<?php echo $end_date; ?>" class="form-control">
                     </div>
+                    <div class="col-md-2 mb-2 d-grid">
+                        <button type="button" id="clearAnalyticsFilters" class="btn btn-outline-secondary d-none">
+                            <i class="fas fa-undo me-2"></i>Clear
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -532,7 +498,10 @@ r        .gradient-bg {
                     </div>
                     <div class="flex flex-col md:flex-row gap-2 items-end">
                         <div class="relative w-full max-w-xs flex-shrink-0" style="min-width:180px;">
-                            <input type="text" id="commoditySearch" autocomplete="off" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-agri-green focus:border-agri-green w-full" placeholder="Search commodity...">
+                            <input type="text" id="commoditySearch" autocomplete="off" class="border border-gray-300 rounded-md px-2 py-1 pr-8 text-sm focus:ring-agri-green focus:border-agri-green w-full" placeholder="Search commodity...">
+                            <button type="button" id="clearCommoditySearch" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 hidden" aria-label="Clear commodity filter">
+                                <i class="fas fa-times"></i>
+                            </button>
                             <ul id="commoditySuggestions" class="absolute left-0 right-0 bg-white border border-gray-200 rounded-md shadow z-10 mt-1 hidden max-h-40 overflow-y-auto"></ul>
                         </div>
                         <!-- Download and fullscreen buttons removed -->
@@ -1081,9 +1050,11 @@ if (document.getElementById('complianceBarChart')) {
     let currentChartType = 'bar';
     let currentCommodity = '';
     const allCommodities = <?php echo json_encode($commodities); ?>;
+    const defaultStartDate = '<?php echo date('Y-01-01'); ?>';
+    const defaultEndDate = '<?php echo date('Y-m-d'); ?>';
 
     function fetchAndUpdateAnalyticsChart() {
-        let url = 'get_report_data.php?type=yield';
+        let url = 'get_report_data.php?type=yield_by_commodity';
         const barangay = document.getElementById('filterBarangay').value;
         const startDate = document.getElementById('filterStartDate').value;
         const endDate = document.getElementById('filterEndDate').value;
@@ -1111,6 +1082,10 @@ if (document.getElementById('complianceBarChart')) {
     async function updateAnalyticsChart(labels, chartData, units, commodities) {
         const ctx = document.getElementById('analyticsChart').getContext('2d');
         if (analyticsChart) analyticsChart.destroy();
+        const labelIsCommodity = Array.isArray(commodities)
+            && Array.isArray(labels)
+            && commodities.length === labels.length
+            && commodities.every((c, i) => c === labels[i]);
         let unit = 'kg';
         if (Array.isArray(units) && units.length > 0) {
             unit = units[0];
@@ -1123,6 +1098,8 @@ if (document.getElementById('complianceBarChart')) {
             let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
             let baseLabel = value + ' ' + unitLabel;
             if (isBarChart) {
+                // If labels are already commodities, don't repeat commodity name
+                if (labelIsCommodity) return baseLabel;
                 return comm ? baseLabel + '\n' + comm : baseLabel;
             }
             if (comm) {
@@ -1178,7 +1155,7 @@ if (document.getElementById('complianceBarChart')) {
                                 let idx = context[0].dataIndex;
                                 let date = context[0].label;
                                 let comm = (Array.isArray(commodities) && commodities[idx]) ? commodities[idx] : '';
-                                if (comm) {
+                                if (comm && comm !== date) {
                                     return comm + ' (' + date + ')';
                                 } else {
                                     return date;
@@ -1210,6 +1187,60 @@ if (document.getElementById('complianceBarChart')) {
     document.addEventListener('DOMContentLoaded', function() {
         const commoditySearch = document.getElementById('commoditySearch');
         const suggestionsBox = document.getElementById('commoditySuggestions');
+        const clearCommodityBtn = document.getElementById('clearCommoditySearch');
+        const clearAllBtn = document.getElementById('clearAnalyticsFilters');
+
+        const btnLine = document.getElementById('btn-line');
+        const btnBar = document.getElementById('btn-bar');
+
+        function setChartTypeUI(type) {
+            if (!btnLine || !btnBar) return;
+            if (type === 'bar') {
+                btnBar.classList.add('active');
+                btnBar.style.backgroundColor = '#16a34a';
+                btnBar.style.color = '#fff';
+                btnBar.style.border = '2px solid #15803d';
+                btnLine.classList.remove('active');
+                btnLine.style.backgroundColor = '';
+                btnLine.style.color = '';
+                btnLine.style.border = '';
+            } else {
+                btnLine.classList.add('active');
+                btnLine.style.backgroundColor = '#16a34a';
+                btnLine.style.color = '#fff';
+                btnLine.style.border = '2px solid #15803d';
+                btnBar.classList.remove('active');
+                btnBar.style.backgroundColor = '';
+                btnBar.style.color = '';
+                btnBar.style.border = '';
+            }
+        }
+
+        function syncCommodityClearButton() {
+            if (!clearCommodityBtn) return;
+            if (commoditySearch && commoditySearch.value && commoditySearch.value.trim() !== '') {
+                clearCommodityBtn.classList.remove('hidden');
+            } else {
+                clearCommodityBtn.classList.add('hidden');
+            }
+        }
+
+        function updateClearAllVisibility() {
+            if (!clearAllBtn) return;
+            const barangayVal = document.getElementById('filterBarangay')?.value || '';
+            const startVal = document.getElementById('filterStartDate')?.value || '';
+            const endVal = document.getElementById('filterEndDate')?.value || '';
+
+            const hasBarangay = barangayVal !== '';
+            const hasCommodity = !!(currentCommodity && currentCommodity.trim() !== '');
+            const hasDate = (startVal !== defaultStartDate) || (endVal !== defaultEndDate);
+
+            if (hasBarangay || hasCommodity || hasDate) {
+                clearAllBtn.classList.remove('d-none');
+            } else {
+                clearAllBtn.classList.add('d-none');
+            }
+        }
         function getFilteredCommodities(searchTerm = '') {
             searchTerm = searchTerm.trim().toLowerCase();
             return allCommodities.filter(com => !searchTerm || com.commodity_name.toLowerCase().includes(searchTerm));
@@ -1229,6 +1260,8 @@ if (document.getElementById('complianceBarChart')) {
                     commoditySearch.value = com.commodity_name;
                     suggestionsBox.classList.add('hidden');
                     currentCommodity = com.commodity_name;
+                    syncCommodityClearButton();
+                    updateClearAllVisibility();
                     fetchAndUpdateAnalyticsChart();
                 });
                 suggestionsBox.appendChild(li);
@@ -1238,6 +1271,8 @@ if (document.getElementById('complianceBarChart')) {
         commoditySearch.addEventListener('input', function() {
             const filtered = getFilteredCommodities(commoditySearch.value);
             showSuggestions(filtered);
+            // Only show/hide the clear button; don't change applied filter until user selects/enters
+            syncCommodityClearButton();
         });
         commoditySearch.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -1250,6 +1285,8 @@ if (document.getElementById('complianceBarChart')) {
                     fetchAndUpdateAnalyticsChart();
                 }
                 suggestionsBox.classList.add('hidden');
+                syncCommodityClearButton();
+                updateClearAllVisibility();
             }
         });
         commoditySearch.addEventListener('blur', function() {
@@ -1257,46 +1294,67 @@ if (document.getElementById('complianceBarChart')) {
         });
 
         document.getElementById('filterBarangay').addEventListener('change', function() {
+            updateClearAllVisibility();
             fetchAndUpdateAnalyticsChart();
         });
         document.getElementById('filterStartDate').addEventListener('change', function() {
+            updateClearAllVisibility();
             fetchAndUpdateAnalyticsChart();
         });
         document.getElementById('filterEndDate').addEventListener('change', function() {
+            updateClearAllVisibility();
             fetchAndUpdateAnalyticsChart();
         });
-        const btnLine = document.getElementById('btn-line');
-        const btnBar = document.getElementById('btn-bar');
-        btnBar.classList.add('active');
-        btnBar.style.backgroundColor = '#16a34a';
-        btnBar.style.color = '#fff';
-        btnBar.style.border = '2px solid #15803d';
-        btnLine.classList.remove('active');
-        btnLine.style.backgroundColor = '';
-        btnLine.style.color = '';
-        btnLine.style.border = '';
+
+        // Clear commodity (X button)
+        if (clearCommodityBtn) {
+            clearCommodityBtn.addEventListener('click', function() {
+                if (commoditySearch) commoditySearch.value = '';
+                currentCommodity = '';
+                suggestionsBox.classList.add('hidden');
+                syncCommodityClearButton();
+                updateClearAllVisibility();
+                fetchAndUpdateAnalyticsChart();
+            });
+        }
+
+        // Clear all filters (barangay/date/commodity) without refresh
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', function() {
+                const barangayEl = document.getElementById('filterBarangay');
+                const startEl = document.getElementById('filterStartDate');
+                const endEl = document.getElementById('filterEndDate');
+
+                if (barangayEl) barangayEl.value = '';
+                if (startEl) startEl.value = defaultStartDate;
+                if (endEl) endEl.value = defaultEndDate;
+
+                if (commoditySearch) commoditySearch.value = '';
+                currentCommodity = '';
+                suggestionsBox.classList.add('hidden');
+                syncCommodityClearButton();
+
+                // Keep bar chart as default
+                currentChartType = 'bar';
+                setChartTypeUI('bar');
+                updateClearAllVisibility();
+                fetchAndUpdateAnalyticsChart();
+            });
+        }
+
+        // Default UI state: Bar
+        setChartTypeUI('bar');
+        syncCommodityClearButton();
+        updateClearAllVisibility();
+
         btnLine.addEventListener('click', function() {
             currentChartType = 'line';
-            btnLine.classList.add('active');
-            btnBar.classList.remove('active');
-            btnLine.style.backgroundColor = '#16a34a';
-            btnLine.style.color = '#fff';
-            btnLine.style.border = '2px solid #15803d';
-            btnBar.style.backgroundColor = '';
-            btnBar.style.color = '';
-            btnBar.style.border = '';
+            setChartTypeUI('line');
             fetchAndUpdateAnalyticsChart();
         });
         btnBar.addEventListener('click', function() {
             currentChartType = 'bar';
-            btnBar.classList.add('active');
-            btnLine.classList.remove('active');
-            btnBar.style.backgroundColor = '#16a34a';
-            btnBar.style.color = '#fff';
-            btnBar.style.border = '2px solid #15803d';
-            btnLine.style.backgroundColor = '';
-            btnLine.style.color = '';
-            btnLine.style.border = '';
+            setChartTypeUI('bar');
             fetchAndUpdateAnalyticsChart();
         });
         // Initial chart load

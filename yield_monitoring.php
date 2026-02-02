@@ -510,59 +510,146 @@ include 'includes/layout_start.php';
 
 
 
-    <!-- Filter Tabs -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="flex flex-wrap gap-3 mb-6">
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="agronomic">
-                <i class="fas fa-wheat-awn mr-2"></i>Agronomic Crops
-            </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="high-value">
-                <i class="fas fa-apple-alt mr-2"></i>High Value Crops
-            </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="livestock">
-                <i class="fas fa-horse mr-2"></i>Livestock
-            </button>
-            <button class="filter-tab bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors flex items-center" data-filter="poultry">
-                <i class="fas fa-egg mr-2"></i>Poultry
-            </button>
+    <!-- Search and Filter Controls -->
+    <div class="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <!-- Search Bar -->
+        <div class="relative w-full sm:max-w-md">
+            <input type="text" id="globalSearchInput" placeholder="Search records..." 
+                   class="w-full global-search-input pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
+            <i class="fas fa-search absolute global-search-icon top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
         </div>
+        
+        <!-- Filter Button -->
+        <button id="openFilterDrawer" class="bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 shadow-sm hover:shadow-md hover:border-agri-green transition-all flex items-center gap-2 whitespace-nowrap">
+            <i class="fas fa-sliders-h text-agri-green"></i>
+            <span class="font-medium">Filters</span>
+            <span id="activeFilterCount" class="hidden bg-agri-green text-white text-xs px-2 py-0.5 rounded-full ml-1"></span>
+        </button>
     </div>
 
-    <!-- Search and Filter Controls -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <form method="GET" action="yield_monitoring.php" class="flex flex-col gap-4">
-            <input type="hidden" name="category_filter" id="hidden_category_filter" value="<?php echo htmlspecialchars($_GET['category_filter'] ?? ''); ?>">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- Filter Drawer -->
+    <div id="filterDrawer" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div id="filterBackdrop" class="absolute inset-0 bg-black bg-opacity-50 transition-opacity"></div>
+        
+        <!-- Drawer -->
+        <div id="drawerContent" class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transform transition-transform translate-x-full flex flex-col">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 class="text-xl font-bold text-gray-900">Filters</h2>
+                <button id="closeFilterDrawer" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Filter Content - Scrollable -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Category Type with Nested Commodities -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-800 mb-2">Commodity</label>
-                    <select name="commodity_filter" id="commodity_filter" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        <option value="">All Commodities</option>
-                        <?php foreach ($commodities as $commodity): ?>
-                            <option value="<?php echo htmlspecialchars($commodity['commodity_id']); ?>" 
-                                    data-category="<?php echo htmlspecialchars($commodity['category_id']); ?>"
-                                    <?php echo (isset($_GET['commodity_filter']) && $_GET['commodity_filter'] == $commodity['commodity_id']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($commodity['commodity_name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-800 mb-2">Search Farmer</label>
-                    <div class="relative">
-                        <input type="text" id="farmer_search" name="farmer_search" autocomplete="off" placeholder="Search by farmer name..." 
-                               value="<?php echo htmlspecialchars($_GET['farmer_search'] ?? ''); ?>"
-                               class="search-input w-full px-4 py-2 pl-10 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        <input type="hidden" id="farmer_id" name="farmer_id" value="<?php echo htmlspecialchars($_GET['farmer_id'] ?? ''); ?>">
-                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
-                        <button type="button" id="farmer_clear_btn" title="Clear" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden" style="background:transparent;border:none;">
-                            &times;
-                        </button>
-                        <div id="farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Category</h3>
+                    <div class="space-y-2">
+                        <!-- Agronomic Crops -->
+                        <div>
+                            <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <input type="checkbox" class="filter-category-checkbox w-4 h-4 text-agri-green border-gray-300 rounded focus:ring-agri-green" data-filter="agronomic" data-category-id="1">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <i class="fas fa-wheat-awn text-green-600"></i>
+                                    <span class="text-sm text-gray-700">Agronomic Crops</span>
+                                </div>
+                            </label>
+                            <!-- Commodities under Agronomic -->
+                            <div class="commodity-list hidden ml-11 mt-2 space-y-1" data-category-id="1">
+                                <?php foreach ($commodities as $commodity): ?>
+                                    <?php if ($commodity['category_id'] == 1): ?>
+                                        <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <input type="checkbox" class="filter-commodity-checkbox w-3.5 h-3.5 text-agri-green border-gray-300 rounded focus:ring-agri-green" 
+                                                   data-commodity-id="<?php echo htmlspecialchars($commodity['commodity_id']); ?>"
+                                                   data-category-id="1">
+                                            <span class="text-xs text-gray-600"><?php echo htmlspecialchars($commodity['commodity_name']); ?></span>
+                                        </label>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- High Value Crops -->
+                        <div>
+                            <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <input type="checkbox" class="filter-category-checkbox w-4 h-4 text-agri-green border-gray-300 rounded focus:ring-agri-green" data-filter="high-value" data-category-id="2">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <i class="fas fa-apple-alt text-purple-600"></i>
+                                    <span class="text-sm text-gray-700">High Value Crops</span>
+                                </div>
+                            </label>
+                            <!-- Commodities under High Value -->
+                            <div class="commodity-list hidden ml-11 mt-2 space-y-1" data-category-id="2">
+                                <?php foreach ($commodities as $commodity): ?>
+                                    <?php if ($commodity['category_id'] == 2): ?>
+                                        <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <input type="checkbox" class="filter-commodity-checkbox w-3.5 h-3.5 text-agri-green border-gray-300 rounded focus:ring-agri-green" 
+                                                   data-commodity-id="<?php echo htmlspecialchars($commodity['commodity_id']); ?>"
+                                                   data-category-id="2">
+                                            <span class="text-xs text-gray-600"><?php echo htmlspecialchars($commodity['commodity_name']); ?></span>
+                                        </label>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Livestock -->
+                        <div>
+                            <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <input type="checkbox" class="filter-category-checkbox w-4 h-4 text-agri-green border-gray-300 rounded focus:ring-agri-green" data-filter="livestock" data-category-id="3">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <i class="fas fa-horse text-orange-600"></i>
+                                    <span class="text-sm text-gray-700">Livestock</span>
+                                </div>
+                            </label>
+                            <!-- Commodities under Livestock -->
+                            <div class="commodity-list hidden ml-11 mt-2 space-y-1" data-category-id="3">
+                                <?php foreach ($commodities as $commodity): ?>
+                                    <?php if ($commodity['category_id'] == 3): ?>
+                                        <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <input type="checkbox" class="filter-commodity-checkbox w-3.5 h-3.5 text-agri-green border-gray-300 rounded focus:ring-agri-green" 
+                                                   data-commodity-id="<?php echo htmlspecialchars($commodity['commodity_id']); ?>"
+                                                   data-category-id="3">
+                                            <span class="text-xs text-gray-600"><?php echo htmlspecialchars($commodity['commodity_name']); ?></span>
+                                        </label>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Poultry -->
+                        <div>
+                            <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <input type="checkbox" class="filter-category-checkbox w-4 h-4 text-agri-green border-gray-300 rounded focus:ring-agri-green" data-filter="poultry" data-category-id="4">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <i class="fas fa-egg text-yellow-600"></i>
+                                    <span class="text-sm text-gray-700">Poultry</span>
+                                </div>
+                            </label>
+                            <!-- Commodities under Poultry -->
+                            <div class="commodity-list hidden ml-11 mt-2 space-y-1" data-category-id="4">
+                                <?php foreach ($commodities as $commodity): ?>
+                                    <?php if ($commodity['category_id'] == 4): ?>
+                                        <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <input type="checkbox" class="filter-commodity-checkbox w-3.5 h-3.5 text-agri-green border-gray-300 rounded focus:ring-agri-green" 
+                                                   data-commodity-id="<?php echo htmlspecialchars($commodity['commodity_id']); ?>"
+                                                   data-category-id="4">
+                                            <span class="text-xs text-gray-600"><?php echo htmlspecialchars($commodity['commodity_name']); ?></span>
+                                        </label>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Date Range -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-800 mb-2">Date Range</label>
-                    <select name="date_filter" class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Date Range</h3>
+                    <select id="drawer_date_filter" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
                         <option value="">All Dates</option>
                         <option value="7" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '7') ? 'selected' : ''; ?>>Last 7 days</option>
                         <option value="30" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '30') ? 'selected' : ''; ?>>Last 30 days</option>
@@ -570,26 +657,20 @@ include 'includes/layout_start.php';
                     </select>
                 </div>
             </div>
-            <div class="flex gap-3">
-                <button type="submit" class="bg-agri-green text-white px-4 py-2 rounded-lg hover:bg-agri-dark transition-colors flex items-center">
-                    <i class="fas fa-filter mr-2"></i>Apply Filters
+            
+            <!-- Footer with Result Count and Apply Button -->
+            <div class="border-t border-gray-200 p-6 bg-gray-50 space-y-3">
+                <p class="text-sm text-gray-600 text-center">
+                    <span id="drawerResultCount">Showing all records</span>
+                </p>
+                <button id="applyFiltersBtn" class="w-full bg-agri-green text-white py-3 rounded-lg hover:bg-agri-dark transition-colors font-medium">
+                    Show Results
                 </button>
-                <?php 
-                // Check if any filters are active
-                $hasActiveFilters = !empty($_GET['category_filter']) || 
-                                  !empty($_GET['commodity_filter']) || 
-                                  !empty($_GET['farmer_search']) || 
-                                  !empty($_GET['date_filter']) ||
-                                  !empty($_GET['farmer']) ||
-                                  !empty($_GET['farmer_id']);
-                
-                if ($hasActiveFilters): ?>
-                    <a href="yield_monitoring.php" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center">
-                        <i class="fas fa-times mr-2"></i>Clear Filters
-                    </a>
-                <?php endif; ?>
+                <button id="clearAllFiltersBtn" class="w-full bg-white text-gray-700 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors text-sm">
+                    Clear All Filters
+                </button>
             </div>
-        </form>
+        </div>
     </div>
 
     <!-- Data Table Section -->
@@ -609,7 +690,10 @@ include 'includes/layout_start.php';
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php foreach ($yield_records as $record): ?>
-                            <tr class="hover:bg-gray-50" data-record-id="<?php echo htmlspecialchars($record['yield_id'] ?? $record['id'] ?? ''); ?>">
+                            <tr class="hover:bg-gray-50" 
+                                data-record-id="<?php echo htmlspecialchars($record['yield_id'] ?? $record['id'] ?? ''); ?>" 
+                                data-category-id="<?php echo htmlspecialchars($record['category_id'] ?? ''); ?>"
+                                data-commodity-id="<?php echo htmlspecialchars($record['commodity_id'] ?? ''); ?>">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -1062,6 +1146,7 @@ document.getElementById('addVisitModal').addEventListener('hidden.bs.modal', fun
 // Filter Tabs Functionality
 function initializeFilterTabs() {
     const filterTabs = document.querySelectorAll('.filter-tab');
+    const clearBtn = document.getElementById('clearFilterBtn');
     
     filterTabs.forEach(tab => {
         tab.addEventListener('click', function() {
@@ -1074,6 +1159,11 @@ function initializeFilterTabs() {
             // Add active class to clicked tab
             this.classList.add('active', 'bg-agri-green', 'text-white');
             this.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            
+            // Show clear filter button
+            if (clearBtn) {
+                clearBtn.classList.remove('hidden');
+            }
             
             // Get filter value
             const filterValue = this.getAttribute('data-filter');
@@ -1105,12 +1195,16 @@ function handleFilterChange(filterValue) {
     
     // Filter commodity dropdown based on selected category
     filterCommodityDropdown(categoryId);
+    
+    // Filter the data table to show only records from this category
+    filterDataTable(filterValue);
 }
 
 function setActiveTab() {
     // Get current category filter from URL
     const urlParams = new URLSearchParams(window.location.search);
     const categoryFilter = urlParams.get('category_filter');
+    const clearBtn = document.getElementById('clearFilterBtn');
     
     // Map category IDs to filter values
     const filterMap = {
@@ -1135,6 +1229,11 @@ function setActiveTab() {
                 // Add active class to current tab
                 tab.classList.add('active', 'bg-agri-green', 'text-white');
                 tab.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+                
+                // Show clear button since a filter is active
+                if (clearBtn) {
+                    clearBtn.classList.remove('hidden');
+                }
             }
         });
     }
@@ -1175,15 +1274,14 @@ function filterCommodityDropdown(categoryId) {
 function filterDataTable(filterValue) {
     if (window.APP_DEBUG) console.log('Filtering data table for:', filterValue);
     
-    // Get all table rows (assuming there will be a data table with commodity information)
+    // Get all table rows
     const tableRows = document.querySelectorAll('tbody tr');
     
     tableRows.forEach(row => {
         let showRow = false;
         
-        // Get category ID from the row (adjust selector as needed when table is implemented)
-        const categoryCell = row.querySelector('td[data-category-id]');
-        const categoryId = categoryCell ? categoryCell.textContent.trim() : '';
+        // Get category ID from the row data attribute
+        const categoryId = row.getAttribute('data-category-id');
         
         if (filterValue === 'agronomic') {
             showRow = (categoryId === '1'); // Agronomic Crops
@@ -1209,9 +1307,343 @@ function filterDataTable(filterValue) {
         recordCounter.textContent = `Showing ${visibleRows.length} records`;
     }
 }
+
+// ========================================
+// FILTER DRAWER FUNCTIONALITY
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const drawer = document.getElementById('filterDrawer');
+    const drawerContent = document.getElementById('drawerContent');
+    const backdrop = document.getElementById('filterBackdrop');
+    const openBtn = document.getElementById('openFilterDrawer');
+    const closeBtn = document.getElementById('closeFilterDrawer');
+    const applyBtn = document.getElementById('applyFiltersBtn');
+    const clearAllBtn = document.getElementById('clearAllFiltersBtn');
+    
+    // Open drawer
+    openBtn.addEventListener('click', function() {
+        drawer.classList.remove('hidden');
+        setTimeout(() => {
+            drawerContent.classList.remove('translate-x-full');
+        }, 10);
+    });
+    
+    // Close drawer function
+    function closeDrawer() {
+        drawerContent.classList.add('translate-x-full');
+        setTimeout(() => {
+            drawer.classList.add('hidden');
+        }, 300);
+    }
+    
+    // Close drawer on backdrop click
+    backdrop.addEventListener('click', closeDrawer);
+    closeBtn.addEventListener('click', closeDrawer);
+    
+    // Category checkboxes - toggle commodity list visibility
+    const categoryCheckboxes = document.querySelectorAll('.filter-category-checkbox');
+    categoryCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const categoryId = this.getAttribute('data-category-id');
+            const commodityList = document.querySelector(`.commodity-list[data-category-id="${categoryId}"]`);
+            
+            if (this.checked) {
+                commodityList.classList.remove('hidden');
+            } else {
+                commodityList.classList.add('hidden');
+                // Uncheck all commodities in this category
+                commodityList.querySelectorAll('.filter-commodity-checkbox').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+            
+            updateFilterPreview();
+        });
+    });
+    
+    // Commodity checkboxes
+    const commodityCheckboxes = document.querySelectorAll('.filter-commodity-checkbox');
+    commodityCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateFilterPreview);
+    });
+    
+    // Date change listener
+    document.getElementById('drawer_date_filter').addEventListener('change', updateFilterPreview);
+    
+    // Apply filters
+    applyBtn.addEventListener('click', function() {
+        applyDrawerFilters();
+        closeDrawer();
+    });
+    
+    // Clear all filters
+    clearAllBtn.addEventListener('click', function() {
+        // Uncheck all category checkboxes
+        categoryCheckboxes.forEach(cb => cb.checked = false);
+        
+        // Uncheck all commodity checkboxes and hide lists
+        document.querySelectorAll('.filter-commodity-checkbox').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.commodity-list').forEach(list => list.classList.add('hidden'));
+        
+        // Reset date dropdown
+        document.getElementById('drawer_date_filter').value = '';
+        
+        // Apply the clear
+        applyDrawerFilters();
+        updateFilterPreview();
+    });
+    
+    // Initialize from URL parameters
+    initializeDrawerFromURL();
+});
+
+function applyDrawerFilters() {
+    const selectedCategories = [];
+    document.querySelectorAll('.filter-category-checkbox:checked').forEach(cb => {
+        selectedCategories.push(cb.dataset.categoryId);
+    });
+    
+    const selectedCommodities = [];
+    document.querySelectorAll('.filter-commodity-checkbox:checked').forEach(checkbox => {
+        selectedCommodities.push(checkbox.getAttribute('data-commodity-id'));
+    });
+    
+    // Get all table rows
+    const tableRows = document.querySelectorAll('tbody tr');
+    
+    tableRows.forEach(row => {
+        const categoryId = row.getAttribute('data-category-id');
+        const commodityId = row.getAttribute('data-commodity-id');
+        let showRow = true;
+        
+        // Filter by category if any selected
+        if (selectedCategories.length > 0) {
+            showRow = selectedCategories.includes(categoryId);
+        }
+        
+        // Further filter by commodity if any selected
+        if (showRow && selectedCommodities.length > 0) {
+            showRow = selectedCommodities.includes(commodityId);
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+    
+    updateActiveFilterCount();
+    updateRecordCount();
+}
+
+function updateFilterPreview() {
+    const selectedCategories = document.querySelectorAll('.filter-category-checkbox:checked').length;
+    const selectedCommodities = document.querySelectorAll('.filter-commodity-checkbox:checked').length;
+    const dateRange = document.getElementById('drawer_date_filter').value;
+    
+    let filterCount = selectedCategories + selectedCommodities;
+    if (dateRange) filterCount++;
+    
+    const totalRows = document.querySelectorAll('tbody tr').length;
+    const resultText = document.getElementById('drawerResultCount');
+    
+    if (filterCount > 0) {
+        resultText.textContent = `Filters will be applied to ${totalRows} records`;
+    } else {
+        resultText.textContent = `Showing all ${totalRows} records`;
+    }
+}
+
+function updateActiveFilterCount() {
+    const selectedCategories = document.querySelectorAll('.filter-category-checkbox:checked').length;
+    const selectedCommodities = document.querySelectorAll('.filter-commodity-checkbox:checked').length;
+    const dateRange = document.getElementById('drawer_date_filter').value;
+    
+    let count = selectedCategories + selectedCommodities;
+    if (dateRange) count++;
+    
+    const badge = document.getElementById('activeFilterCount');
+    if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function updateRecordCount() {
+    const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])');
+    const totalRows = document.querySelectorAll('tbody tr').length;
+    const resultText = document.getElementById('drawerResultCount');
+    resultText.textContent = `Showing ${visibleRows.length} of ${totalRows} records`;
+}
+
+function initializeDrawerFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const categoryFilter = urlParams.get('category_filter');
+    
+    if (categoryFilter) {
+        const checkbox = document.querySelector(`.filter-category-checkbox[data-category-id="${categoryFilter}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+            applyDrawerFilters();
+        }
+    }
+    
+    updateFilterPreview();
+}
+
+// Farmer search in drawer
+function initializeDrawerFarmerSearch() {
+    const farmerSearch = document.getElementById('drawer_farmer_search');
+    const suggestions = document.getElementById('drawer_farmer_suggestions');
+    
+    if (!farmerSearch || !suggestions) return;
+    
+    farmerSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+        if (query.length < 2) {
+            suggestions.classList.add('hidden');
+            return;
+        }
+        searchDrawerFarmers(query);
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!farmerSearch.contains(e.target) && !suggestions.contains(e.target)) {
+            setTimeout(() => suggestions.classList.add('hidden'), 200);
+        }
+    });
+}
+
+function searchDrawerFarmers(query) {
+    const suggestions = document.getElementById('drawer_farmer_suggestions');
+    
+    fetch('search_farmers.php?query=' + encodeURIComponent(query))
+        .then(response => response.json())
+        .then(data => {
+            suggestions.innerHTML = '';
+            
+            if (data.success && data.farmers && data.farmers.length > 0) {
+                data.farmers.forEach(farmer => {
+                    const item = document.createElement('div');
+                    item.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0';
+                    item.innerHTML = `
+                        <div class="font-medium text-gray-900 text-sm">${farmer.full_name}</div>
+                        <div class="text-xs text-gray-500">${farmer.barangay_name || 'N/A'}</div>
+                    `;
+                    
+                    item.addEventListener('click', function() {
+                        document.getElementById('drawer_farmer_search').value = farmer.full_name;
+                        suggestions.classList.add('hidden');
+                        updateFilterPreview();
+                    });
+                    
+                    suggestions.appendChild(item);
+                });
+                
+                suggestions.classList.remove('hidden');
+            } else {
+                suggestions.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No farmers found</div>';
+                suggestions.classList.remove('hidden');
+            }
+        });
+}
+
+// Initialize drawer farmer search on load
+document.addEventListener('DOMContentLoaded', initializeDrawerFarmerSearch);
+
+// Legacy filter functions - can be removed if not needed elsewhere
+function filterDataTable(filterValue) {
+    if (window.APP_DEBUG) console.log('Filtering data table for:', filterValue);
+    
+    // Get all table rows
+    const tableRows = document.querySelectorAll('tbody tr');
+    
+    tableRows.forEach(row => {
+        let showRow = false;
+        
+        // Get category ID from the row data attribute
+        const categoryId = row.getAttribute('data-category-id');
+        
+        if (filterValue === 'agronomic') {
+            showRow = (categoryId === '1'); // Agronomic Crops
+        } else if (filterValue === 'high-value') {
+            showRow = (categoryId === '2'); // High Value Crops
+        } else if (filterValue === 'livestock') {
+            showRow = (categoryId === '3'); // Livestock
+        } else if (filterValue === 'poultry') {
+            showRow = (categoryId === '4'); // Poultry
+        } else {
+            // Default: show all rows when no specific filter is active
+            showRow = true;
+        }
+        
+        // Show/hide row
+        row.style.display = showRow ? '' : 'none';
+    });
+    
+    // Update record count if there's a counter element
+    const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])');
+    const recordCounter = document.querySelector('.record-count');
+    if (recordCounter) {
+        recordCounter.textContent = `Showing ${visibleRows.length} records`;
+    }
+}
+
+// Global Search Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const globalSearch = document.getElementById('globalSearchInput');
+    if (globalSearch) {
+        globalSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const tableRows = document.querySelectorAll('tbody tr');
+            
+            tableRows.forEach(row => {
+                // Get text content from all cells
+                const farmerName = row.querySelector('td:nth-child(1)')?.textContent.toLowerCase() || '';
+                const commodity = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+                const season = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+                const yieldAmount = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+                const dateRecorded = row.querySelector('td:nth-child(5)')?.textContent.toLowerCase() || '';
+                
+                // Check if search term matches any field
+                const matches = farmerName.includes(searchTerm) || 
+                               commodity.includes(searchTerm) || 
+                               season.includes(searchTerm) || 
+                               yieldAmount.includes(searchTerm) ||
+                               dateRecorded.includes(searchTerm);
+                
+                // Show/hide based on search match AND existing filters
+                if (searchTerm === '') {
+                    // If search is empty, respect existing filter state
+                    const isHiddenByFilter = row.style.display === 'none';
+                    if (!isHiddenByFilter) {
+                        row.style.display = '';
+                    }
+                } else {
+                    // If searching, hide non-matches
+                    row.style.display = matches ? '' : 'none';
+                }
+            });
+            
+            // Update record count
+            const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])');
+            const totalRows = document.querySelectorAll('tbody tr').length;
+            console.log(`Search: Showing ${visibleRows.length} of ${totalRows} records`);
+        });
+    }
+});
 </script>
 
 <style>
+    /* Deterministic spacing between search icon and placeholder/text */
+    .global-search-input {
+        padding-left: 3.5rem; /* ample space like reference */
+    }
+
+    .global-search-icon {
+        left: 1.25rem;
+        pointer-events: none;
+    }
 .modal-lg {
     max-width: 800px;
 }
@@ -1272,14 +1704,37 @@ function filterDataTable(filterValue) {
     position: relative;
 }
 
-.filter-tab:hover {
+/* Inactive tabs - keep gray text always */
+.filter-tab:not(.active) {
+    background-color: #ffffff !important;
+    color: #374151 !important; /* gray-700 */
+    border-color: #d1d5db !important; /* gray-300 */
+}
+
+/* Hover effect only for inactive tabs - keep text gray */
+.filter-tab:not(.active):hover {
+    background-color: #ffffff !important;
+    color: #374151 !important; /* Keep gray text visible */
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Active tab stays green always */
 .filter-tab.active {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #15803d !important;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+/* Ensure active tab stays green on hover and focus */
+.filter-tab.active:hover,
+.filter-tab.active:focus,
+.filter-tab.active:active {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #15803d !important;
 }
 
 .filter-tab:active {

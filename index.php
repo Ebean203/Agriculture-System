@@ -360,7 +360,7 @@ $stmt->close();
                         <div class="flex flex-col items-center mt-4">
                             <div id="categoryButtons" class="flex flex-wrap gap-2 mb-2 justify-center">
                                 <?php foreach ($commodity_categories as $cat): ?>
-                                    <button type="button" class="category-btn px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 flex items-center gap-1 text-sm shadow-sm hover:bg-agri-green hover:text-white transition" data-category="<?php echo htmlspecialchars($cat['category_id']); ?>">
+                                    <button type="button" class="category-btn px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 flex items-center gap-1 text-sm shadow-sm transition" data-category="<?php echo htmlspecialchars($cat['category_id']); ?>">
                                         <i class="fas fa-leaf"></i> <span class="category-btn-label"><?php echo htmlspecialchars($cat['category_name']); ?></span>
                                     </button>
                                 <?php endforeach; ?>
@@ -373,15 +373,34 @@ $stmt->close();
                         // Add style for active category button to keep text visible
                         const style = document.createElement('style');
                         style.innerHTML = `
-                            .category-btn.active, .category-btn.active:focus {
-                                background-color: #10b981 !important;
+                            .category-btn {
+                                background-color: #ffffff !important;
+                                color: #374151 !important;
+                                border-color: #e5e7eb !important;
+                            }
+                            .category-btn:not(.active):hover {
+                                background-color: #ffffff !important;
+                                color: #374151 !important;
+                                transform: translateY(-1px);
+                                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                            }
+                            .category-btn.active, 
+                            .category-btn.active:hover, 
+                            .category-btn.active:focus {
+                                background-color: #16a34a !important;
+                                color: #ffffff !important;
+                                border-color: #15803d !important;
+                            }
+                            .category-btn.active .category-btn-label,
+                            .category-btn.active:hover .category-btn-label,
+                            .category-btn.active:focus .category-btn-label {
                                 color: #fff !important;
                             }
-                            .category-btn.active .category-btn-label {
-                                color: #fff !important;
+                            .category-btn .category-btn-label {
+                                color: inherit !important;
                             }
                             .category-btn .fas {
-                                color: inherit;
+                                color: inherit !important;
                             }
                         `;
                         document.head.appendChild(style);

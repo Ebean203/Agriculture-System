@@ -22,6 +22,72 @@ if (isset($_GET['debug']) && $_GET['debug'] == '2') {
     print_r($_GET);
 }
 switch ($type) {
+    case 'yield_by_commodity':
+        // Bar chart: Total yield per commodity for a given date range (+ optional barangay)
+        $commodity = isset($_GET['commodity']) ? trim($_GET['commodity']) : '';
+        $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-01-01');
+        $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
+        $barangay = isset($_GET['barangay']) ? $_GET['barangay'] : '';
+
+        $params = [$start_date, $end_date];
+        $types = 'ss';
+
+        $query = "SELECT c.commodity_id, c.commodity_name, SUM(ym.yield_amount) as total_yield\n"
+            . "FROM yield_monitoring ym\n"
+            . "JOIN commodities c ON ym.commodity_id = c.commodity_id\n"
+            . "JOIN farmers f ON ym.farmer_id = f.farmer_id\n"
+            . "WHERE DATE(ym.record_date) BETWEEN ? AND ?";
+
+        if ($commodity !== '') {
+            $query .= " AND c.commodity_name = ?";
+            $params[] = $commodity;
+            $types .= 's';
+        }
+
+        if ($barangay) {
+            $query .= " AND f.barangay_id = ?";
+            $params[] = $barangay;
+            $types .= 's';
+        }
+
+        $query .= " GROUP BY c.commodity_id, c.commodity_name ORDER BY c.commodity_name ASC";
+
+        $stmt = mysqli_prepare($conn, $query);
+        if (!$stmt) throw new Exception(mysqli_error($conn));
+        if (!empty($params)) {
+            mysqli_stmt_bind_param($stmt, $types, ...$params);
+        }
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        if (!$result) throw new Exception(mysqli_error($conn));
+
+        $units = [];
+        $commodities_for_points = [];
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $labels[] = $row['commodity_name'];
+            $data[] = (float)$row['total_yield'];
+            $commodities_for_points[] = $row['commodity_name'];
+
+            // Get the most recent unit for this commodity
+            $unit_stmt = $conn->prepare("SELECT unit FROM yield_monitoring WHERE commodity_id = ? AND unit IS NOT NULL AND unit != '' ORDER BY record_date DESC LIMIT 1");
+            $unit = 'kg';
+            if ($unit_stmt) {
+                $unit_stmt->bind_param('i', $row['commodity_id']);
+                $unit_stmt->execute();
+                $unit_res = $unit_stmt->get_result();
+                if ($unit_row = $unit_res->fetch_assoc()) {
+                    $unit = $unit_row['unit'] ? $unit_row['unit'] : 'kg';
+                }
+                $unit_stmt->close();
+            }
+            $units[] = $unit;
+        }
+
+        mysqli_stmt_close($stmt);
+        echo json_encode(['labels' => $labels, 'data' => $data, 'units' => $units, 'commodities' => $commodities_for_points]);
+        return;
+
     case 'expiring_soon':
         // Return inputs expiring within 60 days for analytics dashboard
         $sql = "SELECT ic.input_name, mi.expiration_date, mi.quantity_on_hand
