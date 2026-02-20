@@ -186,6 +186,53 @@ Use the default administrator credentials:
 
 ---
 
+### Step 8 — Set XAMPP to Autostart (Recommended for Daily Use)
+
+If XAMPP isn't running when a user opens the app, it will fail to load. Configure XAMPP to start automatically in the background:
+
+1. Open **XAMPP Control Panel** as **Administrator** (right-click the XAMPP icon → *Run as administrator*).
+2. Click the **Config** button in the top-right corner.
+3. Under **"Autostart of modules"**, check both **Apache** and **MySQL**.
+4. Check **"Start Control Panel Minimized"**.
+5. Click **Save**.
+
+> XAMPP will now launch silently in the background every time Windows starts, ensuring the app is always accessible.
+
+---
+
+### Step 9 — Install as a Desktop App (Chrome / Edge)
+
+Instead of typing the URL each time, install the system as a standalone app window using your browser:
+
+**Google Chrome:**
+1. Open Chrome and go to `http://localhost/Agriculture-System/login.php`.
+2. Click the menu icon (**⋮**) in the top-right corner.
+3. Go to **Save and Share** → **Install page as app…**
+4. Confirm the name (e.g., *Lagonglong FARMS*) and click **Install**.
+5. Make sure **"Open as window"** is checked so it opens without browser tabs/toolbar.
+
+**Microsoft Edge:**
+1. Open Edge and go to `http://localhost/Agriculture-System/login.php`.
+2. Click the menu icon (**⋯**) in the top-right corner.
+3. Go to **Apps** → **Install this site as an app**.
+4. Confirm the name and click **Install**.
+
+> The system will open in its own window, looking and behaving like a native desktop application.
+
+---
+
+### Step 10 — Pin to Taskbar
+
+Once the app window is open:
+
+1. Look for the app icon in the **Windows Taskbar** at the bottom of the screen.
+2. **Right-click** the icon.
+3. Select **"Pin to taskbar"**.
+
+> The icon will now remain in the taskbar permanently. Users can launch the system with a single click at any time, even after closing the window.
+
+---
+
 ## Database Files Reference
 
 | File | Purpose |
