@@ -434,26 +434,25 @@ if ($stmt_inputs) {
                             }
                         }
                     }
-                    // Only show 0 for Agronomic Crops and Livestock if no data, otherwise leave blank for High Value Crops and Poultry if no data
+                    // Show 0 for all categories when no data
                     if (empty($parts)) {
-                        if ($cat_id == 1 || $cat_id == 3) {
-                            $display = '<span class="text-2xl font-bold">0</span> <span class="text-base">kg</span>';
-                        } else {
-                            $display = '';
-                        }
+                        $cat_lower = strtolower($cat_name);
+                        $default_unit = (strpos($cat_lower, 'livestock') !== false || strpos($cat_lower, 'poultry') !== false) ? 'heads' : 'kg';
+                        $display = '<span class="text-2xl font-bold">0</span> <span class="text-base">' . $default_unit . '</span>';
                     } else {
                         $display = implode('<br>', $parts);
                     }
                 ?>
-                <div class="bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-6 text-white animate-fade-in">
+                <a href="yield_monitoring.php?category_filter=<?php echo $cat_id; ?>" class="block bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-6 text-white animate-fade-in cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="View <?php echo htmlspecialchars($cat_name); ?> yield records">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-blue-100 text-sm"><?php echo htmlspecialchars($cat_name); ?></p>
                             <div><?php echo $display; ?></div>
                         </div>
-                        <i class="<?php echo $icon; ?> text-3xl text-blue-200"></i>
+                        <i class="<?php echo $icon; ?> text-3xl text-blue-200 group-hover:scale-110 transition-transform duration-200"></i>
                     </div>
-                </div>
+                    <div class="mt-2 text-xs text-white text-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity duration-200">Click to view records &rarr;</div>
+                </a>
                 <?php $i++; } if (isset($stmt)) mysqli_stmt_close($stmt); ?>
             </div>
 

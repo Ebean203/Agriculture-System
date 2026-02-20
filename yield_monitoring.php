@@ -375,83 +375,78 @@ include 'includes/layout_start.php';
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <!-- Total Visits -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+        <a href="yield_monitoring.php" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="View all yield records">
             <div class="flex items-center">
-                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
                     <i class="fas fa-eye text-blue-600 text-xl"></i>
                 </div>
                 <div>
                     <h3 class="text-2xl font-bold text-gray-900"><?php echo $total_records; ?></h3>
                     <p class="text-gray-600">Total Visits</p>
+                    <p class="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">View all records &rarr;</p>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Agronomic Crops -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+        <a href="yield_monitoring.php?category_filter=1" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by Agronomic Crops">
             <div class="flex items-center">
-                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
                     <i class="fas fa-wheat-awn text-green-600 text-xl"></i>
                 </div>
                 <div>
                     <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        // Count yield records for Agronomic Crops (category_id = 1)
                         $agronomic_count = 0;
                         foreach ($yield_records as $record) {
-                            if (isset($record['category_id']) && $record['category_id'] == 1) {
-                                $agronomic_count++;
-                            }
+                            if (isset($record['category_id']) && $record['category_id'] == 1) $agronomic_count++;
                         }
                         echo $agronomic_count;
                     ?></h3>
                     <p class="text-gray-600">Agronomic Crops</p>
+                    <p class="text-xs text-green-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- High Value Crops -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+        <a href="yield_monitoring.php?category_filter=2" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by High Value Crops">
             <div class="flex items-center">
-                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
                     <i class="fas fa-apple-alt text-purple-600 text-xl"></i>
                 </div>
                 <div>
                     <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        // Count yield records for High Value Crops (category_id = 2)
                         $hvc_count = 0;
                         foreach ($yield_records as $record) {
-                            if (isset($record['category_id']) && $record['category_id'] == 2) {
-                                $hvc_count++;
-                            }
+                            if (isset($record['category_id']) && $record['category_id'] == 2) $hvc_count++;
                         }
                         echo $hvc_count;
                     ?></h3>
                     <p class="text-gray-600">High Value Crops</p>
+                    <p class="text-xs text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
                 </div>
             </div>
-        </div>
+        </a>
 
         <!-- Livestock & Poultry -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+        <a href="yield_monitoring.php?category_filter=3" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by Livestock &amp; Poultry">
             <div class="flex items-center">
-                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
                     <i class="fas fa-paw text-orange-600 text-xl"></i>
                 </div>
                 <div>
                     <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        // Count yield records for Livestock (category_id = 3) and Poultry (category_id = 4)
                         $animal_count = 0;
                         foreach ($yield_records as $record) {
-                            if (isset($record['category_id']) && ($record['category_id'] == 3 || $record['category_id'] == 4)) {
-                                $animal_count++;
-                            }
+                            if (isset($record['category_id']) && ($record['category_id'] == 3 || $record['category_id'] == 4)) $animal_count++;
                         }
                         echo $animal_count;
                     ?></h3>
-                    <p class="text-gray-600">Livestock & Poultry</p>
+                    <p class="text-gray-600">Livestock &amp; Poultry</p>
+                    <p class="text-xs text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
                 </div>
             </div>
-        </div>
+        </a>
 
     </div>
 
@@ -494,17 +489,18 @@ include 'includes/layout_start.php';
             }
         ?>
         <!-- <?php echo htmlspecialchars($cat_data['name']); ?> Total -->
-        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-<?php echo $cat_data['color']; ?>-500">
+        <a href="yield_monitoring.php?category_filter=<?php echo $cat_id; ?>" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-<?php echo $cat_data['color']; ?>-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by <?php echo htmlspecialchars($cat_data['name']); ?>">
             <div class="flex items-start">
-                <div class="w-12 h-12 bg-<?php echo $cat_data['color']; ?>-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                <div class="w-12 h-12 bg-<?php echo $cat_data['color']; ?>-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
                     <i class="fas <?php echo $cat_data['icon']; ?> text-<?php echo $cat_data['color']; ?>-600 text-xl"></i>
                 </div>
                 <div class="flex-1">
                     <h3 class="text-xl font-bold text-gray-900 leading-tight"><?php echo $total_yield_display; ?></h3>
                     <p class="text-gray-600 text-sm mt-1"><?php echo htmlspecialchars($cat_data['name']); ?></p>
+                    <p class="text-xs text-<?php echo $cat_data['color']; ?>-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
                 </div>
             </div>
-        </div>
+        </a>
         <?php endforeach; ?>
     </div>
 

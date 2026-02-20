@@ -749,7 +749,7 @@ $stmt->close();
                 </div>
                 <!-- Farmers by Program Pie Chart -->
                 <div>
-                    <div class="bg-white rounded-xl card-shadow p-6 h-full flex flex-col items-center justify-center">
+                    <div class="bg-white rounded-xl card-shadow p-6 h-full flex flex-col items-center justify-start">
                         <h3 class="text-lg font-bold text-gray-900 mb-4">
                             <i class="fas fa-users text-agri-green mr-2"></i>Farmers by Program
                         </h3>
@@ -761,7 +761,7 @@ $stmt->close();
                         </div>
                         <div class="w-full mt-6">
                             <h4 class="text-md font-semibold text-gray-700 mb-2 text-center">Yield Records per Barangay</h4>
-                            <ul class="text-sm text-gray-600 divide-y divide-gray-100">
+                            <ul class="text-sm text-gray-600 divide-y divide-gray-100 max-h-64 overflow-y-auto">
                                 <?php if (!empty($yield_records_per_barangay)): ?>
                                     <?php foreach ($yield_records_per_barangay as $row): ?>
                                         <li class="flex justify-between py-1 px-2">

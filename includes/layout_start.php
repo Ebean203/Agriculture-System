@@ -18,7 +18,11 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__brand { display: flex; align-items: center; gap: 10px; margin: 6px 6px 14px; }
         .sidebar__toggle { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .sidebar__logo { font-size: 22px; margin-left: 2px; }
+        .sidebar__logo-img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
         .sidebar__title { font-weight: 700; font-size: 16px; letter-spacing: .3px; white-space: nowrap; }
+        .sidebar__collapse-btn { width: 100%; background: rgba(255,255,255,0.12); border: none; color: #fff; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: 600; letter-spacing: .2px; transition: background 0.2s; }
+        .sidebar__collapse-btn:hover { background: rgba(255,255,255,0.22); }
+        .sidebar-collapsed .sidebar__collapse-btn { width: 42px; height: 42px; margin: 0 auto; border-radius: 50%; font-size: 16px; }
     .sidebar__nav { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
     .sidebar-collapsed .sidebar__nav { padding-top: 48px !important; margin-top: 0 !important; }
         .sidebar__section { color: rgba(255,255,255,0.7); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 10px 12px 6px; }
@@ -31,15 +35,57 @@ require_once __DIR__ . '/../check_session.php';
     .app-sidebar-col { width: var(--sb-width); transition: width 0.6s ease-in-out !important; }
         .app-main { display: flex; flex-direction: column; min-width: 0; }
         .app-topbar { background: #ffffff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: flex-end; padding: 10px 16px; position: sticky; top: 0; z-index: 40; }
-        .app-content { padding: 20px; }
+        .app-content { padding: 16px 12px; }
         @media (max-width: 1024px) {
             :root { --sb-width: 220px; }
         }
         .sidebar-collapsed .app-shell { grid-template-columns: var(--sb-collapsed) 1fr; }
         .sidebar-collapsed .app-sidebar-col { width: var(--sb-collapsed); }
         .sidebar-collapsed .sidebar__title { display: none; }
+        .sidebar-collapsed .sidebar__brand { justify-content: center; }
+        .sidebar-collapsed .sidebar__logo-img { width: 46px; height: 46px; }
         .sidebar-collapsed .sidebar__section { display: none; }
         .sidebar-collapsed .sidebar__link span { display: none; }
+        .sidebar-collapsed .sidebar__link i { font-size: 20px !important; width: 24px; }
+        /* Sidebar tooltips when collapsed */
+        .sidebar-collapsed .sidebar__link { position: relative; }
+        .sidebar-collapsed .sidebar__link[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1f2937;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            padding: 5px 10px;
+            border-radius: 6px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        }
+        .sidebar-collapsed .sidebar__link[data-tooltip]::before {
+            content: '';
+            position: absolute;
+            left: calc(100% + 4px);
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-right-color: #1f2937;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 9999;
+        }
+        .sidebar-collapsed .sidebar__link[data-tooltip]:hover::after,
+        .sidebar-collapsed .sidebar__link[data-tooltip]:hover::before { opacity: 1; }
+        .sidebar-collapsed #appSidebar { overflow: visible !important; }
+        .sidebar-collapsed #appSidebar .sidebar__nav { overflow: visible !important; }
+        .sidebar-collapsed .app-sidebar-col { overflow: visible !important; }
         /* Remove redundant per-page navigation switchers */
         button[onclick*="toggleNavigationDropdown"] { display: none !important; }
         #navigationDropdown { display: none !important; }
