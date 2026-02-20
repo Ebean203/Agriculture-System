@@ -8,6 +8,7 @@ require_once __DIR__ . '/../check_session.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? htmlspecialchars($pageTitle) : 'Lagonglong FARMS'; ?></title>
+    <link rel="icon" type="image/png" href="assets/Logo/E1361954-133F-4560-86CA-E4E3A2D916B8-removebg-preview.png">
     <?php include __DIR__ . '/assets.php'; ?>
 </head>
 <body class="bg-gray-50">
