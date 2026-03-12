@@ -557,14 +557,30 @@ $stmt->close();
                             // On category button click
                             categoryBtns.forEach(btn => {
                                 btn.addEventListener('click', function() {
+                                    const isAlreadyActive = btn.classList.contains('active');
                                     categoryBtns.forEach(b => b.classList.remove('active', 'bg-agri-green', 'text-white'));
-                                    btn.classList.add('active', 'bg-agri-green', 'text-white');
-                                    currentCategory = btn.getAttribute('data-category');
-                                    currentCommodity = '';
-                                    commoditySearch.value = '';
-                                    suggestionsBox.classList.add('hidden');
-                                    // Fetch yield by category (not by commodity)
-                                    fetchAndUpdateYieldChart(null);
+                                    if (isAlreadyActive) {
+                                        // Toggle off — reset to default blank state
+                                        currentCategory = '';
+                                        currentCommodity = '';
+                                        commoditySearch.value = '';
+                                        suggestionsBox.classList.add('hidden');
+                                        if (yieldChartInstance) {
+                                            yieldChartInstance.destroy();
+                                            yieldChartInstance = null;
+                                        }
+                                        const ctx = document.getElementById('yieldChart').getContext('2d');
+                                        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                                        document.getElementById('chartTitle').textContent = 'Yield Monitoring';
+                                    } else {
+                                        btn.classList.add('active', 'bg-agri-green', 'text-white');
+                                        currentCategory = btn.getAttribute('data-category');
+                                        currentCommodity = '';
+                                        commoditySearch.value = '';
+                                        suggestionsBox.classList.add('hidden');
+                                        // Fetch yield by category (not by commodity)
+                                        fetchAndUpdateYieldChart(null);
+                                    }
                                 });
                             });
 
