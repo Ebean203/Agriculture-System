@@ -532,7 +532,7 @@ foreach ($notifications as $notification) {
                             </div>
                         <?php endif; ?>
                         
-                        <div class="p-6">
+                        <div class="inventory-card-inner p-6">
                             <!-- Header -->
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center">
@@ -550,13 +550,17 @@ foreach ($notifications as $notification) {
                             </div>
                             
                             <!-- Notification Alert -->
-                            <?php if ($notification_message): ?>
-                            <div class="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-                                <p class="text-sm font-medium text-red-800">
-                                    <i class="fas fa-bell mr-2"></i><?php echo htmlspecialchars($notification_message); ?>
-                                </p>
+                            <div class="inventory-card-alert-slot mb-4 <?php echo $notification_message ? 'has-alert' : 'is-empty'; ?>">
+                                <?php if ($notification_message): ?>
+                                <div class="inventory-card-alert p-3 bg-red-100 border border-red-300 rounded-lg">
+                                    <p class="text-sm font-medium text-red-800">
+                                        <i class="fas fa-bell mr-2"></i><?php echo htmlspecialchars($notification_message); ?>
+                                    </p>
+                                </div>
+                                <?php else: ?>
+                                <div class="inventory-card-alert-placeholder" aria-hidden="true"></div>
+                                <?php endif; ?>
                             </div>
-                            <?php endif; ?>
                             
                             <!-- Statistics -->
                             <div class="grid grid-cols-3 gap-4 mb-4">
@@ -589,7 +593,7 @@ foreach ($notifications as $notification) {
                             <?php endif; ?>
                             
                             <!-- Action Buttons -->
-                            <div class="flex space-x-2">
+                            <div class="flex space-x-2 mt-auto">
                                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                                 <button class="flex-1 bg-agri-green text-white px-3 py-2 rounded-lg hover:bg-agri-dark transition-colors text-sm flex items-center justify-center stockin-btn" 
                                         data-input-id="<?php echo htmlspecialchars($input_id); ?>"
@@ -1487,6 +1491,37 @@ foreach ($notifications as $notification) {
         
         .inventory-card {
             transition: all 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .inventory-card-inner {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 100%;
+        }
+
+        .inventory-card-alert-slot {
+            min-height: 84px;
+            display: flex;
+            align-items: stretch;
+        }
+
+        .inventory-card-alert,
+        .inventory-card-alert-placeholder {
+            width: 100%;
+            height: 100%;
+        }
+
+        .inventory-card-alert-placeholder {
+            border: 1px solid transparent;
+            border-radius: 0.5rem;
+            background: transparent;
+        }
+
+        .inventory-card-alert-slot.is-empty {
+            visibility: visible;
         }
         
         .inventory-card:hover {
