@@ -146,23 +146,80 @@ class SimplePDF {
             margin-top: 5px;
         }
         @media print {
-            body { margin: 0; }
+            body { margin: 0; padding-top: 0; }
             .no-print { display: none; }
         }
         @page {
             size: A4 portrait;
             margin: 0.5in;
         }
+        .preview-toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: #15803d;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+        .preview-toolbar .toolbar-title {
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 0.3px;
+        }
+        .preview-toolbar .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .preview-toolbar button {
+            padding: 7px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .btn-print {
+            background: white;
+            color: #15803d;
+        }
+        .btn-print:hover {
+            background: #f0fdf4;
+        }
+        .btn-close {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4) !important;
+        }
+        .btn-close:hover {
+            background: rgba(255,255,255,0.25);
+        }
     </style>
 </head>
-<body>' . $this->content . '</body>
+<body style="padding-top: 56px;">
+<div class="preview-toolbar no-print">
+    <span class="toolbar-title">&#127807; PDF Preview &mdash; ' . htmlspecialchars($this->title) . '</span>
+    <div class="toolbar-actions">
+        <button class="btn-print" onclick="window.print()">&#128424; Print / Save as PDF</button>
+        <button class="btn-close" onclick="window.close()">&#10005; Close Tab</button>
+    </div>
+</div>
+' . $this->content . '</body>
 </html>';
         
-        // Set headers for PDF download
+        // Render for preview (no download headers)
         header('Content-Type: text/html; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '.html"');
-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-        header('Expires: 0');
         
         echo $html;
     }
