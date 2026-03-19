@@ -14,7 +14,8 @@ require_once __DIR__ . '/../check_session.php';
 <body class="bg-gray-50">
     <style>
         :root { --sb-width: 260px; --sb-collapsed: 74px; }
-    .sidebar { width: 100%; min-height: 100vh; display: flex; flex-direction: column; padding: 12px 10px; position: sticky; top: 0; transition: width 0.4s ease-in-out !important; }
+        html, body { overflow-x: hidden; }
+    .sidebar { width: 100%; min-height: 100vh; display: flex; flex-direction: column; padding: 12px 10px; position: sticky; top: 0; transition: width 0.28s ease !important; will-change: width; }
         .sidebar__brand { display: flex; align-items: center; gap: 10px; margin: 6px 6px 14px; }
         .sidebar__toggle { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .sidebar__logo { font-size: 22px; margin-left: 2px; }
@@ -23,7 +24,7 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__collapse-btn { width: 100%; background: rgba(255,255,255,0.12); border: none; color: #fff; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: 600; letter-spacing: .2px; transition: background 0.2s; }
         .sidebar__collapse-btn:hover { background: rgba(255,255,255,0.22); }
         .sidebar-collapsed .sidebar__collapse-btn { width: 42px; height: 42px; margin: 0 auto; border-radius: 50%; font-size: 16px; }
-    .sidebar__nav { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar__nav { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; }
     .sidebar-collapsed .sidebar__nav { padding-top: 48px !important; margin-top: 0 !important; }
         .sidebar__section { color: rgba(255,255,255,0.7); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 10px 12px 6px; }
         .sidebar__link { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 10px 12px; border-radius: 10px; opacity: 0.95; transition: background .2s, opacity .2s, color .2s; }
@@ -31,8 +32,8 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__link:hover { background: rgba(255,255,255,0.12); opacity: 1; }
         .sidebar__link.is-active { background: #ffffff; color: #16a34a; }
         .sidebar__link.is-active i { color: #16a34a; }
-    .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sb-width) 1fr; transition: grid-template-columns 0.6s ease-in-out !important; }
-    .app-sidebar-col { width: var(--sb-width); transition: width 0.6s ease-in-out !important; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sb-width) 1fr; transition: grid-template-columns 0.28s ease !important; will-change: grid-template-columns; }
+    .app-sidebar-col { width: var(--sb-width); transition: width 0.28s ease !important; will-change: width; }
         .app-main { display: flex; flex-direction: column; min-width: 0; }
         .app-topbar { background: #ffffff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: flex-end; padding: 10px 16px; position: sticky; top: 0; z-index: 40; }
         .app-content { padding: 16px 12px; }
@@ -83,9 +84,9 @@ require_once __DIR__ . '/../check_session.php';
         }
         .sidebar-collapsed .sidebar__link[data-tooltip]:hover::after,
         .sidebar-collapsed .sidebar__link[data-tooltip]:hover::before { opacity: 1; }
-        .sidebar-collapsed #appSidebar { overflow: visible !important; }
-        .sidebar-collapsed #appSidebar .sidebar__nav { overflow: visible !important; }
-        .sidebar-collapsed .app-sidebar-col { overflow: visible !important; }
+        .sidebar-collapsed #appSidebar { overflow-x: hidden !important; overflow-y: visible !important; }
+        .sidebar-collapsed #appSidebar .sidebar__nav { overflow-x: hidden !important; overflow-y: auto !important; }
+        .sidebar-collapsed .app-sidebar-col { overflow-x: hidden !important; overflow-y: visible !important; }
         /* Remove redundant per-page navigation switchers */
         button[onclick*="toggleNavigationDropdown"] { display: none !important; }
         #navigationDropdown { display: none !important; }
