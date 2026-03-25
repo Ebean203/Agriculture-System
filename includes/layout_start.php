@@ -15,7 +15,7 @@ require_once __DIR__ . '/../check_session.php';
     <style>
         :root { --sb-width: 260px; --sb-collapsed: 74px; }
         html, body { overflow-x: hidden; }
-    .sidebar { width: 100%; min-height: 100vh; display: flex; flex-direction: column; padding: 12px 10px; position: sticky; top: 0; transition: width 0.28s ease !important; will-change: width; }
+    .sidebar { width: 100%; min-height: 100vh; height: 100vh; display: flex; flex-direction: column; padding: 12px 10px; position: static; transition: width 0.28s ease !important; will-change: width; }
         .sidebar__brand { display: flex; align-items: center; gap: 10px; margin: 6px 6px 14px; }
         .sidebar__toggle { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .sidebar__logo { font-size: 22px; margin-left: 2px; }
@@ -32,16 +32,17 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__link:hover { background: rgba(255,255,255,0.12); opacity: 1; }
         .sidebar__link.is-active { background: #ffffff; color: #16a34a; }
         .sidebar__link.is-active i { color: #16a34a; }
-    .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sb-width) 1fr; transition: grid-template-columns 0.28s ease !important; will-change: grid-template-columns; }
-    .app-sidebar-col { width: var(--sb-width); transition: width 0.28s ease !important; will-change: width; }
-        .app-main { display: flex; flex-direction: column; min-width: 0; }
+    .app-shell { min-height: 100vh; display: block; }
+    .app-sidebar-col { width: var(--sb-width); height: 100vh; position: fixed; left: 0; top: 0; z-index: 60; overflow: hidden; transition: width 0.28s ease !important; will-change: width; }
+        .app-main { display: flex; flex-direction: column; min-width: 0; min-height: 100vh; margin-left: var(--sb-width); transition: margin-left 0.28s ease !important; }
         .app-topbar { background: #ffffff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: flex-end; padding: 10px 16px; position: sticky; top: 0; z-index: 40; }
         .app-content { padding: 16px 12px; }
         @media (max-width: 1024px) {
             :root { --sb-width: 220px; }
         }
-        .sidebar-collapsed .app-shell { grid-template-columns: var(--sb-collapsed) 1fr; }
+        .sidebar-collapsed .app-shell { min-height: 100vh; }
         .sidebar-collapsed .app-sidebar-col { width: var(--sb-collapsed); }
+        .sidebar-collapsed .app-main { margin-left: var(--sb-collapsed); }
         .sidebar-collapsed .sidebar__title { display: none; }
         .sidebar-collapsed .sidebar__brand { justify-content: center; }
         .sidebar-collapsed .sidebar__logo-img { width: 46px; height: 46px; }

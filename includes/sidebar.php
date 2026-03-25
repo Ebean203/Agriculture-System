@@ -1,7 +1,7 @@
 <?php
 $current = basename($_SERVER['PHP_SELF']);
 ?>
-<aside id="appSidebar" class="sidebar bg-agri-green text-white shadow-lg" style="height:100vh;overflow:hidden;display:flex;flex-direction:column;position:sticky;top:0;">
+<aside id="appSidebar" class="sidebar bg-agri-green text-white shadow-lg" style="height:100vh;overflow:hidden;display:flex;flex-direction:column;">
     <div class="sidebar__brand" style="flex-shrink:0;justify-content:center;">
         <img src="assets/Logo/559589567_122111810120996957_6008080270013910283_n.jpg" id="sidebarLogo" class="sidebar__logo-img" alt="MAO Seal">
         <span class="sidebar__title">Lagonglong FARMS</span>
