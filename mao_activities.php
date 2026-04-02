@@ -418,18 +418,10 @@ $types_result = $types_stmt->get_result();
                                         </a>
                                     </div>
 
-                                    <!-- Settings Section -->
-                                    <div>
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-user-tie text-purple-600 mr-3"></i>
-                                            Staff Management
-                                        </a>
-                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                            Settings
-                                        </a>
-                                    </div>
+                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-user-tie text-purple-600 mr-3"></i>
+                                        Staff Management
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -439,101 +431,115 @@ $types_result = $types_stmt->get_result();
 
             <!-- Toasts are emitted globally by includes/toast_flash.php -->
 
-            <!-- Search and Filter Section -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <form method="GET" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                                   placeholder="Search activities..." 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
+            <!-- Activities Table with Integrated Filters -->
+            <div class="bg-white rounded-lg shadow-md mb-6">
+                <div class="p-6 border-b border-gray-200">
+                    <form method="GET" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
+                                       placeholder="Search activities..." 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Activity Type</label>
+                                <select name="activity_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                                    <option value="">All Types</option>
+                                    <?php
+                                    mysqli_data_seek($types_result, 0);
+                                    while ($type = mysqli_fetch_assoc($types_result)):
+                                    ?>
+                                        <option value="<?php echo htmlspecialchars($type['activity_type']); ?>" 
+                                                <?php echo $activity_type_filter === $type['activity_type'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($type['activity_type']); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                                <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                                <input type="date" name="date_to" value="<?php echo htmlspecialchars($date_to); ?>" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
+                            </div>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Activity Type</label>
-                            <select name="activity_type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                                <option value="">All Types</option>
-                                <?php
-                                mysqli_data_seek($types_result, 0);
-                                while ($type = mysqli_fetch_assoc($types_result)):
-                                ?>
-                                    <option value="<?php echo htmlspecialchars($type['activity_type']); ?>" 
-                                            <?php echo $activity_type_filter === $type['activity_type'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($type['activity_type']); ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
+                        <div class="flex space-x-3">
+                            <button type="submit" class="bg-agri-green text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors flex items-center">
+                                <i class="fas fa-search mr-2"></i>Search
+                            </button>
+                            <?php if (!empty($search) || !empty($activity_type_filter) || !empty($date_from) || !empty($date_to)): ?>
+                            <a href="mao_activities.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors flex items-center">
+                                <i class="fas fa-times mr-2"></i>Clear
+                            </a>
+                            <?php endif; ?>
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
-                            <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
-                            <input type="date" name="date_to" value="<?php echo htmlspecialchars($date_to); ?>" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-agri-green focus:border-transparent">
-                        </div>
-                    </div>
-                    
-                    <div class="flex space-x-3">
-                        <button type="submit" class="bg-agri-green text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors flex items-center">
-                            <i class="fas fa-search mr-2"></i>Search
-                        </button>
-                        <?php if (!empty($search) || !empty($activity_type_filter) || !empty($date_from) || !empty($date_to)): ?>
-                        <a href="mao_activities.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors flex items-center">
-                            <i class="fas fa-times mr-2"></i>Clear
-                        </a>
-                        <?php endif; ?>
-                    </div>
-                </form>
-            </div>
+                    </form>
+                </div>
 
-            <!-- Activities List -->
-            <div class="space-y-6">
                 <?php if ($activities_result->num_rows > 0): ?>
-                    <?php while ($activity = $activities_result->fetch_assoc()): ?>
-                        <div class="activity-card bg-white rounded-lg shadow-md p-6">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <div class="flex items-center">
-                                            <h3 class="text-xl font-bold text-gray-900 mr-4"><?php echo htmlspecialchars($activity['title']); ?></h3>
-                                            <?php
-                                            $type_class = 'activity-type-default';
-                                            switch (strtolower($activity['activity_type'])) {
-                                                case 'training':
-                                                    $type_class = 'activity-type-training';
-                                                    break;
-                                                case 'meeting':
-                                                    $type_class = 'activity-type-meeting';
-                                                    break;
-                                                case 'inspection':
-                                                    $type_class = 'activity-type-inspection';
-                                                    break;
-                                                case 'seminar':
-                                                    $type_class = 'activity-type-seminar';
-                                                    break;
-                                            }
-                                            ?>
-                                            <span class="activity-type-badge <?php echo $type_class; ?>">
-                                                <?php echo htmlspecialchars($activity['activity_type']); ?>
-                                            </span>
-                                        </div>
-                                        
-                                        <!-- Menu Button moved here -->
-                                        <div class="relative">
-                                            <button onclick="toggleActivityMenu(<?php echo $activity['activity_id']; ?>)" 
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Title</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Staff</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                            <?php while ($activity = $activities_result->fetch_assoc()): ?>
+                                <?php
+                                $type_class = 'activity-type-default';
+                                switch (strtolower($activity['activity_type'])) {
+                                    case 'training':
+                                        $type_class = 'activity-type-training';
+                                        break;
+                                    case 'meeting':
+                                        $type_class = 'activity-type-meeting';
+                                        break;
+                                    case 'inspection':
+                                        $type_class = 'activity-type-inspection';
+                                        break;
+                                    case 'seminar':
+                                        $type_class = 'activity-type-seminar';
+                                        break;
+                                }
+                                ?>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 align-top text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($activity['title']); ?></td>
+                                    <td class="px-4 py-3 align-top text-sm">
+                                        <span class="activity-type-badge <?php echo $type_class; ?>">
+                                            <?php echo htmlspecialchars($activity['activity_type']); ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 align-top text-sm text-gray-700"><?php echo date('F j, Y', strtotime($activity['activity_date'])); ?></td>
+                                    <td class="px-4 py-3 align-top text-sm text-gray-700"><?php echo htmlspecialchars($activity['location']); ?></td>
+                                    <td class="px-4 py-3 align-top text-sm text-gray-700"><?php echo htmlspecialchars($activity['staff_name'] ?? 'Unassigned'); ?></td>
+                                    <td class="px-4 py-3 align-top text-sm text-gray-600 max-w-xs">
+                                        <?php echo !empty($activity['description']) ? nl2br(htmlspecialchars($activity['description'])) : '<span class="text-gray-400">No description</span>'; ?>
+                                    </td>
+                                    <td class="px-4 py-3 align-top text-right">
+                                        <div class="relative inline-block text-left">
+                                            <button data-activity-menu-trigger="<?php echo $activity['activity_id']; ?>" onclick="toggleActivityMenu(<?php echo $activity['activity_id']; ?>)" 
                                                     class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100 transition-colors">
                                                 <i class="fas fa-ellipsis-v text-xl"></i>
                                             </button>
-                                            
-                                            <!-- Dropdown Menu (appears above the button) -->
+
                                             <div id="activityMenu<?php echo $activity['activity_id']; ?>" 
-                                                 class="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
+                                                 class="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
                                                 <div class="py-1">
                                                     <button onclick="openViewModal(<?php echo htmlspecialchars(json_encode($activity)); ?>); closeActivityMenu(<?php echo $activity['activity_id']; ?>)" 
                                                             class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700 transition-colors">
@@ -568,36 +574,18 @@ $types_result = $types_stmt->get_result();
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <?php if (!empty($activity['description'])): ?>
-                                        <p class="text-gray-600 mb-4"><?php echo nl2br(htmlspecialchars($activity['description'])); ?></p>
-                                    <?php endif; ?>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                                        <div class="flex items-center">
-                                            <i class="fas fa-calendar text-agri-green mr-2"></i>
-                                            <span><?php echo date('F j, Y', strtotime($activity['activity_date'])); ?></span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <i class="fas fa-map-marker-alt text-agri-green mr-2"></i>
-                                            <span><?php echo htmlspecialchars($activity['location']); ?></span>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <i class="fas fa-user text-agri-green mr-2"></i>
-                                            <span><?php echo htmlspecialchars($activity['staff_name'] ?? 'Unassigned'); ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endwhile; ?>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
                 <?php else: ?>
-                    <div class="bg-white rounded-lg shadow-md p-12 text-center">
-                        <i class="fas fa-calendar-times text-6xl text-gray-300 mb-4"></i>
-                        <h3 class="text-xl font-semibold text-gray-500 mb-2">No Activities Found</h3>
-                        <p class="text-gray-400">There are no activities matching your search criteria.</p>
-                    </div>
+                <div class="p-12 text-center">
+                    <i class="fas fa-calendar-times text-6xl text-gray-300 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-500 mb-2">No Activities Found</h3>
+                    <p class="text-gray-400">There are no activities matching your search criteria.</p>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -611,37 +599,51 @@ $types_result = $types_stmt->get_result();
         function toggleActivityMenu(activityId) {
             const menu = document.getElementById('activityMenu' + activityId);
             const allMenus = document.querySelectorAll('[id^="activityMenu"]');
-            const wrapper = menu.parentElement; // relative container
-            const card = wrapper.closest('.activity-card');
+            const trigger = document.querySelector('[data-activity-menu-trigger="' + activityId + '"]');
+
+            if (!menu || !trigger) return;
+
+            // Move menu to body once so it renders outside table container/overflow.
+            if (menu.dataset.portalized !== '1') {
+                document.body.appendChild(menu);
+                menu.dataset.portalized = '1';
+                menu.classList.remove('absolute', 'right-0', 'top-full', 'mt-2');
+                menu.classList.add('fixed');
+            }
 
             // Close all other menus
             allMenus.forEach(m => {
                 if (m.id !== 'activityMenu' + activityId) m.classList.add('hidden');
             });
 
-            // Toggle visibility
-            const willShow = menu.classList.contains('hidden');
             menu.classList.toggle('hidden');
-            if (!willShow) return; // just closed
 
-            // Default placement: above the button
-            menu.style.transform = '';
-            menu.classList.remove('top-full', 'mt-2');
-            menu.classList.add('bottom-full', 'mb-2');
+            // Position menu beside the trigger and keep it within viewport.
+            if (!menu.classList.contains('hidden')) {
+                const rect = trigger.getBoundingClientRect();
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
 
-            // Allow layout to paint, then measure and if the menu crosses the card's top,
-            // pin it to the card top (instead of flipping below)
-            requestAnimationFrame(() => {
-                const menuRect = menu.getBoundingClientRect();
-                const cardRect = card ? card.getBoundingClientRect() : { top: 0 };
+                menu.style.left = '0px';
+                menu.style.top = '0px';
 
-                const desiredTop = cardRect.top + 8; // small padding from the red line/top edge
-                if (menuRect.top < desiredTop) {
-                    const pushDown = desiredTop - menuRect.top;
-                    // Keep it above the button but slide it down so its top aligns with the card top
-                    menu.style.transform = `translateY(${pushDown}px)`;
-                }
-            });
+                requestAnimationFrame(() => {
+                    const menuRect = menu.getBoundingClientRect();
+                    let left = rect.right - menuRect.width;
+                    let top = rect.bottom + 6;
+
+                    if (left < 8) left = 8;
+                    if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
+
+                    if (top + menuRect.height > vh - 8) {
+                        top = rect.top - menuRect.height - 6;
+                    }
+                    if (top < 8) top = 8;
+
+                    menu.style.left = left + 'px';
+                    menu.style.top = top + 'px';
+                });
+            }
         }
         
         function closeActivityMenu(activityId) {

@@ -1483,45 +1483,14 @@ function generateComprehensiveOverviewReport($start_date, $end_date, $conn) {
     return $html;
 }
 
-// Get saved reports for history
-// Get saved reports for history (only if the table exists)
-$saved_reports_result = false;
-$table_check = $conn->query("SHOW TABLES LIKE 'generated_reports'");
-if ($table_check && $table_check->num_rows > 0) {
-    $saved_reports_sql = "SELECT r.report_id, r.report_type, r.start_date, r.end_date, r.file_path, r.timestamp,
-                          s.first_name, s.last_name
-                          FROM generated_reports r
-                          INNER JOIN mao_staff s ON r.staff_id = s.staff_id
-                          ORDER BY r.timestamp DESC";
-    $saved_reports_result = $conn->query($saved_reports_sql);
-} else {
-    // Feature disabled - no saved reports
-    $saved_reports_result = false;
-}
 ?>
 
-<?php $pageTitle = 'Reports System - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
+<?php $pageTitle = 'Generate Reports - Lagonglong FARMS'; include 'includes/layout_start.php'; ?>
             <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 
                 <!-- Header Section -->
-                <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <div class="mb-8">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                        <div class="flex-1">
-                            <h1 class="text-4xl font-bold text-gray-900 flex items-center mb-3">
-                                <div class="bg-gradient-to-r from-agri-green to-agri-dark p-3 rounded-xl mr-4">
-                                    <i class="fas fa-chart-line text-white text-2xl"></i>
-                                </div>
-                                Reports System
-                            </h1>
-                            <p class="text-gray-600 text-lg">Generate comprehensive reports for agricultural management.</p>
-                            <div class="flex items-center mt-4 mb-4 text-sm text-gray-500">
-                                <i class="fas fa-user mr-2"></i>
-                                Logged in as: <span class="font-semibold ml-1"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
-                                <span class="mx-3">•</span>
-                                <i class="fas fa-clock mr-2"></i>
-                                <?php echo date('F d, Y h:i A'); ?>
-                            </div>
-                        </div>
                         <div class="flex flex-col gap-4">
                             <!-- Page Navigation -->
                             <div class="relative">
@@ -1602,21 +1571,12 @@ if ($table_check && $table_check->num_rows > 0) {
                                         </a>
                                     </div>
                                     
-                                    <!-- Settings Section -->
-                                    <div>
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-user-tie text-gray-600 mr-3"></i>
-                                            Staff Management
-                                        </a>
-                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                            System Settings
-                                        </a>
-                                    </div>
+                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-user-tie text-gray-600 mr-3"></i>
+                                        Staff Management
+                                    </a>
                                 </div>
                             </div>
-                            <!-- Saved reports feature and auto-save removed (no UI shown) -->
                         </div>
                     </div>
 
@@ -1643,7 +1603,12 @@ if ($table_check && $table_check->num_rows > 0) {
                                         </div>
                                         Generate New Report
                                     </h3>
-                                    <p class="text-gray-600 mt-2">Select report type and date range to generate comprehensive analytics</p>
+                                    <p class="text-gray-600 mt-2">Generate comprehensive reports for agricultural management.</p>
+                                    <div class="flex flex-wrap items-center mt-3 text-sm text-gray-500 gap-3">
+                                        <span class="inline-flex items-center"><i class="fas fa-user mr-2"></i>Logged in as: <span class="font-semibold ml-1"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span></span>
+                                        <span class="hidden sm:inline">•</span>
+                                        <span class="inline-flex items-center"><i class="fas fa-clock mr-2"></i><?php echo date('F d, Y h:i A'); ?></span>
+                                    </div>
                                 </div>
                                 
                                 <form method="POST" target="_blank" class="space-y-8" id="generateReportForm">
@@ -1654,7 +1619,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                             <i class="fas fa-list text-agri-green mr-2"></i>Report Type
                                         </label>
                                         <select name="report_type" required 
-                                                class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus text-gray-900 bg-white shadow-sm">
+                                            class="w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green input-focus text-gray-900 bg-white shadow-sm">
                                             <option value="">Choose a report type...</option>
                                             <option value="farmers_summary">👥 Farmers Summary Report</option>
                                             <option value="input_distribution">📦 Input Distribution Report</option>
@@ -1673,7 +1638,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                             </label>
                                             <input type="date" name="start_date" required 
                                                    value="<?php echo date('Y-m-01'); ?>"
-                                                   class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
+                                                  class="w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
                                         </div>
                                         <div>
                                             <label class="block text-sm font-semibold text-gray-700 mb-3">
@@ -1681,7 +1646,7 @@ if ($table_check && $table_check->num_rows > 0) {
                                             </label>
                                             <input type="date" name="end_date" required 
                                                    value="<?php echo date('Y-m-d'); ?>"
-                                                   class="w-full py-4 px-4 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
+                                                  class="w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green input-focus shadow-sm">
                                         </div>
                                     </div>
                                     

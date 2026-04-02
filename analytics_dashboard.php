@@ -456,56 +456,54 @@ if ($stmt_inputs) {
                 <?php $i++; } if (isset($stmt)) mysqli_stmt_close($stmt); ?>
             </div>
 
-            <!-- Chart Filters: Date Range and Barangay Only -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3 mb-2">
-                        <label for="filterBarangay" class="form-label">Barangay</label>
-                        <select id="filterBarangay" name="barangay_filter" class="form-select">
-                            <option value="">All Barangays</option>
-                            <?php foreach($barangays as $barangay): ?>
-                                <option value="<?php echo $barangay['barangay_id']; ?>" <?php echo $barangay_filter == $barangay['barangay_id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($barangay['barangay_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label for="filterStartDate" class="form-label">Start Date</label>
-                        <input type="date" id="filterStartDate" name="start_date" value="<?php echo $start_date; ?>" class="form-control">
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label for="filterEndDate" class="form-label">End Date</label>
-                        <input type="date" id="filterEndDate" name="end_date" value="<?php echo $end_date; ?>" class="form-control">
-                    </div>
-                    <div class="col-md-2 mb-2 d-grid">
-                        <button type="button" id="clearAnalyticsFilters" class="btn btn-outline-secondary d-none">
-                            <i class="fas fa-undo me-2"></i>Clear
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Chart Display with Commodity Filter -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in" style="min-height: 540px;">
-                <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-4">
+                <div class="mb-6 space-y-4">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 flex items-center">
                             <i class="fas fa-chart-area text-agri-green mr-3"></i>
                             <span id="chartTitle">Analytics Chart</span>
                         </h3>
                     </div>
-                    <div class="flex flex-col md:flex-row gap-2 items-end">
-                        <div class="relative w-full max-w-xs flex-shrink-0" style="min-width:180px;">
-                            <input type="text" id="commoditySearch" autocomplete="off" class="border border-gray-300 rounded-md px-2 py-1 pr-8 text-sm focus:ring-agri-green focus:border-agri-green w-full" placeholder="Search commodity...">
-                            <button type="button" id="clearCommoditySearch" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 hidden" aria-label="Clear commodity filter">
-                                <i class="fas fa-times"></i>
-                            </button>
-                            <ul id="commoditySuggestions" class="absolute left-0 right-0 bg-white border border-gray-200 rounded-md shadow z-10 mt-1 hidden max-h-40 overflow-y-auto"></ul>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+                        <div>
+                            <label for="filterBarangay" class="form-label mb-1">Barangay</label>
+                            <select id="filterBarangay" name="barangay_filter" class="form-select">
+                                <option value="">All Barangays</option>
+                                <?php foreach($barangays as $barangay): ?>
+                                    <option value="<?php echo $barangay['barangay_id']; ?>" <?php echo $barangay_filter == $barangay['barangay_id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($barangay['barangay_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
-                        <!-- Download and fullscreen buttons removed -->
+                        <div>
+                            <label for="filterStartDate" class="form-label mb-1">Start Date</label>
+                            <input type="date" id="filterStartDate" name="start_date" value="<?php echo $start_date; ?>" class="form-control">
+                        </div>
+                        <div>
+                            <label for="filterEndDate" class="form-label mb-1">End Date</label>
+                            <input type="date" id="filterEndDate" name="end_date" value="<?php echo $end_date; ?>" class="form-control">
+                        </div>
+                        <div>
+                            <label for="commoditySearch" class="form-label mb-1">Commodity</label>
+                            <div class="relative" style="min-width:180px;">
+                                <input type="text" id="commoditySearch" autocomplete="off" class="border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:ring-agri-green focus:border-agri-green w-full" placeholder="Search commodity...">
+                                <button type="button" id="clearCommoditySearch" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 hidden" aria-label="Clear commodity filter">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <ul id="commoditySuggestions" class="absolute left-0 right-0 bg-white border border-gray-200 rounded-md shadow z-10 mt-1 hidden max-h-40 overflow-y-auto"></ul>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="button" id="clearAnalyticsFilters" class="btn btn-outline-secondary d-none">
+                                <i class="fas fa-undo me-2"></i>Clear
+                            </button>
+                        </div>
                     </div>
                 </div>
+
                 <div class="chart-container" style="height: 600px; min-height: 600px; padding-top: 40px;">
                     <canvas id="analyticsChart"></canvas>
                 </div>

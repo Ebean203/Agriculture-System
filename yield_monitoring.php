@@ -506,23 +506,6 @@ include 'includes/layout_start.php';
 
 
 
-    <!-- Search and Filter Controls -->
-    <div class="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <!-- Search Bar -->
-        <div class="relative w-full sm:max-w-md">
-            <input type="text" id="globalSearchInput" placeholder="Search records..." 
-                   class="w-full global-search-input pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
-            <i class="fas fa-search absolute global-search-icon top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-        </div>
-        
-        <!-- Filter Button -->
-        <button id="openFilterDrawer" class="bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 shadow-sm hover:shadow-md hover:border-agri-green transition-all flex items-center gap-2 whitespace-nowrap">
-            <i class="fas fa-sliders-h text-agri-green"></i>
-            <span class="font-medium">Filters</span>
-            <span id="activeFilterCount" class="hidden bg-agri-green text-white text-xs px-2 py-0.5 rounded-full ml-1"></span>
-        </button>
-    </div>
-
     <!-- Filter Drawer -->
     <div id="filterDrawer" class="fixed inset-0 z-50 hidden">
         <!-- Backdrop -->
@@ -671,6 +654,22 @@ include 'includes/layout_start.php';
 
     <!-- Data Table Section -->
     <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:max-w-md">
+                <input type="text" id="globalSearchInput" placeholder="Search records..." 
+                       class="w-full global-search-input pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
+                <i class="fas fa-search absolute global-search-icon top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+            </div>
+            
+            <!-- Filter Button -->
+            <button id="openFilterDrawer" class="bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 shadow-sm hover:shadow-md hover:border-agri-green transition-all flex items-center gap-2 whitespace-nowrap">
+                <i class="fas fa-sliders-h text-agri-green"></i>
+                <span class="font-medium">Filters</span>
+                <span id="activeFilterCount" class="hidden bg-agri-green text-white text-xs px-2 py-0.5 rounded-full ml-1"></span>
+            </button>
+        </div>
+
         <?php if ($total_records > 0): ?>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">

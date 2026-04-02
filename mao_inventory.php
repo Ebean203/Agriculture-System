@@ -224,18 +224,10 @@ foreach ($notifications as $notification) {
                                         </a>
                                     </div>
                                     
-                                    <!-- Settings Section -->
-                                    <div>
-                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Settings</div>
-                                        <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-user-tie text-purple-600 mr-3"></i>
-                                            Staff Management
-                                        </a>
-                                        <a href="settings.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
-                                            <i class="fas fa-cog text-gray-600 mr-3"></i>
-                                            Settings
-                                        </a>
-                                    </div>
+                                    <a href="staff.php" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-gray-700">
+                                        <i class="fas fa-user-tie text-purple-600 mr-3"></i>
+                                        Staff Management
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -1573,44 +1565,6 @@ foreach ($notifications as $notification) {
         </div>
     </div>
     
-    <!-- Manual Stock Out Expired Batch Modal -->
-    <div id="stockOutExpiredModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Stock Out Expired Batch</h3>
-                <p class="text-sm text-gray-600 mt-1">Remove expired inventory batch from the system</p>
-            </div>
-            <form action="stock_out_expired.php" method="POST" class="p-6">
-                <div class="mb-4">
-                    <label for="expired_batch" class="block text-sm font-medium text-gray-700 mb-2">Select Expired Batch</label>
-                    <select id="expired_batch" name="inventory_id" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                        <option value="">Choose expired batch...</option>
-                        <?php
-                        $today = date('Y-m-d');
-                        $expired_query = "SELECT mi.inventory_id, ic.input_name, mi.quantity_on_hand, mi.expiration_date FROM mao_inventory mi JOIN input_categories ic ON mi.input_id = ic.input_id WHERE mi.expiration_date IS NOT NULL AND mi.expiration_date < '$today' AND mi.quantity_on_hand > 0 ORDER BY mi.expiration_date ASC";
-                        $expired_result = mysqli_query($conn, $expired_query);
-                        while ($batch = mysqli_fetch_assoc($expired_result)) {
-                            $label = htmlspecialchars($batch['input_name']) . ' | Qty: ' . $batch['quantity_on_hand'] . ' | Exp: ' . date('M d, Y', strtotime($batch['expiration_date']));
-                            echo '<option value="' . $batch['inventory_id'] . '">' . $label . '</option>';
-                        }
-                        ?>
-                    </select>
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="document.getElementById('stockOutExpiredModal').classList.add('hidden')"
-                            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
-                        Stock Out
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Add New Commodity Modal -->
     <div id="addNewCommodityModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
