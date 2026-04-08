@@ -25,15 +25,10 @@ function ensureFarmerPhotoGeoColumns($conn) {
     ];
 
     foreach ($columns as $column => $ddl) {
-        $check = $conn->prepare("SHOW COLUMNS FROM farmer_photos LIKE ?");
-        if ($check) {
-            $check->bind_param('s', $column);
-            $check->execute();
-            $res = $check->get_result();
-            if ($res && $res->num_rows === 0) {
-                $conn->query($ddl);
-            }
-            $check->close();
+        $columnEscaped = $conn->real_escape_string($column);
+        $res = $conn->query("SHOW COLUMNS FROM farmer_photos LIKE '{$columnEscaped}'");
+        if ($res && $res->num_rows === 0) {
+            $conn->query($ddl);
         }
     }
 }

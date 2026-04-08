@@ -1112,7 +1112,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                        onkeyup="searchFarmersAutoSuggest(this.value)"
                                        onfocus="showFarmerSuggestions()"
                                        onblur="hideFarmerSuggestions()">
-                                <input type="hidden" name="farmer_id" id="selected_farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
+                                    <input type="hidden" name="farmer_id" id="selected_farmer_filter_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                                 
                                 <!-- Auto-suggest dropdown -->
@@ -1533,7 +1533,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
         function selectFarmerSuggestion(farmerId, farmerName, contactNumber) {
             const searchInput = document.getElementById('farmer_search');
-            const selectedFarmerId = document.getElementById('selected_farmer_id');
+            const selectedFarmerId = document.getElementById('selected_farmer_filter_id');
             searchInput.value = farmerName;
             if (selectedFarmerId) {
                 selectedFarmerId.value = farmerId;
@@ -1566,7 +1566,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         // If user edits text manually after selecting a suggestion, clear exact farmer-id filter.
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('farmer_search');
-            const selectedFarmerId = document.getElementById('selected_farmer_id');
+            const selectedFarmerId = document.getElementById('selected_farmer_filter_id');
             if (searchInput && selectedFarmerId) {
                 searchInput.addEventListener('input', function() {
                     selectedFarmerId.value = '';
