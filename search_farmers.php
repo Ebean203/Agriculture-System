@@ -2,6 +2,7 @@
 session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
+require_once __DIR__ . '/includes/name_helpers.php';
 
 header('Content-Type: application/json');
 
@@ -20,8 +21,7 @@ if (strlen($query) < 1) {
 
 try {
     // Search for farmers that are not archived (using archived field like in farmers.php)
-    $sql = "SELECT f.farmer_id, f.first_name, f.last_name, f.middle_name, f.suffix, f.contact_number, b.barangay_name,
-                   CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) as full_name
+    $sql = "SELECT f.farmer_id, f.first_name, f.last_name, f.middle_name, f.suffix, f.contact_number, b.barangay_name
             FROM farmers f 
             LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
             WHERE f.archived = 0 
@@ -30,7 +30,11 @@ try {
                 f.last_name LIKE ? OR 
                 f.middle_name LIKE ? OR
                 f.contact_number LIKE ? OR
-                CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?
+                CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+                CONCAT(f.last_name, ', ', f.first_name) LIKE ? OR
+                CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, '')) LIKE ? OR
+                CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name, ' ', COALESCE(f.suffix, '')) LIKE ? OR
+                CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', COALESCE(f.suffix, '')) LIKE ?
             )
             ORDER BY f.first_name, f.last_name 
             LIMIT 10";
@@ -39,7 +43,7 @@ try {
     $stmt = mysqli_prepare($conn, $sql);
     
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "sssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+        mysqli_stmt_bind_param($stmt, "ssssssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
         
@@ -53,7 +57,7 @@ try {
                 'suffix' => $row['suffix'],
                 'contact_number' => $row['contact_number'],
                 'barangay_name' => $row['barangay_name'],
-                'full_name' => trim($row['full_name'])
+                'full_name' => formatFarmerName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '')
             ];
         }
         

@@ -2,6 +2,8 @@
 // Notification System for Lagonglong FARMS
 // Handles visitation reminders and inventory alerts using existing database tables
 
+require_once __DIR__ . '/name_helpers.php';
+
 function getNotifications($conn) {
     $notifications = [];
     $today = date('Y-m-d');
@@ -49,20 +51,10 @@ function getVisitationNotifications($conn, $today) {
     $query = "
         SELECT 
             f.farmer_id,
-            CONCAT(
-                f.first_name, 
-                CASE 
-                    WHEN f.middle_name IS NOT NULL AND LOWER(f.middle_name) NOT IN ('n/a', 'na', '') 
-                    THEN CONCAT(' ', f.middle_name) 
-                    ELSE '' 
-                END,
-                ' ', f.last_name,
-                CASE 
-                    WHEN f.suffix IS NOT NULL AND LOWER(f.suffix) NOT IN ('n/a', 'na', '') 
-                    THEN CONCAT(' ', f.suffix) 
-                    ELSE '' 
-                END
-            ) as farmer_name,
+            f.first_name,
+            f.middle_name,
+            f.last_name,
+            f.suffix,
             f.barangay_id,
             b.barangay_name,
             mdl.visitation_date,
@@ -86,6 +78,7 @@ function getVisitationNotifications($conn, $today) {
     $result = mysqli_stmt_get_result($stmt);
     if ($result && mysqli_num_rows($result) > 0) {
         while ($row = mysqli_fetch_assoc($result)) {
+            $row['farmer_name'] = formatFarmerName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
             $days_until = $row['days_until_visit'];
             $formatted_date = date('M j, Y', strtotime($row['visitation_date']));
             if ($days_until < 0) {

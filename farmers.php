@@ -897,7 +897,7 @@ while ($row = $barangays_result->fetch_assoc()) {
 
 // Search and filter functionality - GET parameters take priority over POST
 $search = isset($_GET['search']) ? trim($_GET['search']) : (isset($_POST['search']) ? trim($_POST['search']) : '');
-$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : (isset($_POST['farmer_id']) ? trim($_POST['farmer_id']) : '');
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
 
 // Handle clear all - reset search and filter
@@ -914,9 +914,9 @@ if (!empty($farmer_id_filter)) {
     $search_condition .= " AND f.farmer_id = ?";
     $search_params[] = $farmer_id_filter;
 } elseif (!empty($search)) {
-    $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
+    $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR CONCAT(f.last_name, ', ', f.first_name) LIKE ? OR CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, '')) LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name, ' ', COALESCE(f.suffix, '')) LIKE ? OR CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', COALESCE(f.suffix, '')) LIKE ?)";
     $search_term = "%$search%";
-    $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
+    $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term, $search_term, $search_term, $search_term, $search_term];
 }
 
 if (!empty($barangay_filter)) {
@@ -1112,6 +1112,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                        onkeyup="searchFarmersAutoSuggest(this.value)"
                                        onfocus="showFarmerSuggestions()"
                                        onblur="hideFarmerSuggestions()">
+                                <input type="hidden" name="farmer_id" id="selected_farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                                 
                                 <!-- Auto-suggest dropdown -->
@@ -1532,7 +1533,11 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
         function selectFarmerSuggestion(farmerId, farmerName, contactNumber) {
             const searchInput = document.getElementById('farmer_search');
+            const selectedFarmerId = document.getElementById('selected_farmer_id');
             searchInput.value = farmerName;
+            if (selectedFarmerId) {
+                selectedFarmerId.value = farmerId;
+            }
             hideFarmerSuggestions();
             
             // Trigger form submission or update the URL to filter results
@@ -1557,6 +1562,17 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                 }, 200); // Delay to allow click events on suggestions
             }
         }
+
+        // If user edits text manually after selecting a suggestion, clear exact farmer-id filter.
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('farmer_search');
+            const selectedFarmerId = document.getElementById('selected_farmer_id');
+            if (searchInput && selectedFarmerId) {
+                searchInput.addEventListener('input', function() {
+                    selectedFarmerId.value = '';
+                });
+            }
+        });
     </script>
 
     <!-- Include Farmer Registration Modal -->

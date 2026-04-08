@@ -239,10 +239,10 @@ if ($stmt) {
 
     <!-- View Staff Modal -->
     <div id="viewStaffModal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header border-0 bg-light">
-                    <h5 class="modal-title text-success"><i class="fas fa-user-circle me-2"></i>Staff Details</h5>
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 px-4 py-3 bg-white">
+                    <h5 class="modal-title text-success fw-semibold"><i class="fas fa-user-circle me-2"></i>Staff Details</h5>
                     <button type="button" class="btn-close" onclick="closeViewModal()"></button>
                 </div>
                 <div class="modal-body p-0" id="viewStaffContent">
@@ -252,24 +252,74 @@ if ($stmt) {
         </div>
     </div>
 
-    <!-- Archive Confirmation Modal -->
-    <div id="archiveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3 text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
-                    <i class="fas fa-archive text-orange-600 text-xl"></i>
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 px-4 py-3 bg-white">
+                    <h5 class="modal-title text-warning fw-semibold"><i class="fas fa-key me-2"></i>Change Staff Password</h5>
+                    <button type="button" class="btn-close" onclick="closeChangePasswordModal()"></button>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Archive Staff Member</h3>
-                <p class="text-sm text-gray-500 mb-4">
-                    Are you sure you want to archive <strong id="archive_staff_name"></strong>? 
-                    This will move them to the archived staff list.
-                </p>
-                <div class="flex justify-center space-x-3">
-                    <button onclick="closeArchiveModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                <div class="modal-body px-4 pt-2 pb-3">
+                    <div class="small text-muted mb-3">
+                        Updating password for <span class="fw-semibold text-dark" id="change_password_staff_name"></span>
+                    </div>
+                    <form id="changePasswordForm" action="staff_actions.php" method="POST">
+                        <input type="hidden" name="action" value="change_password">
+                        <input type="hidden" name="staff_id" id="change_password_staff_id">
+
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label fw-semibold small text-secondary mb-1">New Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" id="new_password" name="new_password" required minlength="8" class="form-control form-control-lg rounded-start-3" placeholder="At least 8 characters">
+                                <button type="button" class="btn btn-outline-secondary px-3 rounded-end-3" onclick="togglePasswordVisibility('new_password', this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="confirm_password" class="form-label fw-semibold small text-secondary mb-1">Confirm Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" id="confirm_password" name="confirm_password" required minlength="8" class="form-control form-control-lg rounded-start-3" placeholder="Re-enter password">
+                                <button type="button" class="btn btn-outline-secondary px-3 rounded-end-3" onclick="togglePasswordVisibility('confirm_password', this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="password_match_hint" class="form-text text-muted mt-2 small">Use a strong password with letters, numbers, and symbols.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-1 bg-white justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" onclick="closeChangePasswordModal()">
                         Cancel
                     </button>
-                    <button onclick="confirmArchive()" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-                        <i class="fas fa-archive mr-2"></i>Archive
+                    <button type="submit" form="changePasswordForm" class="btn btn-warning text-white d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4">
+                        <i class="fas fa-check-circle"></i>Save Password
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archive Confirmation Modal -->
+    <div id="archiveModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-body px-4 py-4 text-center">
+                    <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-warning-subtle" style="width:56px;height:56px;">
+                        <i class="fas fa-archive text-warning fs-4"></i>
+                    </div>
+                    <h5 class="fw-semibold text-dark mb-2">Archive Staff Member</h5>
+                    <p class="text-muted mb-0">
+                        Are you sure you want to archive <span class="fw-semibold text-dark" id="archive_staff_name"></span>?<br>
+                        This will move the account to archived staff records.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0 bg-white justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" onclick="closeArchiveModal()">Cancel</button>
+                    <button type="button" class="btn btn-warning text-white d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" onclick="confirmArchive()">
+                        <i class="fas fa-archive"></i>Archive
                     </button>
                 </div>
             </div>
@@ -278,78 +328,105 @@ if ($stmt) {
 
     <!-- Add Staff Modal -->
     <div class="modal fade" id="addStaffModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header border-0 bg-light">
-                    <h5 class="modal-title text-primary">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-0 px-4 py-3 bg-white">
+                    <h5 class="modal-title text-primary fw-semibold">
                         <i class="fas fa-user-plus me-2"></i>Add New Staff Member
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body px-4 py-3 bg-light">
                     <form id="addStaffForm" action="staff_actions.php" method="POST">
                         <input type="hidden" name="action" value="add_staff">
-                
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                                <input type="text" id="first_name" name="first_name" required class="form-control" placeholder="Enter first name">
+
+                        <div class="alert alert-primary border-0 rounded-3 mb-4">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle mt-1 me-2"></i>
+                                <div>
+                                    <div class="fw-semibold mb-1">Create Staff Account</div>
+                                    <div class="small mb-0">Complete all required fields to create a secure account for MAO personnel.</div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                                <input type="text" id="last_name" name="last_name" required class="form-control" placeholder="Enter last name">
+                        </div>
+
+                        <div class="card border-0 shadow-sm rounded-3 mb-3">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h6 class="mb-0 text-success fw-semibold"><i class="fas fa-id-badge me-2"></i>Personal Details</h6>
+                            </div>
+                            <div class="card-body pt-0">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="first_name" class="form-label fw-semibold small text-secondary mb-1">First Name <span class="text-danger">*</span></label>
+                                        <input type="text" id="first_name" name="first_name" required class="form-control form-control-lg rounded-3" placeholder="Juan">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="last_name" class="form-label fw-semibold small text-secondary mb-1">Last Name <span class="text-danger">*</span></label>
+                                        <input type="text" id="last_name" name="last_name" required class="form-control form-control-lg rounded-3" placeholder="Dela Cruz">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label for="position" class="form-label fw-semibold small text-secondary mb-1">Position <span class="text-danger">*</span></label>
+                                        <input type="text" id="position" name="position" required class="form-control form-control-lg rounded-3" placeholder="Agricultural Officer, MAO Head">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="contact_number" class="form-label fw-semibold small text-secondary mb-1">Contact Number <span class="text-danger">*</span></label>
+                                        <input type="tel" id="contact_number" name="contact_number" required class="form-control form-control-lg rounded-3" placeholder="09xxxxxxxxx">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="role_id" class="form-label fw-semibold small text-secondary mb-1">Role <span class="text-danger">*</span></label>
+                                        <select id="role_id" name="role_id" required class="form-select form-select-lg rounded-3">
+                                            <option value="">Select Role</option>
+                                            <?php
+                                            // Fetch roles
+                                            $roles_query = "SELECT role_id, role FROM roles ORDER BY role";
+                                            $roles_stmt = $conn->prepare($roles_query);
+                                            $roles_stmt->execute();
+                                            $roles_result = $roles_stmt->get_result();
+                                            if ($roles_result) {
+                                                while ($role = $roles_result->fetch_assoc()) {
+                                                    echo "<option value='{$role['role_id']}'>{$role['role']}</option>";
+                                                }
+                                            }
+                                            $roles_stmt->close();
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="position" class="form-label">Position <span class="text-danger">*</span></label>
-                            <input type="text" id="position" name="position" required class="form-control" placeholder="e.g., Agricultural Officer, MAO Head">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="contact_number" class="form-label">Contact Number <span class="text-danger">*</span></label>
-                            <input type="tel" id="contact_number" name="contact_number" required class="form-control" placeholder="09xxxxxxxxx">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="role_id" class="form-label">Role <span class="text-danger">*</span></label>
-                            <select id="role_id" name="role_id" required class="form-select">
-                                <option value="">Select Role</option>
-                                <?php
-                                // Fetch roles
-                                $roles_query = "SELECT role_id, role FROM roles ORDER BY role";
-                                $roles_stmt = $conn->prepare($roles_query);
-                                $roles_stmt->execute();
-                                $roles_result = $roles_stmt->get_result();
-                                if ($roles_result) {
-                                    while ($role = $roles_result->fetch_assoc()) {
-                                        echo "<option value='{$role['role_id']}'>{$role['role']}</option>";
-                                    }
-                                }
-                                $roles_stmt->close();
-                                ?>
-                            </select>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
-                                <input type="text" id="username" name="username" required class="form-control" placeholder="Enter username">
+                        <div class="card border-0 shadow-sm rounded-3">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h6 class="mb-0 text-primary fw-semibold"><i class="fas fa-user-lock me-2"></i>Account Credentials</h6>
                             </div>
-                            <div class="col-md-6">
-                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-                                <input type="password" id="password" name="password" required class="form-control" placeholder="Enter password">
+                            <div class="card-body pt-0">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="username" class="form-label fw-semibold small text-secondary mb-1">Username <span class="text-danger">*</span></label>
+                                        <input type="text" id="username" name="username" required class="form-control form-control-lg rounded-3" placeholder="Set unique username" autocomplete="off">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="add_staff_password" class="form-label fw-semibold small text-secondary mb-1">Password <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <input type="password" id="add_staff_password" name="password" required minlength="8" class="form-control form-control-lg rounded-start-3" placeholder="At least 8 characters" autocomplete="new-password">
+                                            <button type="button" class="btn btn-outline-secondary px-3 rounded-end-3" onclick="togglePasswordVisibility('add_staff_password', this)">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="add_staff_password_hint" class="form-text text-muted mt-2 small">Tip: Use letters, numbers, and symbols for a stronger password.</div>
                             </div>
                         </div>
 
                     </form>
                 </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancel
+                <div class="modal-footer border-0 px-4 pb-4 pt-2 bg-light justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" data-bs-dismiss="modal">
+                        Cancel
                     </button>
-                    <button type="submit" form="addStaffForm" class="btn btn-primary">
-                        <i class="fas fa-user-plus me-2"></i>Add Staff Member
+                    <button type="submit" form="addStaffForm" class="btn btn-primary d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4">
+                        <i class="fas fa-user-plus"></i>Create Staff Account
                     </button>
                 </div>
             </div>
@@ -383,6 +460,7 @@ if ($stmt) {
         });
 
         let staffToArchive = null;
+        let currentViewedStaff = null;
 
         function openAddStaffModal() {
             new bootstrap.Modal(document.getElementById('addStaffModal')).show();
@@ -393,44 +471,54 @@ if ($stmt) {
         }
 
         function viewStaff(staff) {
-            // Build the HTML for staff details (uniform with farmers view)
+            currentViewedStaff = staff;
+
+            const roleBadgeClass = String(staff.role_id) === '1' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success';
             const html = `
-                <div class=\"container-fluid p-0\">
-                    <div class=\"bg-gradient-primary text-white p-3 rounded-top mb-3\" style=\"background: linear-gradient(135deg, #28a745, #20c997);\">
-                        <div class=\"row align-items-center\">
-                            <div class=\"col-auto\">
-                                <div class=\"h-16 w-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 d-flex align-items-center justify-content-center me-3\">
-                                    <i class=\"fas fa-user text-gray-600 fa-2x\"></i>
+                <div class=\"container-fluid p-0\"> 
+                    <div class=\"px-4 py-4 text-white\" style=\"background: linear-gradient(120deg, #14823b 0%, #2ec89d 100%);\">
+                        <div class=\"d-flex align-items-center justify-content-between flex-wrap gap-3\">
+                            <div class=\"d-flex align-items-center\">
+                                <div class=\"rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center me-3\" style=\"width:64px;height:64px;\">
+                                    <i class=\"fas fa-user text-white fs-3\"></i>
+                                </div>
+                                <div>
+                                    <h4 class=\"mb-1 fw-semibold\">${staff.first_name} ${staff.last_name}</h4>
+                                    <div class=\"small opacity-75\"><i class=\"fas fa-id-card me-1\"></i>Staff ID: ${staff.staff_id ?? ''}</div>
                                 </div>
                             </div>
-                            <div class=\"col\">
-                                <h4 class=\"mb-1\"><i class=\"fas fa-user-circle me-2\"></i>${staff.first_name} ${staff.last_name}</h4>
-                                <small class=\"opacity-75\"><i class=\"fas fa-id-card me-1\"></i>Staff ID: ${staff.staff_id ?? ''}</small>
-                            </div>
+                            <span class=\"badge rounded-pill ${roleBadgeClass} px-3 py-2 text-uppercase\">${staff.role_name ?? staff.role ?? ''}</span>
                         </div>
                     </div>
-                    <div class=\"row g-3\">
-                        <div class=\"col-md-6\">
-                            <div class=\"card border-0 shadow-sm h-100\">
-                                <div class=\"card-header bg-light border-0\">
-                                    <h6 class=\"card-title mb-0 text-success\"><i class=\"fas fa-user me-2\"></i>Personal Information</h6>
+                    <div class=\"px-4 py-4 bg-light\">
+                        <div class=\"row g-3\">
+                            <div class=\"col-md-6\">
+                                <div class=\"card border-0 shadow-sm h-100 rounded-3\">
+                                    <div class=\"card-header bg-white border-0 py-3\">
+                                        <h6 class=\"card-title mb-0 text-success fw-semibold\"><i class=\"fas fa-user me-2\"></i>Personal Information</h6>
+                                    </div>
+                                    <div class=\"card-body pt-0\">
+                                        <div class=\"mb-2\"><span class=\"text-muted small d-block\">Contact Number</span><span class=\"fw-semibold\">${staff.contact_number ?? 'N/A'}</span></div>
+                                        <div><span class=\"text-muted small d-block\">Username</span><span class=\"fw-semibold\">${staff.username ?? 'N/A'}</span></div>
+                                    </div>
                                 </div>
-                                <div class=\"card-body\">
-                                    <div><strong>Contact:</strong> ${staff.contact_number ?? ''}</div>
-                                    <div><strong>Username:</strong> ${staff.username ?? ''}</div>
+                            </div>
+                            <div class=\"col-md-6\">
+                                <div class=\"card border-0 shadow-sm h-100 rounded-3\">
+                                    <div class=\"card-header bg-white border-0 py-3\">
+                                        <h6 class=\"card-title mb-0 text-info fw-semibold\"><i class=\"fas fa-briefcase me-2\"></i>Work Information</h6>
+                                    </div>
+                                    <div class=\"card-body pt-0\">
+                                        <div class=\"mb-2\"><span class=\"text-muted small d-block\">Position</span><span class=\"fw-semibold\">${staff.position ?? 'N/A'}</span></div>
+                                        <div><span class=\"text-muted small d-block\">Role</span><span class=\"fw-semibold text-capitalize\">${staff.role_name ?? staff.role ?? 'N/A'}</span></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class=\"col-md-6\">
-                            <div class=\"card border-0 shadow-sm h-100\">
-                                <div class=\"card-header bg-light border-0\">
-                                    <h6 class=\"card-title mb-0 text-info\"><i class=\"fas fa-briefcase me-2\"></i>Work Information</h6>
-                                </div>
-                                <div class=\"card-body\">
-                                    <div><strong>Position:</strong> ${staff.position ?? ''}</div>
-                                    <div><strong>Role:</strong> ${staff.role_name ?? staff.role ?? ''}</div>
-                                </div>
-                            </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="button" class="btn btn-warning text-white d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" onclick="openChangePasswordModal()">
+                                <i class="fas fa-key"></i>Change Password
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -440,6 +528,74 @@ if ($stmt) {
             var modal = new bootstrap.Modal(document.getElementById('viewStaffModal'));
             modal.show();
         }
+
+        function openChangePasswordModal() {
+            if (!currentViewedStaff) {
+                return;
+            }
+
+            document.getElementById('change_password_staff_id').value = currentViewedStaff.staff_id || '';
+            document.getElementById('change_password_staff_name').textContent = `${currentViewedStaff.first_name || ''} ${currentViewedStaff.last_name || ''}`.trim();
+            document.getElementById('new_password').value = '';
+            document.getElementById('confirm_password').value = '';
+            new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+        }
+
+        function closeChangePasswordModal() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
+            if (modal) {
+                modal.hide();
+            }
+        }
+
+        function togglePasswordVisibility(inputId, buttonEl) {
+            const input = document.getElementById(inputId);
+            const icon = buttonEl.querySelector('i');
+            if (!input || !icon) {
+                return;
+            }
+
+            input.type = input.type === 'password' ? 'text' : 'password';
+            icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        }
+
+        document.getElementById('changePasswordForm').addEventListener('submit', function(event) {
+            const newPassword = document.getElementById('new_password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            const hint = document.getElementById('password_match_hint');
+
+            if (newPassword !== confirmPassword) {
+                event.preventDefault();
+                hint.textContent = 'Passwords do not match. Please check both fields.';
+                hint.className = 'form-text text-danger mt-2';
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                event.preventDefault();
+                hint.textContent = 'Password must be at least 8 characters.';
+                hint.className = 'form-text text-danger mt-2';
+                return;
+            }
+
+            hint.textContent = 'Password looks good.';
+            hint.className = 'form-text text-success mt-2';
+        });
+
+        document.getElementById('addStaffForm').addEventListener('submit', function(event) {
+            const addPassword = document.getElementById('add_staff_password').value;
+            const hint = document.getElementById('add_staff_password_hint');
+
+            if (addPassword.length < 8) {
+                event.preventDefault();
+                hint.textContent = 'Password must be at least 8 characters.';
+                hint.className = 'form-text text-danger mt-2';
+                return;
+            }
+
+            hint.textContent = 'Password looks good.';
+            hint.className = 'form-text text-success mt-2';
+        });
 
         function closeViewModal() {
             // Use Bootstrap's API to hide the modal
@@ -451,16 +607,20 @@ if ($stmt) {
                 // fallback for manual hide if modal instance not found
                 modalEl.classList.add('hidden');
             }
+            currentViewedStaff = null;
         }
 
         function archiveStaff(staffId, staffName) {
             staffToArchive = staffId;
             document.getElementById('archive_staff_name').textContent = staffName;
-            document.getElementById('archiveModal').classList.remove('hidden');
+            new bootstrap.Modal(document.getElementById('archiveModal')).show();
         }
 
         function closeArchiveModal() {
-            document.getElementById('archiveModal').classList.add('hidden');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('archiveModal'));
+            if (modal) {
+                modal.hide();
+            }
             staffToArchive = null;
         }
 
@@ -475,12 +635,9 @@ if ($stmt) {
         // Close modals when clicking outside
         window.onclick = function(event) {
             const viewModal = document.getElementById('viewStaffModal');
-            const archiveModal = document.getElementById('archiveModal');
             
             if (event.target === viewModal) {
                 closeViewModal();
-            } else if (event.target === archiveModal) {
-                closeArchiveModal();
             }
         }
     </script>

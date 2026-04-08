@@ -3,7 +3,12 @@ session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
 require_once __DIR__ . '/includes/yield_helpers.php';
+require_once __DIR__ . '/includes/name_helpers.php';
 $pageTitle = 'Yield Monitoring - Lagonglong FARMS';
+
+function formatFarmerNameLastFirst($first, $middle, $last, $suffix) {
+    return formatFarmerName($first, $middle, $last, $suffix);
+}
 
 // Check if yield_monitoring table exists
 $table_check_stmt = $conn->prepare("SHOW TABLES LIKE 'yield_monitoring'");
@@ -212,6 +217,8 @@ try {
             f.first_name LIKE ? OR 
             f.last_name LIKE ? OR 
             CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(f.last_name, ', ', f.first_name) LIKE ? OR
+            CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, '')) LIKE ? OR
             CONCAT(
                 f.first_name, 
                 CASE 
@@ -232,15 +239,19 @@ try {
         $params[] = $search_term;
         $params[] = $search_term;
         $params[] = $search_term;
-        $types .= "ssss";
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $types .= "ssssss";
     }
     
     // Farmer search filter (from new form)
-    if (!empty($farmer_search)) {
+    if (!empty($farmer_search) && empty($farmer_id_filter)) {
         $where_clause .= " AND (
             f.first_name LIKE ? OR 
             f.last_name LIKE ? OR 
             CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
+            CONCAT(f.last_name, ', ', f.first_name) LIKE ? OR
+            CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, '')) LIKE ? OR
             CONCAT(
                 f.first_name, 
                 CASE 
@@ -261,7 +272,9 @@ try {
         $params[] = $search_term;
         $params[] = $search_term;
         $params[] = $search_term;
-        $types .= "ssss";
+        $params[] = $search_term;
+        $params[] = $search_term;
+        $types .= "ssssss";
     }
     
     // Category filter
@@ -523,6 +536,18 @@ include 'includes/layout_start.php';
             
             <!-- Filter Content - Scrollable -->
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Farmer Filter -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Farmer</h3>
+                    <div class="relative">
+                        <input type="text" id="drawer_farmer_search" value="<?php echo htmlspecialchars($farmer_search); ?>"
+                               placeholder="Search farmer by name..."
+                               class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
+                        <input type="hidden" id="drawer_farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
+                        <div id="drawer_farmer_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
+                    </div>
+                </div>
+
                 <!-- Category Type with Nested Commodities -->
                 <div>
                     <h3 class="text-sm font-semibold text-gray-900 mb-3">Category</h3>
@@ -685,10 +710,26 @@ include 'includes/layout_start.php';
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php foreach ($yield_records as $record): ?>
+                            <?php
+                                $display_farmer_name = formatFarmerNameLastFirst(
+                                    $record['first_name'] ?? '',
+                                    $record['middle_name'] ?? '',
+                                    $record['last_name'] ?? '',
+                                    $record['suffix'] ?? ''
+                                );
+                                $display_farmer_alt = trim(
+                                    ($record['first_name'] ?? '') . ' ' .
+                                    ($record['middle_name'] ?? '') . ' ' .
+                                    ($record['last_name'] ?? '') . ' ' .
+                                    ($record['suffix'] ?? '')
+                                );
+                            ?>
                             <tr class="hover:bg-gray-50" 
                                 data-record-id="<?php echo htmlspecialchars($record['yield_id'] ?? $record['id'] ?? ''); ?>" 
                                 data-category-id="<?php echo htmlspecialchars($record['category_id'] ?? ''); ?>"
-                                data-commodity-id="<?php echo htmlspecialchars($record['commodity_id'] ?? ''); ?>">
+                                data-commodity-id="<?php echo htmlspecialchars($record['commodity_id'] ?? ''); ?>"
+                                data-farmer-id="<?php echo htmlspecialchars($record['farmer_id'] ?? ''); ?>"
+                                data-farmer-name="<?php echo htmlspecialchars(trim($display_farmer_name . ' ' . $display_farmer_alt)); ?>">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -698,7 +739,7 @@ include 'includes/layout_start.php';
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">
-                                                <?php echo htmlspecialchars(trim($record['first_name'] . ' ' . $record['last_name'])); ?>
+                                                <?php echo htmlspecialchars($display_farmer_name); ?>
                                             </div>
                                             <div class="text-sm text-gray-500">
                                                 <?php echo htmlspecialchars($record['barangay_name'] ?? 'N/A'); ?>
@@ -1376,6 +1417,12 @@ document.addEventListener('DOMContentLoaded', function() {
     clearAllBtn.addEventListener('click', function() {
         // Uncheck all category checkboxes
         categoryCheckboxes.forEach(cb => cb.checked = false);
+
+        // Clear farmer filter fields
+        const drawerFarmerSearch = document.getElementById('drawer_farmer_search');
+        const drawerFarmerId = document.getElementById('drawer_farmer_id');
+        if (drawerFarmerSearch) drawerFarmerSearch.value = '';
+        if (drawerFarmerId) drawerFarmerId.value = '';
         
         // Uncheck all commodity checkboxes and hide lists
         document.querySelectorAll('.filter-commodity-checkbox').forEach(cb => cb.checked = false);
@@ -1394,6 +1441,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function applyDrawerFilters() {
+    const selectedFarmerId = (document.getElementById('drawer_farmer_id')?.value || '').trim();
+    const selectedFarmerName = (document.getElementById('drawer_farmer_search')?.value || '').toLowerCase().trim();
+    const globalSearchTerm = (document.getElementById('globalSearchInput')?.value || '').toLowerCase().trim();
     const selectedCategories = [];
     document.querySelectorAll('.filter-category-checkbox:checked').forEach(cb => {
         selectedCategories.push(cb.dataset.categoryId);
@@ -1410,16 +1460,31 @@ function applyDrawerFilters() {
     tableRows.forEach(row => {
         const categoryId = row.getAttribute('data-category-id');
         const commodityId = row.getAttribute('data-commodity-id');
+        const farmerId = (row.getAttribute('data-farmer-id') || '').trim();
+        const farmerName = (row.getAttribute('data-farmer-name') || '').toLowerCase().trim();
+        const rowText = (row.textContent || '').toLowerCase();
         let showRow = true;
+
+        // Filter by farmer first
+        if (selectedFarmerId !== '') {
+            showRow = (farmerId === selectedFarmerId);
+        } else if (selectedFarmerName !== '') {
+            showRow = farmerName.includes(selectedFarmerName);
+        }
         
         // Filter by category if any selected
-        if (selectedCategories.length > 0) {
+        if (showRow && selectedCategories.length > 0) {
             showRow = selectedCategories.includes(categoryId);
         }
         
         // Further filter by commodity if any selected
         if (showRow && selectedCommodities.length > 0) {
             showRow = selectedCommodities.includes(commodityId);
+        }
+
+        // Apply global search without bypassing existing drawer filters.
+        if (showRow && globalSearchTerm !== '') {
+            showRow = rowText.includes(globalSearchTerm);
         }
         
         row.style.display = showRow ? '' : 'none';
@@ -1430,11 +1495,12 @@ function applyDrawerFilters() {
 }
 
 function updateFilterPreview() {
+    const hasFarmerFilter = !!((document.getElementById('drawer_farmer_id')?.value || '').trim() || (document.getElementById('drawer_farmer_search')?.value || '').trim());
     const selectedCategories = document.querySelectorAll('.filter-category-checkbox:checked').length;
     const selectedCommodities = document.querySelectorAll('.filter-commodity-checkbox:checked').length;
     const dateRange = document.getElementById('drawer_date_filter').value;
     
-    let filterCount = selectedCategories + selectedCommodities;
+    let filterCount = selectedCategories + selectedCommodities + (hasFarmerFilter ? 1 : 0);
     if (dateRange) filterCount++;
     
     const totalRows = document.querySelectorAll('tbody tr').length;
@@ -1448,11 +1514,12 @@ function updateFilterPreview() {
 }
 
 function updateActiveFilterCount() {
+    const hasFarmerFilter = !!((document.getElementById('drawer_farmer_id')?.value || '').trim() || (document.getElementById('drawer_farmer_search')?.value || '').trim());
     const selectedCategories = document.querySelectorAll('.filter-category-checkbox:checked').length;
     const selectedCommodities = document.querySelectorAll('.filter-commodity-checkbox:checked').length;
     const dateRange = document.getElementById('drawer_date_filter').value;
     
-    let count = selectedCategories + selectedCommodities;
+    let count = selectedCategories + selectedCommodities + (hasFarmerFilter ? 1 : 0);
     if (dateRange) count++;
     
     const badge = document.getElementById('activeFilterCount');
@@ -1489,12 +1556,15 @@ function initializeDrawerFromURL() {
 // Farmer search in drawer
 function initializeDrawerFarmerSearch() {
     const farmerSearch = document.getElementById('drawer_farmer_search');
+    const farmerIdInput = document.getElementById('drawer_farmer_id');
     const suggestions = document.getElementById('drawer_farmer_suggestions');
     
-    if (!farmerSearch || !suggestions) return;
+    if (!farmerSearch || !suggestions || !farmerIdInput) return;
     
     farmerSearch.addEventListener('input', function() {
         const query = this.value.trim();
+        farmerIdInput.value = '';
+        updateFilterPreview();
         if (query.length < 2) {
             suggestions.classList.add('hidden');
             return;
@@ -1528,6 +1598,8 @@ function searchDrawerFarmers(query) {
                     
                     item.addEventListener('click', function() {
                         document.getElementById('drawer_farmer_search').value = farmer.full_name;
+                        const farmerIdInput = document.getElementById('drawer_farmer_id');
+                        if (farmerIdInput) farmerIdInput.value = farmer.farmer_id;
                         suggestions.classList.add('hidden');
                         updateFilterPreview();
                     });
@@ -1589,41 +1661,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const globalSearch = document.getElementById('globalSearchInput');
     if (globalSearch) {
         globalSearch.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            const tableRows = document.querySelectorAll('tbody tr');
-            
-            tableRows.forEach(row => {
-                // Get text content from all cells
-                const farmerName = row.querySelector('td:nth-child(1)')?.textContent.toLowerCase() || '';
-                const commodity = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
-                const season = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
-                const yieldAmount = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
-                const dateRecorded = row.querySelector('td:nth-child(5)')?.textContent.toLowerCase() || '';
-                
-                // Check if search term matches any field
-                const matches = farmerName.includes(searchTerm) || 
-                               commodity.includes(searchTerm) || 
-                               season.includes(searchTerm) || 
-                               yieldAmount.includes(searchTerm) ||
-                               dateRecorded.includes(searchTerm);
-                
-                // Show/hide based on search match AND existing filters
-                if (searchTerm === '') {
-                    // If search is empty, respect existing filter state
-                    const isHiddenByFilter = row.style.display === 'none';
-                    if (!isHiddenByFilter) {
-                        row.style.display = '';
-                    }
-                } else {
-                    // If searching, hide non-matches
-                    row.style.display = matches ? '' : 'none';
-                }
-            });
-            
-            // Update record count
-            const visibleRows = document.querySelectorAll('tbody tr:not([style*="display: none"])');
-            const totalRows = document.querySelectorAll('tbody tr').length;
-            console.log(`Search: Showing ${visibleRows.length} of ${totalRows} records`);
+            // Re-apply combined filters so search never overrides drawer filters.
+            applyDrawerFilters();
         });
     }
 });

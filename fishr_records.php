@@ -121,12 +121,14 @@ $barangays_query = "SELECT barangay_id, barangay_name FROM barangays ORDER BY ba
 $barangays_result = $conn->query($barangays_query);
 
 // Search and filter parameters
-$search = isset($_POST['search']) ? trim($_POST['search']) : '';
-$barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
+$search = isset($_GET['search']) ? trim($_GET['search']) : (isset($_POST['search']) ? trim($_POST['search']) : '');
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : (isset($_POST['farmer_id']) ? trim($_POST['farmer_id']) : '');
+$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
 
 // Handle clear all - reset search and filter
 if (isset($_POST['clear_all'])) {
     $search = '';
+    $farmer_id_filter = '';
     $barangay_filter = '';
 }
 
@@ -139,7 +141,11 @@ $search_condition = 'WHERE f.archived = 0 AND f.is_fisherfolk = 1';
 $search_params = [];
 $param_types = '';
 
-if (!empty($search)) {
+if (!empty($farmer_id_filter)) {
+    $search_condition .= " AND f.farmer_id = ?";
+    $search_params[] = $farmer_id_filter;
+    $param_types .= 's';
+} elseif (!empty($search)) {
     $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
     $search_term = "%$search%";
     $search_params = array_merge($search_params, [$search_term, $search_term, $search_term, $search_term, $search_term]);
@@ -319,6 +325,7 @@ if (!empty($search_params)) {
                                        onkeyup="searchFisherAutoSuggest(this.value)"
                                        onfocus="showFisherSuggestions()"
                                        onblur="hideFisherSuggestions()">
+                                    <input type="hidden" name="farmer_id" id="selected_fisher_farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
                                 
                                 <!-- Auto-suggest dropdown -->
                                 <div id="fisher_suggestions" class="absolute z-50 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
@@ -345,7 +352,7 @@ if (!empty($search_params)) {
                             </button>
                             <?php 
                             // Check if any filters are applied
-                            $has_filters = !empty($search) || !empty($barangay_filter);
+                            $has_filters = !empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter);
                             if ($has_filters): 
                             ?>
                                 <a href="fishr_records.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
@@ -431,13 +438,13 @@ if (!empty($search_params)) {
                             <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                                 <div class="flex-1 flex justify-between sm:hidden">
                                     <?php if ($page > 1): ?>
-                                        <a href="?page=<?php echo ($page - 1); ?>&search=<?php echo urlencode($search); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
+                                        <a href="?page=<?php echo ($page - 1); ?>&search=<?php echo urlencode($search); ?>&farmer_id=<?php echo urlencode($farmer_id_filter); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
                                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                             Previous
                                         </a>
                                     <?php endif; ?>
                                     <?php if ($page < $total_pages): ?>
-                                        <a href="?page=<?php echo ($page + 1); ?>&search=<?php echo urlencode($search); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
+                                        <a href="?page=<?php echo ($page + 1); ?>&search=<?php echo urlencode($search); ?>&farmer_id=<?php echo urlencode($farmer_id_filter); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
                                            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                             Next
                                         </a>
@@ -454,21 +461,21 @@ if (!empty($search_params)) {
                                     <div>
                                         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                                             <?php if ($page > 1): ?>
-                                                <a href="?page=<?php echo ($page - 1); ?>&search=<?php echo urlencode($search); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
+                                                <a href="?page=<?php echo ($page - 1); ?>&search=<?php echo urlencode($search); ?>&farmer_id=<?php echo urlencode($farmer_id_filter); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
                                                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                                     <i class="fas fa-chevron-left"></i>
                                                 </a>
                                             <?php endif; ?>
                                             
                                             <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-                                                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
+                                                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&farmer_id=<?php echo urlencode($farmer_id_filter); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
                                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium <?php echo ($i == $page) ? 'text-agri-green bg-green-50' : 'text-gray-700 hover:bg-gray-50'; ?>">
                                                     <?php echo $i; ?>
                                                 </a>
                                             <?php endfor; ?>
                                             
                                             <?php if ($page < $total_pages): ?>
-                                                <a href="?page=<?php echo ($page + 1); ?>&search=<?php echo urlencode($search); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
+                                                <a href="?page=<?php echo ($page + 1); ?>&search=<?php echo urlencode($search); ?>&farmer_id=<?php echo urlencode($farmer_id_filter); ?>&barangay=<?php echo urlencode($barangay_filter); ?>" 
                                                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                                     <i class="fas fa-chevron-right"></i>
                                                 </a>
@@ -569,7 +576,11 @@ if (!empty($search_params)) {
 
                 function selectFisherSuggestion(farmerId, farmerName, contactNumber) {
                     const searchInput = document.getElementById('fisher_search');
+                    const selectedFarmerId = document.getElementById('selected_fisher_farmer_id');
                     searchInput.value = farmerName;
+                    if (selectedFarmerId) {
+                        selectedFarmerId.value = farmerId;
+                    }
                     hideFisherSuggestions();
                     
                     // Trigger form submission to filter results
@@ -594,6 +605,16 @@ if (!empty($search_params)) {
                         }, 200); // Delay to allow click events on suggestions
                     }
                 }
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    const searchInput = document.getElementById('fisher_search');
+                    const selectedFarmerId = document.getElementById('selected_fisher_farmer_id');
+                    if (searchInput && selectedFarmerId) {
+                        searchInput.addEventListener('input', function() {
+                            selectedFarmerId.value = '';
+                        });
+                    }
+                });
 
                 // Navigation dropdown functionality
                 function toggleNavigationDropdown() {

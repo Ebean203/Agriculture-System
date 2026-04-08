@@ -5,7 +5,7 @@
  * formatFarmerName($first_name, $middle_name, $last_name, $suffix)
  * - Returns a string formatted as: "Last, First M. [Suffix]"
  * - Middle name is shortened to an initial with a trailing dot if present.
- * - Suffix is appended only when not blank and not one of 'N/A' or 'NA' (case-insensitive).
+ * - Suffix is appended only when not blank and not one of common placeholders like 'N/A', 'NA', 'None', or 'Null'.
  */
 
 if (!function_exists('formatFarmerName')) {
@@ -15,6 +15,11 @@ if (!function_exists('formatFarmerName')) {
         $middle = trim((string)$middle_name);
         $last = trim((string)$last_name);
         $suf = trim((string)$suffix);
+
+        $normalizedSuffix = strtolower(preg_replace('/[^a-z0-9]/i', '', $suf));
+        $invalidSuffixes = [
+            '', 'na', 'n/a', 'none', 'null', 'undefined', 'nil', 'nill', 'no', 'notapplicable', 'napplicable', 'nan'
+        ];
 
         $display = '';
         if (!empty($last)) {
@@ -38,7 +43,7 @@ if (!function_exists('formatFarmerName')) {
         }
 
         // Append suffix if meaningful
-        if (!empty($suf) && !in_array(strtolower($suf), ['n/a', 'na'])) {
+        if (!in_array($normalizedSuffix, $invalidSuffixes, true)) {
             $display .= ($display !== '' ? ' ' : '') . $suf;
         }
 

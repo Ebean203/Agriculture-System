@@ -2,30 +2,11 @@
 session_start();
 require_once 'check_session.php';
 require_once 'conn.php';
+require_once __DIR__ . '/includes/name_helpers.php';
 
-// Include name helpers if available, otherwise define a fallback
-if (file_exists('includes/name_helpers.php')) {
-    require_once 'includes/name_helpers.php';
-}
-
-// Fallback function if name_helpers.php doesn't have it
 if (!function_exists('formatFullName')) {
     function formatFullName($first_name, $middle_name, $last_name, $suffix = '') {
-        $name_parts = [$first_name];
-        
-        if (!empty($middle_name)) {
-            $name_parts[] = $middle_name;
-        }
-        
-        $name_parts[] = $last_name;
-        
-        $full_name = implode(' ', $name_parts);
-        
-        if (!empty($suffix)) {
-            $full_name .= ' ' . $suffix;
-        }
-        
-        return $full_name;
+        return formatFarmerName($first_name, $middle_name, $last_name, $suffix);
     }
 }
 
@@ -97,34 +78,7 @@ try {
         $hasFarmer = !empty($row['farmer_id']);
         $farmerId = $hasFarmer ? $row['farmer_id'] : ($row['fallback_farmer_id'] ?? '');
 
-        $first = trim((string)($row['first_name'] ?? ''));
-        $middle = trim((string)($row['middle_name'] ?? ''));
-        $last = trim((string)($row['last_name'] ?? ''));
-        $suffixRaw = trim((string)($row['suffix'] ?? ''));
-
-        $nameParts = array_filter([$first, $middle, $last], static function ($part) {
-            return $part !== '';
-        });
-
-        $displaySuffix = '';
-        if ($suffixRaw !== '' && strcasecmp($suffixRaw, 'N/A') !== 0) {
-            $normalizedSuffix = strtoupper(str_replace('.', '', $suffixRaw));
-            if (in_array($normalizedSuffix, $allowedSuffixes, true)) {
-                // Standardize suffix presentation (JR/SR -> Jr./Sr.)
-                if ($normalizedSuffix === 'JR') {
-                    $displaySuffix = 'Jr.';
-                } elseif ($normalizedSuffix === 'SR') {
-                    $displaySuffix = 'Sr.';
-                } else {
-                    $displaySuffix = $normalizedSuffix;
-                }
-            }
-        }
-
-        $fullName = implode(' ', $nameParts);
-        if ($displaySuffix !== '') {
-            $fullName = trim($fullName . ' ' . $displaySuffix);
-        }
+        $fullName = formatFarmerName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
 
         if ($fullName === '') {
             $fullName = $farmerId !== '' ? ('Farmer ' . $farmerId) : 'Unknown Farmer';

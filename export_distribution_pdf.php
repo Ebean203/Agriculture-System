@@ -1,6 +1,7 @@
 <?php
 require_once 'conn.php';
 require_once 'check_session.php';
+require_once __DIR__ . '/includes/name_helpers.php';
 class SimplePDF {
     private $content = '';
     private $title = '';
@@ -76,9 +77,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_distribution_pdf') {
         $html .= '<div class="summary-stats"><div class="stat-item"><div class="stat-number">' . $total_records . '</div><div class="stat-label">Total Records</div></div><div class="stat-item"><div class="stat-number">' . date('Y') . '</div><div class="stat-label">Export Year</div></div><div class="stat-item"><div class="stat-number">' . date('M d') . '</div><div class="stat-label">Export Date</div></div></div>';
         $html .= '<table><thead><tr><th>ID</th><th>Farmer Name</th><th>Contact</th><th>Barangay</th><th>Input</th><th>Quantity</th><th>Given Date</th><th>Visit Date</th><th>Status</th></tr></thead><tbody>';
         while ($row = $result->fetch_assoc()) {
-            $suffix = isset($row['suffix']) ? trim($row['suffix']) : '';
-            if (in_array(strtolower($suffix), ['n/a', 'na','N/A', 'n/A','NA','N/a'])) { $suffix = ''; }
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
+            $full_name = formatFarmerName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
             $status = $row['status'];
             $status_label = ucfirst($status);
             $badge_class = 'badge-' . strtolower($status_label);

@@ -15,6 +15,76 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once 'conn.php';
 require_once 'includes/activity_logger.php';
+require_once __DIR__ . '/includes/name_helpers.php';
+
+function ensureFarmerPhotoGeoColumns($conn) {
+    $columns = [
+        'latitude' => "ALTER TABLE farmer_photos ADD COLUMN latitude DECIMAL(10,8) NULL",
+        'longitude' => "ALTER TABLE farmer_photos ADD COLUMN longitude DECIMAL(11,8) NULL",
+        'coordinate_source' => "ALTER TABLE farmer_photos ADD COLUMN coordinate_source VARCHAR(30) NULL"
+    ];
+
+    foreach ($columns as $column => $ddl) {
+        $check = $conn->prepare("SHOW COLUMNS FROM farmer_photos LIKE ?");
+        if ($check) {
+            $check->bind_param('s', $column);
+            $check->execute();
+            $res = $check->get_result();
+            if ($res && $res->num_rows === 0) {
+                $conn->query($ddl);
+            }
+            $check->close();
+        }
+    }
+}
+
+function exifGpsToDecimal($coord, $hemisphere) {
+    if (!is_array($coord) || count($coord) < 3) return null;
+
+    $toFloat = function($value) {
+        if (is_string($value) && strpos($value, '/') !== false) {
+            list($num, $den) = explode('/', $value, 2);
+            if ((float)$den == 0.0) return 0.0;
+            return (float)$num / (float)$den;
+        }
+        return (float)$value;
+    };
+
+    $degrees = $toFloat($coord[0]);
+    $minutes = $toFloat($coord[1]);
+    $seconds = $toFloat($coord[2]);
+
+    $decimal = $degrees + ($minutes / 60.0) + ($seconds / 3600.0);
+    $hem = strtoupper((string)$hemisphere);
+    if ($hem === 'S' || $hem === 'W') {
+        $decimal *= -1;
+    }
+    return $decimal;
+}
+
+function extractExifCoordinates($filePath) {
+    if (!function_exists('exif_read_data')) {
+        return [null, null];
+    }
+
+    $exif = @exif_read_data($filePath);
+    if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude']) || empty($exif['GPSLatitudeRef']) || empty($exif['GPSLongitudeRef'])) {
+        return [null, null];
+    }
+
+    $latitude = exifGpsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef']);
+    $longitude = exifGpsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef']);
+
+    if ($latitude === null || $longitude === null) {
+        return [null, null];
+    }
+
+    if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
+        return [null, null];
+    }
+
+    return [$latitude, $longitude];
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);
@@ -33,9 +103,23 @@ try {
     
     $farmer_id = trim($_POST['farmer_id']);
     $photo = $_FILES['farmer_photo'];
+    $latitude = null;
+    $longitude = null;
+    $coordinate_source = 'none';
+
+    // Optional manual/device coordinates from the client.
+    if (isset($_POST['latitude']) && isset($_POST['longitude']) && $_POST['latitude'] !== '' && $_POST['longitude'] !== '') {
+        $lat = (float)$_POST['latitude'];
+        $lng = (float)$_POST['longitude'];
+        if ($lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180) {
+            $latitude = $lat;
+            $longitude = $lng;
+            $coordinate_source = isset($_POST['coordinate_source']) && $_POST['coordinate_source'] !== '' ? trim($_POST['coordinate_source']) : 'manual';
+        }
+    }
     
     // Verify farmer exists
-    $farmer_check = $conn->prepare("SELECT farmer_id, CONCAT(first_name, ' ', middle_name, ' ', last_name) as full_name FROM farmers WHERE farmer_id = ? AND archived = 0");
+    $farmer_check = $conn->prepare("SELECT farmer_id, first_name, middle_name, last_name, suffix FROM farmers WHERE farmer_id = ? AND archived = 0");
     $farmer_check->bind_param("s", $farmer_id);
     $farmer_check->execute();
     $farmer_result = $farmer_check->get_result();
@@ -45,6 +129,7 @@ try {
     }
     
     $farmer_data = $farmer_result->fetch_assoc();
+    $farmer_name = formatFarmerName($farmer_data['first_name'] ?? '', $farmer_data['middle_name'] ?? '', $farmer_data['last_name'] ?? '', $farmer_data['suffix'] ?? '');
     
     // Validate file type
     $allowed_types = ['image/jpeg', 'image/jpg', 'image/png'];
@@ -99,9 +184,24 @@ try {
         throw new Exception($msg);
     }
 
+    // Fallback to EXIF GPS if coordinates were not supplied by device/manual input.
+    if ($latitude === null || $longitude === null) {
+        list($exifLat, $exifLng) = extractExifCoordinates($upload_path);
+        if ($exifLat !== null && $exifLng !== null) {
+            $latitude = $exifLat;
+            $longitude = $exifLng;
+            $coordinate_source = 'photo_exif';
+        }
+    }
+
+    // Ensure database can store geo coordinates.
+    ensureFarmerPhotoGeoColumns($conn);
+
     // Insert photo record into database
-    $stmt = $conn->prepare("INSERT INTO farmer_photos (farmer_id, file_path, uploaded_at) VALUES (?, ?, NOW())");
-    $stmt->bind_param("ss", $farmer_id, $relative_path);
+    $latitudeValue = ($latitude === null) ? '' : (string)$latitude;
+    $longitudeValue = ($longitude === null) ? '' : (string)$longitude;
+    $stmt = $conn->prepare("INSERT INTO farmer_photos (farmer_id, file_path, uploaded_at, latitude, longitude, coordinate_source) VALUES (?, ?, NOW(), NULLIF(?, ''), NULLIF(?, ''), ?)");
+    $stmt->bind_param("sssss", $farmer_id, $relative_path, $latitudeValue, $longitudeValue, $coordinate_source);
 
     if (!$stmt->execute()) {
         // If database insert fails, remove the uploaded file
@@ -111,7 +211,7 @@ try {
     
     // Log the activity
     if (isset($_SESSION['user_id'])) {
-        logActivity($conn, $_SESSION['user_id'], 'farmer', 'Photo uploaded for farmer: ' . $farmer_data['full_name']);
+        logActivity($conn, $_SESSION['user_id'], 'farmer', 'Photo uploaded for farmer: ' . $farmer_name);
     }
     
     // Success response
@@ -120,8 +220,11 @@ try {
     echo json_encode([
         'success' => true, 
         'message' => 'Photo uploaded successfully!',
-        'farmer_name' => $farmer_data['full_name'],
-        'photo_path' => $relative_path
+        'farmer_name' => $farmer_name,
+        'photo_path' => $relative_path,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'coordinate_source' => $coordinate_source
     ]);
 
 } catch (Exception $e) {

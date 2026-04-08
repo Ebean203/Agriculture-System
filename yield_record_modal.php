@@ -56,12 +56,13 @@
                                         farmers.forEach(f => {
                                             const item = document.createElement('div');
                                             item.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 farmer-suggestion-item';
+                                            const displayName = formatFarmerNameLastFirstJS(f.first_name, f.middle_name, f.last_name, f.suffix) || f.full_name;
                                             item.innerHTML = `
-                                                <div class="font-medium text-gray-900">${f.full_name}</div>
+                                                <div class="font-medium text-gray-900">${displayName}</div>
                                                 <div class="text-sm text-gray-600">ID: ${f.farmer_id} | ${f.barangay_name || 'N/A'}</div>
                                             `;
                                             item.addEventListener('click', function() {
-                                                farmerInput.value = f.full_name;
+                                                farmerInput.value = displayName;
                                                 farmerIdInput.value = f.farmer_id;
                                                 clearSuggestions();
                                                 fetchFarmerCommodities(f.farmer_id);
@@ -591,13 +592,26 @@
 </div>
 
 <script>
+function formatFarmerNameLastFirstJS(firstName, middleName, lastName, suffix) {
+    const first = (firstName || '').trim();
+    let middle = (middleName || '').trim();
+    const last = (lastName || '').trim();
+    let sfx = (suffix || '').trim();
+    const bad = ['n/a', 'na'];
+    if (bad.includes(middle.toLowerCase())) middle = '';
+    if (bad.includes(sfx.toLowerCase())) sfx = '';
+    const tail = [first, middle, sfx].filter(Boolean).join(' ');
+    if (last && tail) return `${last}, ${tail}`;
+    return last || tail;
+}
+
 // Populate View and Edit modals when action buttons are clicked
 document.addEventListener('DOMContentLoaded', function() {
     // Handler for view buttons
     document.querySelectorAll('.btn-view-record').forEach(function(btn) {
         btn.addEventListener('click', function() {
             const record = JSON.parse(this.getAttribute('data-record') || '{}');
-            document.getElementById('view_farmer').textContent = (record.first_name || '') + ' ' + (record.last_name || '');
+            document.getElementById('view_farmer').textContent = formatFarmerNameLastFirstJS(record.first_name, record.middle_name, record.last_name, record.suffix);
             document.getElementById('view_commodity').textContent = record.commodity_name || '';
             document.getElementById('view_season').textContent = record.season || '';
             const viewUnit = record.unit || '';
@@ -619,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const record = JSON.parse(this.getAttribute('data-record') || '{}');
             const recId = record.yield_id || record.id || record.yield_monitoring_id || record.ym_id || record.record_id || '';
             document.getElementById('edit_record_id').value = recId;
-            document.getElementById('edit_farmer_name').value = (record.first_name || '') + ' ' + (record.last_name || '');
+            document.getElementById('edit_farmer_name').value = formatFarmerNameLastFirstJS(record.first_name, record.middle_name, record.last_name, record.suffix);
 
             // Fetch commodities for this farmer via AJAX
             fetch('get_farmer_commodities.php?farmer_id=' + encodeURIComponent(record.farmer_id))
@@ -710,7 +724,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (row) {
                         // Update displayed columns: Farmer name, Commodity, Season, Yield Amount, Date
                         const farmerCell = row.querySelector('td:nth-child(1) .text-sm.font-medium');
-                        if (farmerCell && updated.first_name) farmerCell.textContent = (updated.first_name || '') + ' ' + (updated.last_name || '');
+                        if (farmerCell && updated.first_name) farmerCell.textContent = formatFarmerNameLastFirstJS(updated.first_name, updated.middle_name, updated.last_name, updated.suffix);
                         const commodityCell = row.querySelector('td:nth-child(2) .text-sm');
                         if (commodityCell && updated.commodity_name) commodityCell.textContent = updated.commodity_name;
                         const seasonCell = row.querySelector('td:nth-child(3) .inline-flex');

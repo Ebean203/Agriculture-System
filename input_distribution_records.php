@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/conn.php';
+require_once __DIR__ . '/includes/name_helpers.php';
 
 // --- Export to PDF/Print-friendly HTML handler ---
 if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
@@ -99,11 +100,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     echo '</tr>';
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
-            $suffix = isset($row['suffix']) ? trim($row['suffix']) : '';
-            if (in_array(strtolower($suffix), ['n/a', 'na','N/A', 'n/A','NA','N/a'])) {
-                $suffix = '';
-            }
-            $full_name = trim($row['first_name'] . ' ' . $row['middle_name'] . ' ' . $row['last_name'] . ' ' . $suffix);
+            $full_name = formatFarmerName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
             $status = $row['status'];
             $status_class = 'status-badge ' . ($status === 'completed' ? 'completed' : ($status === 'pending' ? 'pending' : ($status === 'rescheduled' ? 'rescheduled' : ($status === 'scheduled' ? 'scheduled' : ($status === 'cancelled' ? 'cancelled' : '')))));
             echo '<tr>';
@@ -137,8 +134,8 @@ $page = max(1, $page);
 $offset = ($page - 1) * $records_per_page;
 
 // Search and filter variables - GET parameters take priority over POST
-$search = isset($_GET['farmer']) ? trim($_GET['farmer']) : (isset($_POST['search']) ? trim($_POST['search']) : '');
-$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : '';
+$search = isset($_GET['search']) ? trim($_GET['search']) : (isset($_GET['farmer']) ? trim($_GET['farmer']) : (isset($_POST['search']) ? trim($_POST['search']) : ''));
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : (isset($_POST['farmer_id']) ? trim($_POST['farmer_id']) : '');
 $barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
 $input_filter = isset($_GET['input_id']) ? trim($_GET['input_id']) : (isset($_POST['input_id']) ? trim($_POST['input_id']) : '');
 
@@ -265,10 +262,13 @@ while ($row = $inputs_result->fetch_assoc()) {
 }
 
 // Function to build URL parameters
-function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $status = '') {
+function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $status = '', $farmer_id = '') {
     $params = "?page=$page";
     if (!empty($search)) {
         $params .= "&search=" . urlencode($search);
+    }
+    if (!empty($farmer_id)) {
+        $params .= "&farmer_id=" . urlencode($farmer_id);
     }
     if (!empty($barangay)) {
         $params .= "&barangay=" . urlencode($barangay);
@@ -326,6 +326,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                            onkeyup="searchDistributionAutoSuggest(this.value)"
                                            onfocus="showDistributionSuggestions()"
                                            onblur="hideDistributionSuggestions()">
+                                     <input type="hidden" name="farmer_id" id="selected_distribution_farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
                                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                                     
                                     <!-- Auto-suggest dropdown -->
@@ -432,6 +433,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                             </select>
                             <!-- Keep other filters in the form as hidden fields -->
                             <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+                            <input type="hidden" name="farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
                             <input type="hidden" name="barangay" value="<?php echo htmlspecialchars($barangay_filter); ?>">
                             <input type="hidden" name="input_id" value="<?php echo htmlspecialchars($input_filter); ?>">
                         </form>
@@ -476,11 +478,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                             <td class="px-4 py-4">
                                                 <div class="text-sm font-medium text-gray-900 truncate max-w-48">
                                                     <?php 
-                                                        $suffix = isset($distribution['suffix']) ? trim($distribution['suffix']) : '';
-                                                        if (in_array(strtolower($suffix), ['n/a', 'na','N/A', 'n/A','NA','N/a'])) {
-                                                            $suffix = '';
-                                                        }
-                                                        $full_name = trim($distribution['first_name'] . ' ' . $distribution['middle_name'] . ' ' . $distribution['last_name'] . ' ' . $suffix);
+                                                        $full_name = formatFarmerName($distribution['first_name'] ?? '', $distribution['middle_name'] ?? '', $distribution['last_name'] ?? '', $distribution['suffix'] ?? '');
                                                         echo htmlspecialchars($full_name);
                                                     ?>
                                                 </div>
@@ -1041,14 +1039,14 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                 </div>
                                 <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                                     <?php if ($page > 1): ?>
-                                        <a href="input_distribution_records.php<?php echo buildUrlParams($page - 1, $search, $barangay_filter, $input_filter); ?>" 
+                                        <a href="input_distribution_records.php<?php echo buildUrlParams($page - 1, $search, $barangay_filter, $input_filter, $status_filter, $farmer_id_filter); ?>" 
                                            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                             <i class="fas fa-chevron-left"></i>
                                         </a>
                                     <?php endif; ?>
 
                                     <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-                                        <a href="input_distribution_records.php<?php echo buildUrlParams($i, $search, $barangay_filter, $input_filter); ?>" 
+                                        <a href="input_distribution_records.php<?php echo buildUrlParams($i, $search, $barangay_filter, $input_filter, $status_filter, $farmer_id_filter); ?>" 
                                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium 
                                                   <?php echo $i == $page ? 'bg-agri-green text-white' : 'bg-white text-gray-700 hover:bg-gray-50'; ?>">
                                             <?php echo $i; ?>
@@ -1056,7 +1054,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                     <?php endfor; ?>
 
                                     <?php if ($page < $total_pages): ?>
-                                        <a href="input_distribution_records.php<?php echo buildUrlParams($page + 1, $search, $barangay_filter, $input_filter); ?>" 
+                                        <a href="input_distribution_records.php<?php echo buildUrlParams($page + 1, $search, $barangay_filter, $input_filter, $status_filter, $farmer_id_filter); ?>" 
                                            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                             <i class="fas fa-chevron-right"></i>
                                         </a>
@@ -1150,7 +1148,9 @@ function searchDistributionAutoSuggest(query) {
 function selectDistributionSuggestion(farmerId, farmerName) {
     const input = document.getElementById('distribution_search');
     const suggestions = document.getElementById('distribution_suggestions');
+    const selectedFarmerId = document.getElementById('selected_distribution_farmer_id');
     if (input) input.value = farmerName || '';
+    if (selectedFarmerId) selectedFarmerId.value = farmerId || '';
     if (suggestions) suggestions.classList.add('hidden');
 
     // Submit the surrounding form to apply filter
@@ -1171,6 +1171,16 @@ function hideDistributionSuggestions() {
         setTimeout(() => suggestions.classList.add('hidden'), 200);
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('distribution_search');
+    const selectedFarmerId = document.getElementById('selected_distribution_farmer_id');
+    if (input && selectedFarmerId) {
+        input.addEventListener('input', function() {
+            selectedFarmerId.value = '';
+        });
+    }
+});
 </script>
 <style>
 /* Simple tooltip styling for reschedule details */

@@ -1,5 +1,6 @@
 <?php
 require_once 'conn.php';
+require_once __DIR__ . '/includes/name_helpers.php';
 header('Content-Type: application/json');
 $type = $_GET['type'] ?? '';
 $from = $_GET['from'] ?? null;
@@ -16,7 +17,7 @@ if ($type === 'top_producers') {
         $params[] = $to;
         $types .= 'ss';
     }
-    $sql = "SELECT f.farmer_id, CONCAT(f.last_name, ', ', f.first_name) AS farmer_name, SUM(ym.yield_amount) AS total_yield, c.commodity_name, ym.unit
+    $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix, SUM(ym.yield_amount) AS total_yield, c.commodity_name, ym.unit
             FROM yield_monitoring ym
             JOIN farmers f ON ym.farmer_id = f.farmer_id
             JOIN commodities c ON ym.commodity_id = c.commodity_id
@@ -34,8 +35,9 @@ if ($type === 'top_producers') {
         $res = $stmt->get_result();
         $rows = [];
         while ($row = $res->fetch_assoc()) {
+            $farmerName = formatFarmerName($row['first_name'] ?? '', $row['middle_name'] ?? '', $row['last_name'] ?? '', $row['suffix'] ?? '');
             $rows[] = [
-                'farmer_name' => $row['farmer_name'],
+                'farmer_name' => $farmerName,
                 'total_yield' => $row['total_yield'] . ' ' . (($row['unit'] ?: 'kg')) . ' (' . $row['commodity_name'] . ')',
                 'inputs_received' => '-' // Temporarily skip input lookup for debug
             ];

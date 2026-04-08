@@ -79,6 +79,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $_SESSION['error'] = "Failed to add staff member. Please try again. Error: " . mysqli_error($conn);
         }
+    } elseif ($action === 'change_password') {
+        $staff_id = (int)($_POST['staff_id'] ?? 0);
+        $new_password = $_POST['new_password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+
+        if ($staff_id <= 0 || $new_password === '' || $confirm_password === '') {
+            $_SESSION['error'] = "Please fill in all password fields.";
+            header("Location: staff.php");
+            exit();
+        }
+
+        if ($new_password !== $confirm_password) {
+            $_SESSION['error'] = "Passwords do not match.";
+            header("Location: staff.php");
+            exit();
+        }
+
+        if (strlen($new_password) < 8) {
+            $_SESSION['error'] = "Password must be at least 8 characters long.";
+            header("Location: staff.php");
+            exit();
+        }
+
+        $staff_query = "SELECT first_name, last_name FROM mao_staff WHERE staff_id = ? LIMIT 1";
+        $staff_stmt = mysqli_prepare($conn, $staff_query);
+        mysqli_stmt_bind_param($staff_stmt, "i", $staff_id);
+        mysqli_stmt_execute($staff_stmt);
+        $staff_result = mysqli_stmt_get_result($staff_stmt);
+
+        if (!$staff_result || $staff_result->num_rows === 0) {
+            $_SESSION['error'] = "Staff member not found.";
+            header("Location: staff.php");
+            exit();
+        }
+
+        $staff_data = $staff_result->fetch_assoc();
+        $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
+
+        $update_query = "UPDATE mao_staff SET password = ? WHERE staff_id = ?";
+        $update_stmt = mysqli_prepare($conn, $update_query);
+        mysqli_stmt_bind_param($update_stmt, "si", $password_hash, $staff_id);
+
+        if (mysqli_stmt_execute($update_stmt)) {
+            $staff_name = trim(($staff_data['first_name'] ?? '') . ' ' . ($staff_data['last_name'] ?? ''));
+            logActivity($conn, "Changed password for staff member: $staff_name", 'staff', "Staff ID: $staff_id");
+            $_SESSION['success'] = "Password updated successfully.";
+        } else {
+            $_SESSION['error'] = "Failed to update password. Please try again.";
+        }
         
     } else {
         $_SESSION['error'] = "Invalid action.";

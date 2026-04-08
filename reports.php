@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/includes/name_helpers.php';
+
 // Helper function to convert an image to a Base64 string for embedding
 function imageToBase64($path) {
     if (!file_exists($path)) {
@@ -9,27 +11,8 @@ function imageToBase64($path) {
     return 'data:' . $type . ';base64,' . base64_encode($data);
 }
 
-// Name helpers: normalize suffix and build display name
-function normalizeSuffixDisplay($suffix) {
-    $s = trim((string)$suffix);
-    if ($s === '') return '';
-    // Normalize by stripping non-alphanumerics then lowercasing for comparison
-    $norm = strtolower(preg_replace('/[^a-z0-9]/i', '', $s));
-    $invalid = [
-        'na','nA','none','null','undefined','nil','nill','no','notapplicable','napplicable','nan'
-    ];
-    if ($norm === '' || in_array($norm, $invalid, true)) return '';
-    return $s; // keep original formatting for valid suffixes (e.g., Jr., Sr., III)
-}
-
 function buildFullName($first, $middle, $last, $suffix) {
-    $suffix = normalizeSuffixDisplay($suffix);
-    $parts = [];
-    foreach ([$first, $middle, $last, $suffix] as $p) {
-        $p = trim((string)$p);
-        if ($p !== '') $parts[] = $p;
-    }
-    return trim(implode(' ', $parts));
+    return formatFarmerName($first, $middle, $last, $suffix);
 }
 
 // Consolidated Yield Report Function
@@ -1414,7 +1397,7 @@ function generateCommodityProductionReport($start_date, $end_date, $conn) {
                 }
             }
 
-            $stmt_top = $conn->prepare("SELECT f.farmer_id, CONCAT(f.first_name, ' ', f.last_name) AS farmer_name, b.barangay_name, COALESCE(SUM(y.yield_amount),0) AS total_yield, COALESCE(MAX(f.land_area_hectares),0) AS land_area
+            $stmt_top = $conn->prepare("SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix, b.barangay_name, COALESCE(SUM(y.yield_amount),0) AS total_yield, COALESCE(MAX(f.land_area_hectares),0) AS land_area
                 FROM yield_monitoring y
                 INNER JOIN farmers f ON y.farmer_id = f.farmer_id
                 LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
@@ -1433,8 +1416,9 @@ function generateCommodityProductionReport($start_date, $end_date, $conn) {
                     $html .= '<thead><tr><th style="border:1px solid #e5e7eb; padding:8px;">Rank</th><th style="border:1px solid #e5e7eb; padding:8px;">Farmer</th><th style="border:1px solid #e5e7eb; padding:8px;">Barangay</th><th style="border:1px solid #e5e7eb; padding:8px;">Total Yield' . $unit_label . '</th><th style="border:1px solid #e5e7eb; padding:8px;">Land Area (ha)</th></tr></thead><tbody>';
                     $rank = 1;
                     while ($t = $top_res->fetch_assoc()) {
+                        $farmer_name = formatFarmerName($t['first_name'] ?? '', $t['middle_name'] ?? '', $t['last_name'] ?? '', $t['suffix'] ?? '');
                         $html .= '<tr><td style="border:1px solid #e5e7eb; padding:8px;">' . $rank . '</td>';
-                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($t['farmer_name']) . '</td>';
+                        $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($farmer_name) . '</td>';
                         $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . htmlspecialchars($t['barangay_name'] ?? 'N/A') . '</td>';
                         $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['total_yield'], 2) . ($unit ? ' ' . htmlspecialchars($unit) : '') . '</td>';
                         $html .= '<td style="border:1px solid #e5e7eb; padding:8px;">' . number_format($t['land_area'], 2) . '</td></tr>';

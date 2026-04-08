@@ -22,12 +22,14 @@ $page = max(1, $page);
 $offset = ($page - 1) * $records_per_page;
 
 // Search functionality
-$search = isset($_POST['search']) ? trim($_POST['search']) : '';
-$barangay_filter = isset($_POST['barangay']) ? trim($_POST['barangay']) : '';
+$search = isset($_GET['search']) ? trim($_GET['search']) : (isset($_POST['search']) ? trim($_POST['search']) : '');
+$farmer_id_filter = isset($_GET['farmer_id']) ? trim($_GET['farmer_id']) : (isset($_POST['farmer_id']) ? trim($_POST['farmer_id']) : '');
+$barangay_filter = isset($_GET['barangay']) ? trim($_GET['barangay']) : (isset($_POST['barangay']) ? trim($_POST['barangay']) : '');
 
 // Handle clear all - reset search and filter
 if (isset($_POST['clear_all'])) {
     $search = '';
+    $farmer_id_filter = '';
     $barangay_filter = '';
 }
 
@@ -43,7 +45,10 @@ while ($row = $barangays_result->fetch_assoc()) {
 $search_condition = 'WHERE f.archived = 0 AND f.is_rsbsa = 1';
 $search_params = [];
 
-if (!empty($search)) {
+if (!empty($farmer_id_filter)) {
+    $search_condition .= " AND f.farmer_id = ?";
+    $search_params[] = $farmer_id_filter;
+} elseif (!empty($search)) {
     $search_condition .= " AND (f.first_name LIKE ? OR f.middle_name LIKE ? OR f.last_name LIKE ? OR f.contact_number LIKE ? OR CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ?)";
     $search_term = "%$search%";
     $search_params = [$search_term, $search_term, $search_term, $search_term, $search_term];
@@ -104,10 +109,13 @@ if (!empty($search_params)) {
 }
 
 // Function to build URL parameters
-function buildUrlParams($page, $search = '', $barangay = '') {
+function buildUrlParams($page, $search = '', $barangay = '', $farmer_id = '') {
     $params = "?page=$page";
     if (!empty($search)) {
         $params .= "&search=" . urlencode($search);
+    }
+    if (!empty($farmer_id)) {
+        $params .= "&farmer_id=" . urlencode($farmer_id);
     }
     if (!empty($barangay)) {
         $params .= "&barangay=" . urlencode($barangay);
@@ -242,6 +250,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                            onkeyup="searchRSBSAAutoSuggest(this.value)"
                                            onfocus="showRSBSASuggestions()"
                                            onblur="hideRSBSASuggestions()">
+                                     <input type="hidden" name="farmer_id" id="selected_rsbsa_farmer_id" value="<?php echo htmlspecialchars($farmer_id_filter); ?>">
                                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                                     
                                     <!-- Auto-suggest dropdown -->
@@ -269,7 +278,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                             <button type="submit" class="bg-agri-green text-white px-6 py-2 rounded-lg hover:bg-agri-dark transition-colors">
                                 <i class="fas fa-search mr-2"></i>Search
                             </button>
-                            <?php if (!empty($search) || !empty($barangay_filter)): ?>
+                            <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter)): ?>
                                 <button type="submit" name="clear_all" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                                     <i class="fas fa-times mr-2"></i>Clear All
                                 </button>
@@ -284,7 +293,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                         <h3 class="text-lg font-semibold text-gray-900 flex items-center">
                             <i class="fas fa-list-alt mr-2 text-agri-green"></i>
                             RSBSA Registered Farmers
-                            <?php if (!empty($search) || !empty($barangay_filter)): ?>
+                            <?php if (!empty($search) || !empty($farmer_id_filter) || !empty($barangay_filter)): ?>
                                 <span class="text-sm font-normal text-gray-600 ml-2">
                                     - Filtered by: 
                                     <?php if (!empty($search)): ?>
@@ -416,14 +425,14 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                 </div>
                                 <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                                     <?php if ($page > 1): ?>
-                                        <a href="<?php echo buildUrlParams($page - 1, $search, $barangay_filter); ?>" 
+                                        <a href="<?php echo buildUrlParams($page - 1, $search, $barangay_filter, $farmer_id_filter); ?>" 
                                            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                             <i class="fas fa-chevron-left"></i>
                                         </a>
                                     <?php endif; ?>
 
                                     <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-                                        <a href="<?php echo buildUrlParams($i, $search, $barangay_filter); ?>" 
+                                        <a href="<?php echo buildUrlParams($i, $search, $barangay_filter, $farmer_id_filter); ?>" 
                                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium 
                                                   <?php echo $i == $page ? 'bg-agri-green text-white' : 'bg-white text-gray-700 hover:bg-gray-50'; ?>">
                                             <?php echo $i; ?>
@@ -431,7 +440,7 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                                     <?php endfor; ?>
 
                                     <?php if ($page < $total_pages): ?>
-                                        <a href="<?php echo buildUrlParams($page + 1, $search, $barangay_filter); ?>" 
+                                        <a href="<?php echo buildUrlParams($page + 1, $search, $barangay_filter, $farmer_id_filter); ?>" 
                                            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                                             <i class="fas fa-chevron-right"></i>
                                         </a>
@@ -529,7 +538,11 @@ function buildUrlParams($page, $search = '', $barangay = '') {
 
             function selectRSBSASuggestion(farmerId, farmerName, contactNumber) {
                 const searchInput = document.getElementById('rsbsa_search');
+                const selectedFarmerId = document.getElementById('selected_rsbsa_farmer_id');
                 searchInput.value = farmerName;
+                if (selectedFarmerId) {
+                    selectedFarmerId.value = farmerId;
+                }
                 hideRSBSASuggestions();
                 
                 // Trigger form submission to filter results
@@ -554,6 +567,16 @@ function buildUrlParams($page, $search = '', $barangay = '') {
                     }, 200); // Delay to allow click events on suggestions
                 }
             }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const searchInput = document.getElementById('rsbsa_search');
+                const selectedFarmerId = document.getElementById('selected_rsbsa_farmer_id');
+                if (searchInput && selectedFarmerId) {
+                    searchInput.addEventListener('input', function() {
+                        selectedFarmerId.value = '';
+                    });
+                }
+            });
             
             // Function to handle navigation dropdown toggle
             function toggleNavigationDropdown() {
