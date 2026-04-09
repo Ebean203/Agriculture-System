@@ -27,7 +27,7 @@ class SimplePDF {
         $html .= '.footer { margin-top: 30px; text-align: center; font-size: 11px; color: #6b7280; border-top: 2px solid #16a34a; padding-top: 15px; }';
         $html .= '.summary-stats { background: #f0fdf4; border: 1px solid #16a34a; border-radius: 8px; padding: 15px; margin: 20px 0; display: flex; justify-content: space-around; text-align: center; }';
         $html .= '.stat-item { flex: 1; } .stat-number { font-size: 24px; font-weight: bold; color: #16a34a; } .stat-label { font-size: 12px; color: #6b7280; margin-top: 5px; }';
-        $html .= '@media print { body { margin: 0; padding-top: 0; } .no-print { display: none; } } @page { size: A4 landscape; margin: 0.5in; }';
+        $html .= '@media print { body { margin: 0; padding-top: 0 !important; } .no-print, .preview-toolbar, .preview-toolbar * { display: none !important; visibility: hidden !important; } } @page { size: A4 landscape; margin: 0.5in; }';
         $html .= '.preview-toolbar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: #15803d; color: white; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-family: Arial, sans-serif; font-size: 13px; }';
         $html .= '.preview-toolbar .toolbar-title { font-weight: bold; font-size: 14px; letter-spacing: 0.3px; }';
         $html .= '.preview-toolbar .toolbar-actions { display: flex; gap: 10px; }';

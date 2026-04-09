@@ -9,6 +9,21 @@
 /* Custom CSS for Lagonglong FARMS */
 /* Fix Font Awesome paths for local hosting */
 
+/* Keep page width stable when modals toggle body scroll lock. */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+/* Prevent background layout width changes when Bootstrap modal opens. */
+body.modal-open {
+  padding-right: 0 !important;
+}
+
+.modal {
+  padding-right: 0 !important;
+}
+
 @font-face {
   font-family: "Font Awesome 6 Free";
   font-style: normal;

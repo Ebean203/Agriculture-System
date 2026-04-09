@@ -146,8 +146,13 @@ class SimplePDF {
             margin-top: 5px;
         }
         @media print {
-            body { margin: 0; padding-top: 0; }
-            .no-print { display: none; }
+            body { margin: 0; padding-top: 0 !important; }
+            .no-print,
+            .preview-toolbar,
+            .preview-toolbar * {
+                display: none !important;
+                visibility: hidden !important;
+            }
         }
         @page {
             size: A4 portrait;
