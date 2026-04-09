@@ -719,6 +719,11 @@ $types_result = $types_stmt->get_result();
             pageSize: 10
         };
 
+        const attendanceExportState = {
+            activityId: null,
+            title: ''
+        };
+
         function renderAttendanceTable() {
             const tbody = document.getElementById('attendance_table_body');
             if (!tbody) {
@@ -805,6 +810,8 @@ $types_result = $types_stmt->get_result();
         function openViewAttendanceModal(activityId) {
             attendanceState.items = [];
             attendanceState.currentPage = 1;
+            attendanceExportState.activityId = activityId;
+            attendanceExportState.title = '';
 
             const loadingEl = document.getElementById('attendance_loading');
             const errorEl = document.getElementById('attendance_error');
@@ -813,6 +820,7 @@ $types_result = $types_stmt->get_result();
             const listEl = document.getElementById('attendance_list');
             const paginationEl = document.getElementById('attendance_pagination');
             const tbody = document.getElementById('attendance_table_body');
+            const exportBtn = document.getElementById('attendance_export_btn');
 
             if (loadingEl) loadingEl.classList.remove('d-none');
             if (errorEl) errorEl.classList.add('d-none');
@@ -820,6 +828,7 @@ $types_result = $types_stmt->get_result();
             if (listEl) listEl.classList.add('d-none');
             if (paginationEl) paginationEl.classList.add('d-none');
             if (tbody) tbody.innerHTML = '';
+            if (exportBtn) exportBtn.disabled = false;
 
             const modal = new bootstrap.Modal(document.getElementById('viewAttendanceModal'));
             modal.show();
@@ -849,6 +858,11 @@ $types_result = $types_stmt->get_result();
 
                     if (titleEl) {
                         titleEl.textContent = activityDetails.title || 'Activity Details';
+                    }
+
+                    attendanceExportState.title = activityDetails.title || '';
+                    if (exportBtn) {
+                        exportBtn.disabled = false;
                     }
 
                     if (dateEl) {
@@ -890,6 +904,18 @@ $types_result = $types_stmt->get_result();
                         errorMessageEl.textContent = 'An error occurred while loading attendance data: ' + error.message;
                     }
                 });
+        }
+
+        function exportAttendancePDF() {
+            if (!attendanceExportState.activityId) {
+                if (window.AgriToast) {
+                    AgriToast.error('Please open an activity attendance record first.');
+                }
+                return;
+            }
+
+            const exportUrl = 'export_activity_attendance_pdf.php?activity_id=' + encodeURIComponent(attendanceExportState.activityId);
+            window.open(exportUrl, '_blank');
         }
 
         

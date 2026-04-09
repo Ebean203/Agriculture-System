@@ -746,6 +746,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="attendance_export_btn" onclick="exportAttendancePDF()">
+                    <i class="fas fa-file-export mr-1"></i>Export
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times mr-1"></i>Close
                 </button>
