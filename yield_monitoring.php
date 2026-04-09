@@ -185,6 +185,8 @@ $farmer_search = isset($_GET['farmer_search']) ? trim($_GET['farmer_search']) : 
 $category_filter = isset($_GET['category_filter']) ? trim($_GET['category_filter']) : '';
 $commodity_filter = isset($_GET['commodity_filter']) ? trim($_GET['commodity_filter']) : '';
 $date_filter = isset($_GET['date_filter']) ? trim($_GET['date_filter']) : '';
+$date_from_filter = isset($_GET['date_from']) ? trim($_GET['date_from']) : '';
+$date_to_filter = isset($_GET['date_to']) ? trim($_GET['date_to']) : '';
 
 // Fetch yield records from database
 $yield_records = [];
@@ -291,15 +293,26 @@ try {
         $types .= "i";
     }
     
-    // Date filter: support last N days (7, 30, 90)
-    if (!empty($date_filter)) {
+    // Date filter: support last N days (7, 30, 90) and custom range.
+    if ($date_filter === 'custom') {
+        if ($date_from_filter !== '') {
+            $where_clause .= " AND DATE(ym.record_date) >= ?";
+            $params[] = $date_from_filter;
+            $types .= "s";
+        }
+        if ($date_to_filter !== '') {
+            $where_clause .= " AND DATE(ym.record_date) <= ?";
+            $params[] = $date_to_filter;
+            $types .= "s";
+        }
+    } elseif (!empty($date_filter)) {
         if (ctype_digit($date_filter)) {
-            // Relative range: include today
+            // Relative range: include today.
             $where_clause .= " AND DATE(ym.record_date) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
             $params[] = (int)$date_filter;
             $types .= "i";
         } else {
-            // Fallback: exact date if a YYYY-MM-DD slipped in
+            // Fallback: exact date if a YYYY-MM-DD slipped in.
             $where_clause .= " AND DATE(ym.record_date) = ?";
             $params[] = $date_filter;
             $types .= "s";
@@ -658,7 +671,18 @@ include 'includes/layout_start.php';
                         <option value="7" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '7') ? 'selected' : ''; ?>>Last 7 days</option>
                         <option value="30" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '30') ? 'selected' : ''; ?>>Last 30 days</option>
                         <option value="90" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == '90') ? 'selected' : ''; ?>>Last 3 months</option>
+                        <option value="custom" <?php echo (isset($_GET['date_filter']) && $_GET['date_filter'] == 'custom') ? 'selected' : ''; ?>>Custom Range</option>
                     </select>
+                    <div id="drawer_custom_date_range" class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 <?php echo ($date_filter === 'custom') ? '' : 'hidden'; ?>">
+                        <div>
+                            <label for="drawer_date_from" class="block text-xs font-medium text-gray-600 mb-1">From</label>
+                            <input type="date" id="drawer_date_from" value="<?php echo htmlspecialchars($date_from_filter); ?>" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
+                        </div>
+                        <div>
+                            <label for="drawer_date_to" class="block text-xs font-medium text-gray-600 mb-1">To</label>
+                            <input type="date" id="drawer_date_to" value="<?php echo htmlspecialchars($date_to_filter); ?>" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-green focus:border-transparent text-sm">
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -729,6 +753,7 @@ include 'includes/layout_start.php';
                                 data-category-id="<?php echo htmlspecialchars($record['category_id'] ?? ''); ?>"
                                 data-commodity-id="<?php echo htmlspecialchars($record['commodity_id'] ?? ''); ?>"
                                 data-farmer-id="<?php echo htmlspecialchars($record['farmer_id'] ?? ''); ?>"
+                                data-record-date="<?php echo htmlspecialchars(substr((string)($record['record_date'] ?? ''), 0, 10)); ?>"
                                 data-farmer-name="<?php echo htmlspecialchars(trim($display_farmer_name . ' ' . $display_farmer_alt)); ?>">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
@@ -1405,7 +1430,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Date change listener
-    document.getElementById('drawer_date_filter').addEventListener('change', updateFilterPreview);
+    document.getElementById('drawer_date_filter').addEventListener('change', function() {
+        toggleCustomDateRange();
+        updateFilterPreview();
+    });
+
+    const dateFromInput = document.getElementById('drawer_date_from');
+    const dateToInput = document.getElementById('drawer_date_to');
+    if (dateFromInput) dateFromInput.addEventListener('change', updateFilterPreview);
+    if (dateToInput) dateToInput.addEventListener('change', updateFilterPreview);
     
     // Apply filters
     applyBtn.addEventListener('click', function() {
@@ -1430,6 +1463,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset date dropdown
         document.getElementById('drawer_date_filter').value = '';
+        if (dateFromInput) dateFromInput.value = '';
+        if (dateToInput) dateToInput.value = '';
+        toggleCustomDateRange();
         
         // Apply the clear
         applyDrawerFilters();
@@ -1453,6 +1489,13 @@ function applyDrawerFilters() {
     document.querySelectorAll('.filter-commodity-checkbox:checked').forEach(checkbox => {
         selectedCommodities.push(checkbox.getAttribute('data-commodity-id'));
     });
+
+    const selectedDateRange = (document.getElementById('drawer_date_filter')?.value || '').trim();
+    const customDateFrom = (document.getElementById('drawer_date_from')?.value || '').trim();
+    const customDateTo = (document.getElementById('drawer_date_to')?.value || '').trim();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     // Get all table rows
     const tableRows = document.querySelectorAll('tbody tr');
@@ -1462,6 +1505,7 @@ function applyDrawerFilters() {
         const commodityId = row.getAttribute('data-commodity-id');
         const farmerId = (row.getAttribute('data-farmer-id') || '').trim();
         const farmerName = (row.getAttribute('data-farmer-name') || '').toLowerCase().trim();
+        const recordDateRaw = (row.getAttribute('data-record-date') || '').trim();
         const rowText = (row.textContent || '').toLowerCase();
         let showRow = true;
 
@@ -1482,6 +1526,36 @@ function applyDrawerFilters() {
             showRow = selectedCommodities.includes(commodityId);
         }
 
+        // Filter by date range.
+        if (showRow && selectedDateRange !== '') {
+            const recordDate = recordDateRaw ? new Date(recordDateRaw + 'T00:00:00') : null;
+            if (!recordDate || isNaN(recordDate.getTime())) {
+                showRow = false;
+            } else if (selectedDateRange === 'custom') {
+                if (customDateFrom) {
+                    const fromDate = new Date(customDateFrom + 'T00:00:00');
+                    if (!isNaN(fromDate.getTime()) && recordDate < fromDate) {
+                        showRow = false;
+                    }
+                }
+                if (showRow && customDateTo) {
+                    const toDate = new Date(customDateTo + 'T00:00:00');
+                    if (!isNaN(toDate.getTime()) && recordDate > toDate) {
+                        showRow = false;
+                    }
+                }
+            } else if (/^\d+$/.test(selectedDateRange)) {
+                const dayCount = parseInt(selectedDateRange, 10);
+                if (!isNaN(dayCount)) {
+                    const startDate = new Date(today);
+                    startDate.setDate(startDate.getDate() - dayCount);
+                    if (recordDate < startDate || recordDate > today) {
+                        showRow = false;
+                    }
+                }
+            }
+        }
+
         // Apply global search without bypassing existing drawer filters.
         if (showRow && globalSearchTerm !== '') {
             showRow = rowText.includes(globalSearchTerm);
@@ -1499,9 +1573,12 @@ function updateFilterPreview() {
     const selectedCategories = document.querySelectorAll('.filter-category-checkbox:checked').length;
     const selectedCommodities = document.querySelectorAll('.filter-commodity-checkbox:checked').length;
     const dateRange = document.getElementById('drawer_date_filter').value;
+    const customDateFrom = (document.getElementById('drawer_date_from')?.value || '').trim();
+    const customDateTo = (document.getElementById('drawer_date_to')?.value || '').trim();
     
     let filterCount = selectedCategories + selectedCommodities + (hasFarmerFilter ? 1 : 0);
     if (dateRange) filterCount++;
+    if (dateRange === 'custom' && (customDateFrom || customDateTo)) filterCount++;
     
     const totalRows = document.querySelectorAll('tbody tr').length;
     const resultText = document.getElementById('drawerResultCount');
@@ -1518,9 +1595,12 @@ function updateActiveFilterCount() {
     const selectedCategories = document.querySelectorAll('.filter-category-checkbox:checked').length;
     const selectedCommodities = document.querySelectorAll('.filter-commodity-checkbox:checked').length;
     const dateRange = document.getElementById('drawer_date_filter').value;
+    const customDateFrom = (document.getElementById('drawer_date_from')?.value || '').trim();
+    const customDateTo = (document.getElementById('drawer_date_to')?.value || '').trim();
     
     let count = selectedCategories + selectedCommodities + (hasFarmerFilter ? 1 : 0);
     if (dateRange) count++;
+    if (dateRange === 'custom' && (customDateFrom || customDateTo)) count++;
     
     const badge = document.getElementById('activeFilterCount');
     if (count > 0) {
@@ -1541,6 +1621,9 @@ function updateRecordCount() {
 function initializeDrawerFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const categoryFilter = urlParams.get('category_filter');
+    const dateFilter = urlParams.get('date_filter') || '';
+    const dateFrom = urlParams.get('date_from') || '';
+    const dateTo = urlParams.get('date_to') || '';
     
     if (categoryFilter) {
         const checkbox = document.querySelector(`.filter-category-checkbox[data-category-id="${categoryFilter}"]`);
@@ -1549,8 +1632,32 @@ function initializeDrawerFromURL() {
             applyDrawerFilters();
         }
     }
+
+    const dateFilterSelect = document.getElementById('drawer_date_filter');
+    if (dateFilterSelect && dateFilter) {
+        dateFilterSelect.value = dateFilter;
+    }
+
+    const dateFromInput = document.getElementById('drawer_date_from');
+    const dateToInput = document.getElementById('drawer_date_to');
+    if (dateFromInput && dateFrom) dateFromInput.value = dateFrom;
+    if (dateToInput && dateTo) dateToInput.value = dateTo;
+
+    toggleCustomDateRange();
     
     updateFilterPreview();
+}
+
+function toggleCustomDateRange() {
+    const dateFilterSelect = document.getElementById('drawer_date_filter');
+    const customRangeContainer = document.getElementById('drawer_custom_date_range');
+    if (!dateFilterSelect || !customRangeContainer) return;
+
+    if (dateFilterSelect.value === 'custom') {
+        customRangeContainer.classList.remove('hidden');
+    } else {
+        customRangeContainer.classList.add('hidden');
+    }
 }
 
 // Farmer search in drawer

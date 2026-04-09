@@ -62,6 +62,8 @@ if ($_POST) {
 
 // Initialize default values
 $total_farmers = $total_boats = $total_commodities = $total_inventory = $recent_yields = 0;
+$total_input_distributions = 0;
+$expiring_inputs_count = 0;
 $recent_activities = [];
 
 // Get dashboard statistics using procedural MySQL
@@ -153,6 +155,30 @@ $stmt->execute();
 $result = $stmt->get_result();
 if ($result && ($row = $result->fetch_assoc())) {
     $recent_yields = $row['recent_yields'];
+}
+$stmt->close();
+
+// Count total input distributions
+$query = "SELECT COUNT(*) as total_input_distributions FROM mao_distribution_log";
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
+    $total_input_distributions = (int)$row['total_input_distributions'];
+}
+$stmt->close();
+
+// Count expiring inputs (expired + expiring within 10 days)
+$query = "SELECT COUNT(*) as expiring_inputs_count
+          FROM mao_inventory
+          WHERE expiration_date IS NOT NULL
+            AND quantity_on_hand > 0
+            AND expiration_date <= DATE_ADD(CURDATE(), INTERVAL 10 DAY)";
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && ($row = $result->fetch_assoc())) {
+    $expiring_inputs_count = (int)$row['expiring_inputs_count'];
 }
 $stmt->close();
 
@@ -256,55 +282,26 @@ $stmt->close();
                     </div>
                     <div class="text-2xl font-bold text-purple-600"><?php echo number_format($ncfrs_registered); ?></div>
                 </div>
-                    <!-- Calendar (replaces Weather) -->
-                    <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center xl:row-span-2 xl:h-[352px] h-[352px] xl:col-span-1 xl:w-full" style="min-width:0;">
-                        <div class="w-full flex flex-col items-center">
-                            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
-                                <i class="fas fa-calendar-alt text-agri-green mr-2"></i>Calendar
-                            </h3>
-                            <div id="dashboardCalendar" class="w-full"></div>
-                        </div>
-                        <script>
-                        // Simple calendar generator for current month
-                        function renderDashboardCalendar() {
-                            const calendarEl = document.getElementById('dashboardCalendar');
-                            if (!calendarEl) return;
-                            const today = new Date();
-                            const year = today.getFullYear();
-                            const month = today.getMonth();
-                            const monthNames = [
-                                'January', 'February', 'March', 'April', 'May', 'June',
-                                'July', 'August', 'September', 'October', 'November', 'December'
-                            ];
-                            // First day of the month
-                            const firstDay = new Date(year, month, 1);
-                            // Last day of the month
-                            const lastDay = new Date(year, month + 1, 0);
-                            // Day of week for first day (0=Sun, 6=Sat)
-                            const startDay = firstDay.getDay();
-                            // Number of days in month
-                            const daysInMonth = lastDay.getDate();
-                            let html = `<div class="text-center font-semibold text-lg mb-2">${monthNames[month]} ${year}</div>`;
-                            html += '<div class="grid grid-cols-7 gap-1 text-xs text-gray-500 mb-1">';
-                            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
-                                html += `<div class="text-center font-bold">${d}</div>`;
-                            });
-                            html += '</div>';
-                            html += '<div class="grid grid-cols-7 gap-1">';
-                            // Empty cells for days before the 1st
-                            for (let i = 0; i < startDay; i++) {
-                                html += '<div></div>';
-                            }
-                            for (let d = 1; d <= daysInMonth; d++) {
-                                const isToday = d === today.getDate();
-                                html += `<div class="text-center py-1 rounded ${isToday ? 'bg-agri-green text-white font-bold' : 'hover:bg-gray-100'} cursor-pointer">${d}</div>`;
-                            }
-                            html += '</div>';
-                            calendarEl.innerHTML = html;
-                        }
-                        document.addEventListener('DOMContentLoaded', renderDashboardCalendar);
-                        </script>
+                <!-- Input Distribution + Expiring Inputs (replaces Calendar) -->
+                <div class="xl:row-span-2 xl:h-[352px] h-[352px] xl:col-span-1 xl:w-full" style="min-width:0;">
+                    <div class="h-full grid grid-rows-2 gap-4">
+                        <a href="input_distribution_records.php" class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center cursor-pointer hover:shadow-lg transition-shadow duration-200" title="View Input Distribution Records">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-truck-loading text-blue-600 text-2xl mr-2"></i>
+                                <span class="font-semibold text-gray-700 text-center">INPUT DISTRIBUTIONS</span>
+                            </div>
+                            <div class="text-2xl font-bold text-blue-600"><?php echo number_format($total_input_distributions); ?></div>
+                        </a>
+
+                        <a href="expiring_inputs.php" class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center cursor-pointer hover:shadow-lg transition-shadow duration-200" title="View Expiring Inputs">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-hourglass-half text-red-600 text-2xl mr-2"></i>
+                                <span class="font-semibold text-gray-700 text-center">EXPIRING INPUTS</span>
+                            </div>
+                            <div class="text-2xl font-bold text-red-600"><?php echo number_format($expiring_inputs_count); ?></div>
+                        </a>
                     </div>
+                </div>
                 <!-- Commodities -->
                 <div class="bg-white rounded-xl card-shadow p-6 flex flex-col justify-center items-center h-40 cursor-pointer hover:shadow-lg transition-shadow duration-200" onclick="window.location.href='commodities.php'" title="View Commodities">
                     <div class="flex items-center mb-2">
