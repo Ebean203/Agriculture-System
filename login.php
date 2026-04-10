@@ -109,7 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         body {
-            background: linear-gradient(135deg, var(--agri-dark) 0%, var(--agri-green) 100%);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;

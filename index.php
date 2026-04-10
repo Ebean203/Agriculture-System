@@ -352,7 +352,9 @@ $stmt->close();
                                     </select>
                                 </div>
                             </div>
-                            <canvas id="yieldChart" height="120"></canvas>
+                            <div class="relative w-full" style="height: 340px; max-height: 340px;">
+                                <canvas id="yieldChart"></canvas>
+                            </div>
                         </div>
                         <div class="flex flex-col items-center mt-4">
                             <div id="categoryButtons" class="flex flex-wrap gap-2 mb-2 justify-center">
@@ -456,25 +458,35 @@ $stmt->close();
                             }
                             // Add 10% buffer, then round up to nearest 50 for a clean axis
                             let yAxisMax = maxValue > 0 ? Math.ceil((maxValue * 1.1) / 50) * 50 : 10;
+                            const isTimeSeriesView = true;
+                            const chartType = isTimeSeriesView ? 'line' : 'bar';
+                            const lineFillColor = 'rgba(139, 92, 246, 0.24)';
+                            const lineStrokeColor = '#8b5cf6';
+                            const barFillColor = 'rgba(16,185,129,0.65)';
+                            const barStrokeColor = '#10b981';
                             yieldChartInstance = new Chart(ctx, {
-                                type: (commodity || currentCategory) ? 'bar' : 'line',
+                                type: chartType,
                                 data: {
                                     labels: labels,
                                     datasets: [{
                                         label: chartLabel,
                                         data: chartData,
-                                        backgroundColor: 'rgba(16,185,129,0.35)',
-                                        borderColor: '#10b981',
-                                        borderWidth: 2,
-                                        pointBackgroundColor: '#10b981',
-                                        pointBorderColor: '#10b981',
-                                        fill: true,
-                                        tension: 0.3,
+                                        backgroundColor: isTimeSeriesView ? lineFillColor : barFillColor,
+                                        borderColor: isTimeSeriesView ? lineStrokeColor : barStrokeColor,
+                                        borderWidth: isTimeSeriesView ? 3 : 2,
+                                        pointBackgroundColor: isTimeSeriesView ? lineStrokeColor : barStrokeColor,
+                                        pointBorderColor: '#ffffff',
+                                        pointBorderWidth: isTimeSeriesView ? 3 : 0,
+                                        fill: isTimeSeriesView,
+                                        tension: isTimeSeriesView ? 0.42 : 0,
+                                        pointRadius: isTimeSeriesView ? 5 : 0,
+                                        pointHoverRadius: isTimeSeriesView ? 7 : 0,
+                                        pointHitRadius: isTimeSeriesView ? 12 : 0,
                                         datalabels: {
-                                            display: true,
+                                            display: !isTimeSeriesView,
                                             color: '#222',
                                             anchor: 'end',
-                                            align: 'top',
+                                            align: isTimeSeriesView ? 'top' : 'right',
                                             font: { weight: 'bold', size: 14 },
                                             formatter: function(value, context) {
                                                 if (currentCategory && units.length > 0) {
@@ -487,13 +499,38 @@ $stmt->close();
                                 },
                                 options: {
                                     responsive: true,
+                                    maintainAspectRatio: false,
+                                    resizeDelay: 120,
+                                    indexAxis: isTimeSeriesView ? 'x' : 'y',
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false
+                                    },
+                                    layout: {
+                                        padding: {
+                                            top: 8,
+                                            bottom: 8
+                                        }
+                                    },
                                     plugins: {
-                                        legend: { display: false },
+                                        legend: {
+                                            display: isTimeSeriesView,
+                                            position: 'bottom',
+                                            labels: {
+                                                color: '#64748b',
+                                                usePointStyle: true,
+                                                pointStyle: 'circle',
+                                                boxWidth: 10,
+                                                boxHeight: 10,
+                                                padding: 20,
+                                                font: { size: 13, weight: '600' }
+                                            }
+                                        },
                                         datalabels: {
-                                            display: true,
+                                            display: !isTimeSeriesView,
                                             color: '#222',
                                             anchor: 'end',
-                                            align: 'top',
+                                            align: isTimeSeriesView ? 'top' : 'right',
                                             font: { weight: 'bold', size: 14 },
                                             formatter: function(value, context) {
                                                 if (currentCategory && units.length > 0) {
@@ -504,10 +541,41 @@ $stmt->close();
                                         }
                                     },
                                     scales: {
-                                        y: {
-                                            beginAtZero: true,
-                                            max: yAxisMax,
-                                            ticks: { display: false }
+                                        x: isTimeSeriesView
+                                            ? {
+                                                ticks: {
+                                                    color: '#94a3b8',
+                                                    font: { size: 12, weight: '500' }
+                                                },
+                                                grid: { display: false }
+                                            }
+                                            : {
+                                                beginAtZero: true,
+                                                max: yAxisMax,
+                                                ticks: { display: false }
+                                            },
+                                        y: isTimeSeriesView
+                                            ? {
+                                                beginAtZero: true,
+                                                max: yAxisMax,
+                                                ticks: {
+                                                    color: '#94a3b8',
+                                                    font: { size: 12, weight: '500' },
+                                                    padding: 6,
+                                                    precision: 0
+                                                },
+                                                grid: {
+                                                    color: 'rgba(148, 163, 184, 0.22)',
+                                                    lineWidth: 1
+                                                }
+                                            }
+                                            : {
+                                                ticks: { color: '#4b5563' }
+                                            }
+                                    },
+                                    elements: {
+                                        line: {
+                                            cubicInterpolationMode: 'monotone'
                                         }
                                     }
                                 },

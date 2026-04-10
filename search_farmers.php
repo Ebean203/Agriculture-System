@@ -43,12 +43,29 @@ try {
     $stmt = mysqli_prepare($conn, $sql);
     
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ssssssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
-        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_param($stmt, "sssssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+        if (!mysqli_stmt_execute($stmt)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Database execute error: ' . mysqli_stmt_error($stmt)
+            ]);
+            mysqli_stmt_close($stmt);
+            mysqli_close($conn);
+            exit;
+        }
         $result = mysqli_stmt_get_result($stmt);
+        if ($result === false) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Database result error: ' . mysqli_stmt_error($stmt)
+            ]);
+            mysqli_stmt_close($stmt);
+            mysqli_close($conn);
+            exit;
+        }
         
         $farmers = [];
-    while ($row = $result->fetch_assoc()) {
+        while ($row = $result->fetch_assoc()) {
             $farmers[] = [
                 'farmer_id' => $row['farmer_id'],
                 'first_name' => $row['first_name'],

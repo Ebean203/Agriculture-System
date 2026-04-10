@@ -1044,15 +1044,17 @@ function searchFarmers(query) {
                     });
                     // Mouse move highlights
                     item.addEventListener('mouseenter', function(){
-                        clearActive();
+                        suggestions.querySelectorAll('.farmer-suggestion-item').forEach(function(el) {
+                            el.classList.remove('bg-gray-200');
+                            el.classList.remove('ring-1');
+                            el.classList.remove('ring-agri-green');
+                        });
                         this.classList.add('bg-gray-200');
                     });
                     
                     suggestions.appendChild(item);
                 });
                 suggestions.classList.remove('hidden');
-                // Reset keyboard index when new results render
-                activeIndex = -1;
             } else {
                 const noResults = document.createElement('div');
                 noResults.className = 'px-3 py-2 text-gray-500 text-center';
@@ -1072,13 +1074,28 @@ function searchFarmers(query) {
 function filterCommodities() {
     const categoryFilter = document.getElementById('commodity_category_filter');
     const commoditySelect = document.getElementById('commodity_id');
+    if (!categoryFilter || !commoditySelect) return;
+
+    // Cache initial server-rendered options as fallback when no farmer is selected yet.
+    if (!Array.isArray(categoryFilter.baseCommodityOptions)) {
+        categoryFilter.baseCommodityOptions = Array.from(commoditySelect.options).map(function(opt) {
+            return {
+                id: opt.value,
+                name: opt.textContent,
+                category: opt.getAttribute('data-category') || ''
+            };
+        });
+    }
+
     const selectedCategory = categoryFilter.value;
     // Get commodities for selected farmer
-    const farmerCommodities = categoryFilter.farmerCommodities || [];
+    const farmerCommodities = Array.isArray(categoryFilter.farmerCommodities) ? categoryFilter.farmerCommodities : [];
+    const sourceCommodities = farmerCommodities.length > 0 ? farmerCommodities : categoryFilter.baseCommodityOptions;
+
     // Reset commodity dropdown
     commoditySelect.innerHTML = '<option value="">Select Commodity</option>';
     // Add only commodities matching selected category
-    farmerCommodities.forEach(c => {
+    sourceCommodities.forEach(c => {
         // Normalize category values coming from different places (category, category_id, category_name)
         const cCatId = (c.category_id !== undefined) ? String(c.category_id) : '';
         const cCatName = (c.category_name !== undefined) ? String(c.category_name) : '';
@@ -1091,10 +1108,10 @@ function filterCommodities() {
             // Use data-category attribute to preserve whatever category identifier is present
             const dataCategory = c.category || c.category_id || c.category_name || '';
             const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.name;
+            opt.value = c.id || c.commodity_id || '';
+            opt.textContent = c.name || c.commodity_name || '';
             if (dataCategory) opt.setAttribute('data-category', dataCategory);
-            commoditySelect.appendChild(opt);
+            if (opt.value && opt.textContent) commoditySelect.appendChild(opt);
         }
     });
     commoditySelect.value = '';
