@@ -253,6 +253,34 @@ if ($_POST) {
                     $title_stmt->close();
                 }
 
+                $existing_ids = [];
+                if (!empty($farmer_ids)) {
+                    $placeholders = implode(',', array_fill(0, count($farmer_ids), '?'));
+                    $existing_sql = "SELECT farmer_id FROM mao_activity_attendance WHERE activity_id = ? AND farmer_id IN ($placeholders)";
+                    $existing_stmt = $conn->prepare($existing_sql);
+                    if ($existing_stmt) {
+                        $existing_types = 'i' . str_repeat('s', count($farmer_ids));
+                        $existing_params = array_merge([$activity_id], $farmer_ids);
+                        $existing_bind = [$existing_types];
+                        foreach ($existing_params as $index => $value) {
+                            $existing_bind[] = &$existing_params[$index];
+                        }
+                        call_user_func_array([$existing_stmt, 'bind_param'], $existing_bind);
+                        $existing_stmt->execute();
+                        $existing_result = $existing_stmt->get_result();
+                        while ($row = $existing_result->fetch_assoc()) {
+                            $existing_ids[] = (string)$row['farmer_id'];
+                        }
+                        $existing_stmt->close();
+                    }
+                }
+
+                $existing_ids = array_values(array_unique($existing_ids));
+                $duplicate_count = count($existing_ids);
+                if ($duplicate_count > 0) {
+                    $farmer_ids = array_values(array_diff($farmer_ids, $existing_ids));
+                }
+
                 $insert_stmt = $conn->prepare("INSERT INTO mao_activity_attendance (activity_id, farmer_id) VALUES (?, ?)");
                 if (!$insert_stmt) {
                     $_SESSION['error_message'] = 'Failed to register attendance.';
@@ -260,15 +288,16 @@ if ($_POST) {
                 }
 
                 $success_count = 0;
-                $duplicate_count = 0;
                 $failed_count = 0;
 
                 foreach ($farmer_ids as $farmer_id) {
                     $insert_stmt->bind_param('is', $activity_id, $farmer_id);
-                    if ($insert_stmt->execute()) {
-                        $success_count++;
-                    } else {
-                        if ((int)$insert_stmt->errno === 1062) {
+                    try {
+                        if ($insert_stmt->execute()) {
+                            $success_count++;
+                        }
+                    } catch (mysqli_sql_exception $e) {
+                        if ((int)$e->getCode() === 1062) {
                             $duplicate_count++;
                         } else {
                             $failed_count++;
@@ -281,7 +310,7 @@ if ($_POST) {
                 if ($success_count > 0) {
                     $msg = $success_count . ' farmer' . ($success_count > 1 ? 's' : '') . ' registered successfully.';
                     if ($duplicate_count > 0) {
-                        $msg .= ' ' . $duplicate_count . ' already registered.';
+                        $msg .= ' ' . $duplicate_count . ' already registered for this activity.';
                     }
                     if ($failed_count > 0) {
                         $msg .= ' ' . $failed_count . ' failed to register.';
@@ -297,7 +326,9 @@ if ($_POST) {
                     logActivity($conn, 'REGISTER_ATTENDANCE', 'MAO_ACTIVITY', $log_details);
                 } else {
                     if ($duplicate_count > 0 && $failed_count === 0) {
-                        $_SESSION['error_message'] = 'All selected farmers are already registered for this activity.';
+                        $_SESSION['error_message'] = $duplicate_count === 1
+                            ? 'That farmer is already registered for this activity.'
+                            : 'All selected farmers are already registered for this activity.';
                     } else {
                         $_SESSION['error_message'] = 'Failed to register selected farmers.';
                     }
@@ -761,6 +792,7 @@ $types_result = $types_stmt->get_result();
 
         // Open Register Attendance Modal
         function openRegisterAttendanceModal(activity) {
+            window.currentRegisterAttendanceActivityId = activity.activity_id;
             document.getElementById('register_activity_id').value = activity.activity_id;
             document.getElementById('register_activity_title').textContent = activity.title;
             document.getElementById('register_activity_date').textContent = new Date(activity.activity_date).toLocaleDateString('en-US', {

@@ -112,12 +112,22 @@
             }
             let html = '';
             items.forEach(farmer => {
+                if (selectedFarmers.has(String(farmer.farmer_id))) {
+                    return;
+                }
                 const fullName = farmer.full_name || '';
                 const barangay = farmer.barangay_name || '';
                 const contact = farmer.contact_number || '';
+                const isRegistered = !!farmer.is_registered;
+                const itemClasses = isRegistered
+                    ? 'attendance-suggestion px-3 py-2 border-bottom bg-light text-muted'
+                    : 'attendance-suggestion px-3 py-2 border-bottom';
                 html += `
-                    <div class="attendance-suggestion px-3 py-2 border-bottom" data-id="${esc(farmer.farmer_id)}" data-name="${esc(fullName)}" data-barangay="${esc(barangay)}" data-contact="${esc(contact)}" role="button" style="cursor:pointer;">
-                        <div class="fw-semibold text-dark">${esc(fullName)}</div>
+                    <div class="${itemClasses}" data-id="${esc(farmer.farmer_id)}" data-name="${esc(fullName)}" data-barangay="${esc(barangay)}" data-contact="${esc(contact)}" data-registered="${isRegistered ? '1' : '0'}" role="button" style="cursor:${isRegistered ? 'not-allowed' : 'pointer'};">
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <div class="fw-semibold ${isRegistered ? 'text-muted' : 'text-dark'}">${esc(fullName)}</div>
+                            ${isRegistered ? '<span class="badge bg-secondary">Already registered</span>' : ''}
+                        </div>
                         <div class="small text-muted">ID: ${esc(farmer.farmer_id)}${barangay ? ' | ' + esc(barangay) : ''}</div>
                         ${contact ? `<div class="small text-muted">Contact: ${esc(contact)}</div>` : ''}
                     </div>`;
@@ -143,7 +153,12 @@
             sug.innerHTML = '<div class="px-3 py-2 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Searching...</div>';
             sug.style.display = 'block';
 
-            fetch('get_farmers.php?action=search&include_archived=false&query=' + encodeURIComponent(trimmed))
+            let searchUrl = 'get_farmers.php?action=search&include_archived=false&query=' + encodeURIComponent(trimmed);
+            if (window.currentRegisterAttendanceActivityId) {
+                searchUrl += '&activity_id=' + encodeURIComponent(window.currentRegisterAttendanceActivityId);
+            }
+
+            fetch(searchUrl)
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.success && Array.isArray(data.farmers)) {
@@ -273,6 +288,13 @@
                 sug.addEventListener('mousedown', function(e) {
                     const item = e.target.closest('.attendance-suggestion');
                     if (!item) return;
+                    if (item.getAttribute('data-registered') === '1') {
+                        e.preventDefault();
+                        if (window.AgriToast) {
+                            AgriToast.error('This farmer is already registered for this activity.');
+                        }
+                        return;
+                    }
                     e.preventDefault();
                     window.selectFarmerForAttendance(
                         item.getAttribute('data-id'),

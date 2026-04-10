@@ -14,6 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['query'])) {
     $query = $_POST['query'];
 }
 
+// Prefix-based suggestions should only use meaningful input.
+$query = trim($query);
+
 if (strlen($query) < 1) {
     echo json_encode(['success' => false, 'message' => 'Query too short']);
     exit;
@@ -26,24 +29,21 @@ try {
             LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
             WHERE f.archived = 0 
             AND (
-                f.first_name LIKE ? OR 
                 f.last_name LIKE ? OR 
+                f.first_name LIKE ? OR 
                 f.middle_name LIKE ? OR
-                f.contact_number LIKE ? OR
-                CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name) LIKE ? OR
                 CONCAT(f.last_name, ', ', f.first_name) LIKE ? OR
                 CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, '')) LIKE ? OR
-                CONCAT(f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', f.last_name, ' ', COALESCE(f.suffix, '')) LIKE ? OR
                 CONCAT(f.last_name, ', ', f.first_name, ' ', COALESCE(f.middle_name, ''), ' ', COALESCE(f.suffix, '')) LIKE ?
             )
-            ORDER BY f.first_name, f.last_name 
+            ORDER BY f.last_name, f.first_name, f.middle_name
             LIMIT 10";
     
-    $searchTerm = "%{$query}%";
+    $searchTerm = "{$query}%";
     $stmt = mysqli_prepare($conn, $sql);
     
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "sssssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+        mysqli_stmt_bind_param($stmt, "ssssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
         if (!mysqli_stmt_execute($stmt)) {
             echo json_encode([
                 'success' => false,

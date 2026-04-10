@@ -9,51 +9,74 @@ try {
     $action = isset($_GET['action']) ? $_GET['action'] : 'get_all';
     
     if ($action === 'search') {
-        // Search functionality for auto-suggest
         $query = isset($_GET['query']) ? trim($_GET['query']) : '';
         $include_archived = isset($_GET['include_archived']) ? $_GET['include_archived'] === 'true' : false;
         $filter_type = isset($_GET['filter_type']) ? $_GET['filter_type'] : '';
-        
+        $activity_id = isset($_GET['activity_id']) ? (int)$_GET['activity_id'] : 0;
+
         if (strlen($query) < 1) {
             echo json_encode(['success' => false, 'message' => 'Query too short']);
             exit;
         }
-        
-    // Search farmers by name, contact number
-        $archived_condition = $include_archived ? "" : "f.archived = 0 AND ";
-        
-        // Add type-specific filtering
-        $type_condition = "";
-        switch($filter_type) {
+
+        $archived_condition = $include_archived ? '' : 'f.archived = 0 AND ';
+
+        $type_condition = '';
+        switch ($filter_type) {
             case 'rsbsa':
-                $type_condition = "f.is_rsbsa = 1 AND ";
+                $type_condition = 'f.is_rsbsa = 1 AND ';
                 break;
             case 'ncfrs':
-                $type_condition = "f.is_ncfrs = 1 AND ";
+                $type_condition = 'f.is_ncfrs = 1 AND ';
                 break;
             case 'fisherfolk':
-                $type_condition = "f.is_fisherfolk = 1 AND ";
+                $type_condition = 'f.is_fisherfolk = 1 AND ';
                 break;
             case 'boat':
-                $type_condition = "f.is_boat = 1 AND ";
+                $type_condition = 'f.is_boat = 1 AND ';
                 break;
         }
-        
-        // Only show farmers whose last name starts with the typed query (strict prefix match)
-        $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.contact_number, b.barangay_name,
-                       f.archived as is_archived
-                FROM farmers f 
-                LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                WHERE {$archived_condition}{$type_condition}f.last_name LIKE ?
-                ORDER BY f.last_name, f.first_name
-                LIMIT 10";
 
-        $prefix = "{$query}%";           // starts-with only
-        $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "s", $prefix);
+        if ($activity_id > 0) {
+            $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.contact_number, b.barangay_name,
+                           f.archived as is_archived,
+                           CASE WHEN maa.farmer_id IS NULL THEN 0 ELSE 1 END AS is_registered
+                    FROM farmers f
+                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
+                    LEFT JOIN mao_activity_attendance maa ON maa.activity_id = ? AND maa.farmer_id = f.farmer_id
+                    WHERE {$archived_condition}{$type_condition}f.last_name LIKE ?
+                    ORDER BY f.last_name, f.first_name LIMIT 10";
+            $stmt = mysqli_prepare($conn, $sql);
+            if (!$stmt) {
+                echo json_encode(['success' => false, 'message' => 'Failed to prepare search query']);
+                exit;
+            }
+
+            $activityParam = $activity_id;
+            $queryParam = $query . '%';
+            mysqli_stmt_bind_param($stmt, 'is', $activityParam, $queryParam);
+        } else {
+            $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.contact_number, b.barangay_name,
+                           f.archived as is_archived,
+                           0 AS is_registered
+                    FROM farmers f
+                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
+                    WHERE {$archived_condition}{$type_condition}f.last_name LIKE ?
+                    ORDER BY f.last_name, f.first_name LIMIT 10";
+
+            $stmt = mysqli_prepare($conn, $sql);
+            if (!$stmt) {
+                echo json_encode(['success' => false, 'message' => 'Failed to prepare search query']);
+                exit;
+            }
+
+            $queryParam = $query . '%';
+            mysqli_stmt_bind_param($stmt, 's', $queryParam);
+        }
+
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
-        
+
         $farmers = [];
         while ($row = mysqli_fetch_assoc($result)) {
             $full_name = trim($row['last_name'] . ', ' . $row['first_name'] .
@@ -64,10 +87,12 @@ try {
                 'full_name' => $full_name,
                 'contact_number' => $row['contact_number'],
                 'barangay_name' => $row['barangay_name'] ?? 'Unknown',
-                'is_archived' => (bool)$row['is_archived']
+                'is_archived' => (bool)$row['is_archived'],
+                'is_registered' => (bool)($row['is_registered'] ?? 0)
             ];
         }
-        
+
+        mysqli_stmt_close($stmt);
         echo json_encode(['success' => true, 'farmers' => $farmers]);
         
     } else {
