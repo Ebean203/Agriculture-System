@@ -169,10 +169,32 @@ if ($_POST) {
                         $histCheck->close();
                     }
 
-                    // Update main activity date
-                    $stmt = $conn->prepare("UPDATE mao_activities SET activity_date = ?, updated_at = NOW() WHERE activity_id = ?");
+                    // Update main activity date and status (prefer 'rescheduled' when enum supports it).
+                    $status_value = 'scheduled';
+                    $db_name_status = '';
+                    $db_name_status_res = mysqli_query($conn, 'SELECT DATABASE() AS db_name');
+                    if ($db_name_status_res && ($db_name_status_row = mysqli_fetch_assoc($db_name_status_res))) {
+                        $db_name_status = $db_name_status_row['db_name'] ?? '';
+                    }
+                    if ($db_name_status !== '') {
+                        $status_col_stmt = $conn->prepare("SELECT COLUMN_TYPE FROM information_schema.columns WHERE table_schema = ? AND table_name = 'mao_activities' AND column_name = 'status' LIMIT 1");
+                        if ($status_col_stmt) {
+                            $status_col_stmt->bind_param('s', $db_name_status);
+                            $status_col_stmt->execute();
+                            $status_col_result = $status_col_stmt->get_result();
+                            if ($status_col_result && ($status_col_row = $status_col_result->fetch_assoc())) {
+                                $column_type = strtolower((string)($status_col_row['COLUMN_TYPE'] ?? ''));
+                                if (strpos($column_type, "'rescheduled'") !== false) {
+                                    $status_value = 'rescheduled';
+                                }
+                            }
+                            $status_col_stmt->close();
+                        }
+                    }
+
+                    $stmt = $conn->prepare("UPDATE mao_activities SET activity_date = ?, status = ?, updated_at = NOW() WHERE activity_id = ?");
                     if (!$stmt) { throw new Exception('Failed to reschedule.'); }
-                    $stmt->bind_param("si", $new_date, $activity_id);
+                    $stmt->bind_param("ssi", $new_date, $status_value, $activity_id);
                     if (!$stmt->execute()) { throw new Exception('Failed to reschedule activity.'); }
                     $stmt->close();
 
@@ -195,10 +217,26 @@ if ($_POST) {
 
             case 'register_attendance':
                 $activity_id = isset($_POST['activity_id']) ? (int)$_POST['activity_id'] : 0;
-                $farmer_id = isset($_POST['farmer_id']) ? trim($_POST['farmer_id']) : '';
+                $farmer_ids = [];
+                if (isset($_POST['farmer_ids']) && is_array($_POST['farmer_ids'])) {
+                    foreach ($_POST['farmer_ids'] as $fid) {
+                        $fid = trim((string)$fid);
+                        if ($fid !== '') {
+                            $farmer_ids[] = $fid;
+                        }
+                    }
+                }
+                // Backward compatibility for old single-select submit payload.
+                if (empty($farmer_ids)) {
+                    $single_farmer_id = isset($_POST['farmer_id']) ? trim((string)$_POST['farmer_id']) : '';
+                    if ($single_farmer_id !== '') {
+                        $farmer_ids[] = $single_farmer_id;
+                    }
+                }
+                $farmer_ids = array_values(array_unique($farmer_ids));
 
-                if ($activity_id <= 0 || $farmer_id === '') {
-                    $_SESSION['error_message'] = 'Please choose an activity and farmer to register.';
+                if ($activity_id <= 0 || empty($farmer_ids)) {
+                    $_SESSION['error_message'] = 'Please choose an activity and at least one farmer to register.';
                     break;
                 }
 
@@ -215,40 +253,55 @@ if ($_POST) {
                     $title_stmt->close();
                 }
 
-                // Fetch farmer name for messaging/logging
-                $farmer_name = '';
-                $farmer_stmt = $conn->prepare("SELECT first_name, middle_name, last_name, suffix FROM farmers WHERE farmer_id = ?");
-                if ($farmer_stmt) {
-                    $farmer_stmt->bind_param('s', $farmer_id);
-                    $farmer_stmt->execute();
-                    $farmer_result = $farmer_stmt->get_result();
-                    if ($farmer = $farmer_result->fetch_assoc()) {
-                        $farmer_name = formatFarmerName($farmer['first_name'], $farmer['middle_name'], $farmer['last_name'], $farmer['suffix']);
-                    }
-                    $farmer_stmt->close();
-                }
-
                 $insert_stmt = $conn->prepare("INSERT INTO mao_activity_attendance (activity_id, farmer_id) VALUES (?, ?)");
                 if (!$insert_stmt) {
                     $_SESSION['error_message'] = 'Failed to register attendance.';
                     break;
                 }
 
-                $insert_stmt->bind_param('is', $activity_id, $farmer_id);
+                $success_count = 0;
+                $duplicate_count = 0;
+                $failed_count = 0;
 
-                if ($insert_stmt->execute()) {
-                    $_SESSION['success_message'] = 'Farmer registered successfully.';
-                    $log_details = 'Registered farmer ' . ($farmer_name ?: $farmer_id) . ' to activity ' . ($activity_title ?: ('#' . $activity_id));
-                    logActivity($conn, 'REGISTER_ATTENDANCE', 'MAO_ACTIVITY', $log_details);
-                } else {
-                    if ($insert_stmt->errno === 1062) {
-                        $_SESSION['error_message'] = 'This farmer is already registered for the selected activity.';
+                foreach ($farmer_ids as $farmer_id) {
+                    $insert_stmt->bind_param('is', $activity_id, $farmer_id);
+                    if ($insert_stmt->execute()) {
+                        $success_count++;
                     } else {
-                        $_SESSION['error_message'] = 'Failed to register attendance.';
+                        if ((int)$insert_stmt->errno === 1062) {
+                            $duplicate_count++;
+                        } else {
+                            $failed_count++;
+                        }
                     }
                 }
 
                 $insert_stmt->close();
+
+                if ($success_count > 0) {
+                    $msg = $success_count . ' farmer' . ($success_count > 1 ? 's' : '') . ' registered successfully.';
+                    if ($duplicate_count > 0) {
+                        $msg .= ' ' . $duplicate_count . ' already registered.';
+                    }
+                    if ($failed_count > 0) {
+                        $msg .= ' ' . $failed_count . ' failed to register.';
+                    }
+                    $_SESSION['success_message'] = $msg;
+                    $log_details = 'Registered ' . $success_count . ' farmer' . ($success_count > 1 ? 's' : '') . ' to activity ' . ($activity_title ?: ('#' . $activity_id));
+                    if ($duplicate_count > 0) {
+                        $log_details .= ' (' . $duplicate_count . ' duplicate)';
+                    }
+                    if ($failed_count > 0) {
+                        $log_details .= ' (' . $failed_count . ' failed)';
+                    }
+                    logActivity($conn, 'REGISTER_ATTENDANCE', 'MAO_ACTIVITY', $log_details);
+                } else {
+                    if ($duplicate_count > 0 && $failed_count === 0) {
+                        $_SESSION['error_message'] = 'All selected farmers are already registered for this activity.';
+                    } else {
+                        $_SESSION['error_message'] = 'Failed to register selected farmers.';
+                    }
+                }
                 break;
         }
     }
@@ -308,9 +361,14 @@ if (!empty($where_conditions)) {
     $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
 }
 
-// Get activities with staff information
+// Get activities with staff information; status is sourced directly from mao_activities.status.
 $activities_query = "
-    SELECT ma.*, CONCAT(ms.first_name, ' ', ms.last_name) as staff_name 
+    SELECT ma.*, CONCAT(ms.first_name, ' ', ms.last_name) AS staff_name,
+           CASE
+               WHEN LOWER(COALESCE(ma.status, 'scheduled')) = 'completed' THEN 'completed'
+               WHEN LOWER(COALESCE(ma.status, 'scheduled')) = 'rescheduled' THEN 'rescheduled'
+               ELSE 'scheduled'
+           END AS display_status
     FROM mao_activities ma
     LEFT JOIN mao_staff ms ON ma.staff_id = ms.staff_id
     $where_clause
@@ -494,7 +552,7 @@ $types_result = $types_stmt->get_result();
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Staff</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -527,7 +585,23 @@ $types_result = $types_stmt->get_result();
                                     </td>
                                     <td class="px-4 py-3 align-top text-sm text-gray-700"><?php echo date('F j, Y', strtotime($activity['activity_date'])); ?></td>
                                     <td class="px-4 py-3 align-top text-sm text-gray-700"><?php echo htmlspecialchars($activity['location']); ?></td>
-                                    <td class="px-4 py-3 align-top text-sm text-gray-700"><?php echo htmlspecialchars($activity['staff_name'] ?? 'Unassigned'); ?></td>
+                                    <td class="px-4 py-3 align-top text-sm">
+                                        <?php
+                                        $display_status = strtolower(trim((string)($activity['display_status'] ?? ($activity['status'] ?? 'scheduled'))));
+                                        $status_badge_classes = 'inline-flex items-center justify-center min-w-[104px] px-2 py-1 rounded-full text-xs font-semibold text-center';
+                                        if ($display_status === 'completed') {
+                                            $status_badge_classes .= ' bg-green-100 text-green-800';
+                                        } elseif ($display_status === 'rescheduled') {
+                                            $status_badge_classes .= ' bg-orange-100 text-orange-800';
+                                        } else {
+                                            $display_status = 'scheduled';
+                                            $status_badge_classes .= ' bg-blue-100 text-blue-800';
+                                        }
+                                        ?>
+                                        <span class="<?php echo $status_badge_classes; ?>">
+                                            <?php echo htmlspecialchars(ucfirst($display_status)); ?>
+                                        </span>
+                                    </td>
                                     <td class="px-4 py-3 align-top text-sm text-gray-600 max-w-xs">
                                         <?php echo !empty($activity['description']) ? nl2br(htmlspecialchars($activity['description'])) : '<span class="text-gray-400">No description</span>'; ?>
                                     </td>
@@ -694,20 +768,19 @@ $types_result = $types_stmt->get_result();
             });
 
             const searchInput = document.getElementById('register_farmer_search');
-            const hiddenInput = document.getElementById('register_farmer_id');
             const suggestionBox = document.getElementById('register_farmer_suggestions');
-            const selectedBox = document.getElementById('register_selected_farmer');
 
             if (searchInput) {
                 searchInput.value = '';
                 searchInput.setCustomValidity('');
             }
-            if (hiddenInput) hiddenInput.value = '';
             if (suggestionBox) {
                 suggestionBox.innerHTML = '';
                 suggestionBox.style.display = 'none';
             }
-            if (selectedBox) selectedBox.classList.add('d-none');
+            if (typeof window.resetRegisterAttendanceSelection === 'function') {
+                window.resetRegisterAttendanceSelection();
+            }
 
             const modal = new bootstrap.Modal(document.getElementById('registerAttendanceModal'));
             modal.show();

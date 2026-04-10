@@ -90,8 +90,12 @@
         function getEl(id) { return document.getElementById(id); }
         function suggestionsEl() { return getEl('register_farmer_suggestions'); }
         function searchEl() { return getEl('register_farmer_search'); }
-        function hiddenEl() { return getEl('register_farmer_id'); }
-        function selectedBoxEl() { return getEl('register_selected_farmer'); }
+        function selectedWrapEl() { return getEl('register_selected_farmers'); }
+        function selectedListEl() { return getEl('register_selected_farmers_list'); }
+        function hiddenInputsWrapEl() { return getEl('register_farmer_hidden_inputs'); }
+
+        // Track selected farmers in-memory for batch registration.
+        const selectedFarmers = new Map();
 
         function setSearchValidity(message) {
             const input = searchEl();
@@ -125,8 +129,6 @@
         function searchFarmersForAttendanceInternal(query) {
             const sug = suggestionsEl();
             const se = searchEl();
-            const hid = hiddenEl();
-            const selBox = selectedBoxEl();
             if (!sug || !se) return;
 
             const trimmed = (query || '').trim();
@@ -135,13 +137,8 @@
             if (trimmed.length === 0) {
                 sug.innerHTML = '';
                 sug.style.display = 'none';
-                if (hid) hid.value = '';
-                if (selBox) selBox.classList.add('d-none');
                 return;
             }
-
-            if (hid) hid.value = '';
-            if (selBox) selBox.classList.add('d-none');
 
             sug.innerHTML = '<div class="px-3 py-2 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Searching...</div>';
             sug.style.display = 'block';
@@ -185,39 +182,89 @@
             attendanceSuggestionHideTimer = setTimeout(hideAttendanceSuggestions, 150);
         };
 
+        function renderSelectedFarmers() {
+            const wrap = selectedWrapEl();
+            const list = selectedListEl();
+            const hiddenWrap = hiddenInputsWrapEl();
+            if (!wrap || !list || !hiddenWrap) return;
+
+            list.innerHTML = '';
+            hiddenWrap.innerHTML = '';
+
+            if (selectedFarmers.size === 0) {
+                wrap.classList.add('d-none');
+                return;
+            }
+
+            wrap.classList.remove('d-none');
+
+            selectedFarmers.forEach(function(farmer) {
+                const pill = document.createElement('div');
+                pill.className = 'd-flex align-items-center justify-content-between border rounded px-2 py-1 mb-2 bg-white';
+                pill.innerHTML =
+                    '<div class="small">' +
+                    '<div class="fw-semibold text-dark">' + esc(farmer.fullName) + '</div>' +
+                    '<div class="text-muted">ID: ' + esc(farmer.farmerId) + (farmer.barangay ? ' | ' + esc(farmer.barangay) : '') + '</div>' +
+                    '</div>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-remove-farmer-id="' + esc(farmer.farmerId) + '">' +
+                    '<i class="fas fa-times"></i>' +
+                    '</button>';
+                list.appendChild(pill);
+
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'farmer_ids[]';
+                hidden.value = farmer.farmerId;
+                hiddenWrap.appendChild(hidden);
+            });
+
+            list.querySelectorAll('[data-remove-farmer-id]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const farmerId = btn.getAttribute('data-remove-farmer-id');
+                    if (farmerId) {
+                        selectedFarmers.delete(farmerId);
+                        renderSelectedFarmers();
+                    }
+                });
+            });
+        }
+
         window.selectFarmerForAttendance = function(farmerId, fullName, contactNumber, barangay) {
             const se = searchEl();
-            const hid = hiddenEl();
-            const selBox = selectedBoxEl();
-            const nameEl = getEl('register_selected_farmer_name');
-            const detailsEl = getEl('register_selected_farmer_details');
+            if (!farmerId) return;
 
-            if (se) { se.value = fullName; setSearchValidity(''); }
-            if (hid) { hid.value = farmerId; }
-            if (nameEl) { nameEl.textContent = fullName; }
-            if (detailsEl) {
-                let info = 'ID: ' + farmerId;
-                if (barangay) info += ' | ' + barangay;
-                if (contactNumber) info += ' | Contact: ' + contactNumber;
-                detailsEl.textContent = info;
+            if (!selectedFarmers.has(farmerId)) {
+                selectedFarmers.set(farmerId, {
+                    farmerId: farmerId,
+                    fullName: fullName || farmerId,
+                    contactNumber: contactNumber || '',
+                    barangay: barangay || ''
+                });
             }
-            if (selBox) { selBox.classList.remove('d-none'); }
-            hideAttendanceSuggestions();
-        };
 
-        window.clearSelectedAttendanceFarmer = function(skipFocus) {
-            const se = searchEl();
-            const hid = hiddenEl();
-            const selBox = selectedBoxEl();
-            const sug = suggestionsEl();
-            if (hid) hid.value = '';
+            renderSelectedFarmers();
             if (se) {
                 se.value = '';
-                setSearchValidity('Please select a farmer from the list.');
+                setSearchValidity('');
+            hideAttendanceSuggestions();
+            }
+        };
+
+        window.clearSelectedAttendanceFarmers = function(skipFocus) {
+            const se = searchEl();
+            const sug = suggestionsEl();
+            selectedFarmers.clear();
+            renderSelectedFarmers();
+            if (se) {
+                se.value = '';
+                setSearchValidity('');
                 if (!skipFocus) se.focus();
             }
-            if (selBox) selBox.classList.add('d-none');
             if (sug) { sug.innerHTML = ''; sug.style.display = 'none'; }
+        };
+
+        window.resetRegisterAttendanceSelection = function() {
+            window.clearSelectedAttendanceFarmers(true);
         };
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -244,10 +291,9 @@
             const form = getEl('registerAttendanceForm');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    const hid = hiddenEl();
                     const se = searchEl();
-                    if (!hid || !hid.value) {
-                        if (se) { setSearchValidity('Please select a farmer from the list.'); se.reportValidity(); }
+                    if (selectedFarmers.size === 0) {
+                        if (se) { setSearchValidity('Please select at least one farmer from the list.'); se.reportValidity(); }
                         e.preventDefault();
                     }
                 });
@@ -537,31 +583,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-gray-700">Select Farmer <span class="text-danger">*</span></label>
                         <div class="position-relative">
-                <input type="text" id="register_farmer_search" class="form-control ps-5" placeholder="Search by last name, first name, or ID..." autocomplete="off" required
+                <input type="text" id="register_farmer_search" class="form-control ps-5" placeholder="Search by last name, first name, or ID..." autocomplete="off"
                                    oninput="searchFarmersForAttendance(this.value)"
                                    onfocus="showAttendanceSuggestions()"
                                    onblur="hideAttendanceSuggestionsWithDelay()">
                 <i class="fas fa-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
-                            <input type="hidden" name="farmer_id" id="register_farmer_id" required>
 
                             <div id="register_farmer_suggestions" class="position-absolute w-100 bg-white border border-secondary rounded shadow-lg mt-1"
                                  style="max-height: 210px; overflow-y: auto; z-index: 1060; display: none;"></div>
                         </div>
-                        <small class="text-muted">Start typing the farmer's last name to search.</small>
+                        <small class="text-muted">Start typing the farmer's last name to search. You can add multiple farmers.</small>
                     </div>
 
-                    <div id="register_selected_farmer" class="alert alert-info d-none">
-                        <div class="d-flex align-items-start">
-                            <i class="fas fa-user-check me-3 mt-1"></i>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold" id="register_selected_farmer_name"></div>
-                                <div class="small text-muted" id="register_selected_farmer_details"></div>
+                    <div id="register_selected_farmers" class="alert alert-info d-none">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="fw-semibold">
+                                <i class="fas fa-user-check me-2"></i>Selected Farmers
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelectedAttendanceFarmer()">
-                                <i class="fas fa-times"></i>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelectedAttendanceFarmers()">
+                                <i class="fas fa-trash-alt me-1"></i>Clear All
                             </button>
                         </div>
+                        <div id="register_selected_farmers_list"></div>
                     </div>
+
+                    <div id="register_farmer_hidden_inputs"></div>
                 </div>
 
                 <div class="modal-footer">
@@ -569,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="fas fa-times me-1"></i>Cancel
                     </button>
                     <button type="submit" class="btn bg-agri-green text-white border-0">
-                        <i class="fas fa-user-plus me-1"></i>Register Farmer
+                        <i class="fas fa-user-plus me-1"></i>Register Farmers
                     </button>
                 </div>
             </form>
