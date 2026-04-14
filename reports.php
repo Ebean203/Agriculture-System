@@ -1602,17 +1602,22 @@ function generateComprehensiveOverviewReport($start_date, $end_date, $conn) {
                                         <label class="block text-sm font-semibold text-gray-700 mb-3">
                                             <i class="fas fa-list text-agri-green mr-2"></i>Report Type
                                         </label>
-                                        <select name="report_type" required 
-                                            class="w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green input-focus text-gray-900 bg-white shadow-sm">
-                                            <option value="">Choose a report type...</option>
-                                            <option value="farmers_summary">👥 Farmers Summary Report</option>
-                                            <option value="input_distribution">📦 Input Distribution Report</option>
-                                            <option value="inventory_status">📋 Current Inventory Status</option>
-                                            <option value="barangay_analytics">🗺️ Barangay Analytics Report</option>
-                                            <option value="commodity_production">🌱 Commodity Production Report</option>
-                                            <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
-                                            <option value="consolidated_yield">🧮 Consolidated Yield of All Commodities</option>
-                                        </select>
+                                        <div class="relative">
+                                            <select name="report_type" required 
+                                                class="w-full appearance-none py-3.5 pl-4 pr-12 border border-gray-300 rounded-xl focus:ring-agri-green focus:border-agri-green input-focus text-gray-900 bg-white shadow-sm transition-all">
+                                                <option value="">Choose a report type...</option>
+                                                <option value="farmers_summary">👥 Farmers Summary Report</option>
+                                                <option value="input_distribution">📦 Input Distribution Report</option>
+                                                <option value="inventory_status">📋 Current Inventory Status</option>
+                                                <option value="barangay_analytics">🗺️ Barangay Analytics Report</option>
+                                                <option value="commodity_production">🌱 Commodity Production Report</option>
+                                                <option value="comprehensive_overview">📈 Comprehensive Overview Report</option>
+                                                <option value="consolidated_yield">🧮 Consolidated Yield of All Commodities</option>
+                                            </select>
+                                            <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-400">
+                                                <i class="fas fa-chevron-down text-sm"></i>
+                                            </span>
+                                        </div>
                                     </div>
                                     
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

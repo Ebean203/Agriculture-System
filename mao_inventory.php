@@ -764,7 +764,8 @@ foreach ($notifications as $notification) {
                 <div class="px-6 py-4">
                     <div class="mb-4">
                         <label for="input_id" class="block text-sm font-medium text-gray-700 mb-2">Input Type</label>
-                        <select class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" name="input_id" required>
+                        <input type="hidden" name="input_id" id="add_stock_input_id" value="">
+                        <select id="add_stock_input_select" class="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-agri-green focus:border-agri-green" required>
                             <option value="">Select Input Type</option>
                             <?php
                             if (!empty($all_inputs)) {
@@ -778,6 +779,7 @@ foreach ($notifications as $notification) {
                             }
                             ?>
                         </select>
+                        <div id="add_stock_input_display" class="hidden w-full py-2 px-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"></div>
                     </div>
                     <div class="mb-4">
                         <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Add</label>
@@ -976,6 +978,9 @@ foreach ($notifications as $notification) {
         function closeModal(modalId) {
             document.getElementById(modalId).classList.add('hidden');
             document.getElementById(modalId).classList.remove('flex');
+            if (modalId === 'addStockModal') {
+                resetAddStockModal();
+            }
         }
 
         // Close modal when clicking outside
@@ -1284,19 +1289,61 @@ foreach ($notifications as $notification) {
             stockinButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const inputId = this.getAttribute('data-input-id');
-                    // Open the addStockModal
-                    openModal('addStockModal');
-                    // Try to preselect the input in the dropdown (if present)
-                    const select = document.querySelector('#addStockModal select[name="input_id"]');
-                    if (select && inputId) {
-                        select.value = inputId;
-                        // Optionally, trigger change event if needed
-                        const event = new Event('change', { bubbles: true });
-                        select.dispatchEvent(event);
-                    }
+                    const inputName = this.getAttribute('data-input-name');
+                    openStockInModal(inputId, inputName);
                 });
             });
+
+            const addStockSelect = document.getElementById('add_stock_input_select');
+            if (addStockSelect) {
+                addStockSelect.addEventListener('change', function() {
+                    const hiddenInput = document.getElementById('add_stock_input_id');
+                    if (hiddenInput) {
+                        hiddenInput.value = this.value;
+                    }
+                });
+            }
         });
+
+        function openStockInModal(inputId, inputName) {
+            const select = document.getElementById('add_stock_input_select');
+            const hiddenInput = document.getElementById('add_stock_input_id');
+            const display = document.getElementById('add_stock_input_display');
+
+            if (hiddenInput) {
+                hiddenInput.value = inputId || '';
+            }
+            if (display) {
+                display.textContent = inputName || 'Selected input';
+                display.classList.remove('hidden');
+            }
+            if (select) {
+                select.classList.add('hidden');
+                select.disabled = true;
+                select.value = inputId || '';
+            }
+
+            openModal('addStockModal');
+        }
+
+        function resetAddStockModal() {
+            const select = document.getElementById('add_stock_input_select');
+            const hiddenInput = document.getElementById('add_stock_input_id');
+            const display = document.getElementById('add_stock_input_display');
+
+            if (select) {
+                select.classList.remove('hidden');
+                select.disabled = false;
+                select.value = '';
+            }
+            if (hiddenInput) {
+                hiddenInput.value = '';
+            }
+            if (display) {
+                display.classList.add('hidden');
+                display.textContent = '';
+            }
+        }
 
         // Function to show success message
         function showSuccessMessage(message) {

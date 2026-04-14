@@ -477,6 +477,7 @@
                                 const seasonSelect = document.getElementById('season');
                                 const editCommoditySelect = document.getElementById('edit_commodity_id');
                                 const editSeasonSelect = document.getElementById('edit_season');
+                                let pendingEditSeason = '';
 
                                 function updateForSelectedCommodity(sel, seasonSel) {
                                     if (!sel || !seasonSel) return;
@@ -485,6 +486,15 @@
                                     const catId = opt.getAttribute('data-category') || '';
                                     const catName = categoryMap[catId] || '';
                                     setSeasonOptionsForCategory(seasonSel, catName);
+
+                                    if (seasonSel.id === 'edit_season' && pendingEditSeason) {
+                                        const seasonExists = Array.from(seasonSel.options).some(function(option) {
+                                            return option.value === pendingEditSeason;
+                                        });
+                                        if (seasonExists) {
+                                            seasonSel.value = pendingEditSeason;
+                                        }
+                                    }
                                 }
 
                                 if (commoditySelect && seasonSelect) {
@@ -504,6 +514,18 @@
                                 document.addEventListener('refreshEditSeason', function() {
                                     updateForSelectedCommodity(editCommoditySelect, editSeasonSelect);
                                 });
+
+                                window.setPendingEditSeason = function(seasonValue) {
+                                    pendingEditSeason = seasonValue || '';
+                                    if (editSeasonSelect && pendingEditSeason) {
+                                        const seasonExists = Array.from(editSeasonSelect.options).some(function(option) {
+                                            return option.value === pendingEditSeason;
+                                        });
+                                        if (seasonExists) {
+                                            editSeasonSelect.value = pendingEditSeason;
+                                        }
+                                    }
+                                };
                             });
                             </script>
                         </div>
@@ -545,8 +567,7 @@
                     <div class="row">
                         <div class="col-md-4 mb-3 position-relative">
                             <label class="form-label">Quality Grade</label>
-                            <input type="text" class="form-control" id="edit_unit" name="unit" placeholder="e.g., kg, sacks, crates" autocomplete="off">
-                            <div id="edit_unit_suggestions" class="list-group position-absolute w-100" style="z-index:1050; max-height: 200px; overflow-y:auto; display:none;"></div>
+                            <select class="form-select" id="edit_quality_grade" name="quality_grade">
                                 <option value="">Select grade...</option>
                                 <option value="Grade A">Grade A - Excellent</option>
                                 <option value="Grade B">Grade B - Good</option>
@@ -669,20 +690,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
-            // Set season after options have been refreshed. Use a small timeout to allow the refresh handler to run.
-            setTimeout(function() {
-                if (document.getElementById('edit_season')) {
-                    // If the stored season value exists in options, select it; otherwise leave default
-                    var seasonVal = record.season || '';
-                    var seasonSel = document.getElementById('edit_season');
-                    for (var i = 0; i < seasonSel.options.length; i++) {
-                        if (seasonSel.options[i].value === seasonVal) {
-                            seasonSel.selectedIndex = i;
-                            break;
-                        }
-                    }
-                }
-            }, 150);
+            if (typeof window.setPendingEditSeason === 'function') {
+                window.setPendingEditSeason(record.season || '');
+            }
             document.getElementById('edit_yield_amount').value = record.yield_amount || '';
             document.getElementById('edit_unit').value = record.unit || '';
             document.getElementById('edit_visit_date').value = record.visit_date ? record.visit_date.split(' ')[0] : '';
