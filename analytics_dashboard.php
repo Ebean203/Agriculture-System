@@ -340,6 +340,12 @@ if ($stmt_inputs) {
             position: relative;
             height: 400px;
             width: 100%;
+            overflow: visible !important;
+            margin-top: 0;
+        }
+        .chart-container canvas {
+            position: relative !important;
+            top: 0 !important;
         }
         .animate-fade-in {
             animation: fadeIn 0.5s ease-in-out;
@@ -457,7 +463,7 @@ if ($stmt_inputs) {
             </div>
 
             <!-- Chart Display with Commodity Filter -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in" style="min-height: 540px;">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8 animate-fade-in" style="position: relative; z-index: 10; overflow: visible;">
                 <div class="mb-6 space-y-4">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 flex items-center">
@@ -504,7 +510,7 @@ if ($stmt_inputs) {
                     </div>
                 </div>
 
-                <div class="chart-container" style="height: 600px; min-height: 600px; padding-top: 40px;">
+                <div class="chart-container" style="height: 750px; min-height: 750px; padding-top: 80px; overflow: visible; position: relative; z-index: 20;">
                     <canvas id="analyticsChart"></canvas>
                 </div>
                 <div class="flex justify-center mt-6">
@@ -1112,6 +1118,7 @@ if (document.getElementById('complianceBarChart')) {
             anchor: isBarChart ? 'center' : 'end',
             align: isBarChart ? 'center' : 'top',
             clamp: !isBarChart,
+            clip: false,
             offset: isBarChart ? 0 : 18,
             font: function(context) {
                 if (isBarChart) {
@@ -1143,6 +1150,12 @@ if (document.getElementById('complianceBarChart')) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 50,
+                        bottom: 60
+                    }
+                },
                 plugins: {
                     legend: { display: true },
                     datalabels: datalabelOptions,
