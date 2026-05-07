@@ -7,10 +7,10 @@ require_once 'includes/activity_logger.php';
 
 $pageTitle = 'Farmers Management';
 
-// Generate a legacy-style farmer ID matching existing format: FMRYYYYMMNNNN
+// Generate a farmer ID in the format FMRYYYY/MM/NNNN
 function generateFarmerId($conn) {
     // Build prefix for current year-month
-    $prefix = 'FMR' . date('Y') . str_pad(date('n'), 2, '0', STR_PAD_LEFT);
+    $prefix = 'FMR' . date('Y') . '/' . date('m') . '/';
 
     // Find the maximum numeric suffix for this prefix
     $sql = "SELECT farmer_id FROM farmers WHERE farmer_id LIKE ? ORDER BY farmer_id DESC LIMIT 1";
@@ -24,7 +24,7 @@ function generateFarmerId($conn) {
             $row = $res->fetch_assoc();
             $existing = $row['farmer_id'];
             // Extract trailing digits
-            if (preg_match('/^FMR(\d{6})(\d+)$/', $existing, $m)) {
+            if (preg_match('/^FMR\d{4}\/\d{2}\/(\d+)$/', $existing, $m)) {
                 $num = intval($m[2]);
                 $next = $num + 1;
             } else {
@@ -39,9 +39,9 @@ function generateFarmerId($conn) {
         $next = time() % 100000;
     }
 
-    // Pad next to 5 digits for consistency with existing examples
-    $suffix = str_pad((string)$next, 5, '0', STR_PAD_LEFT);
-    return 'FMR' . date('Y') . str_pad(date('n'), 2, '0', STR_PAD_LEFT) . $suffix;
+    // Pad next to 4 digits for the monthly sequence number
+    $suffix = str_pad((string)$next, 4, '0', STR_PAD_LEFT);
+    return $prefix . $suffix;
 }
 
 // Function to handle farmer archiving
@@ -231,7 +231,7 @@ function handleFarmerRegistration($conn, $post_data) {
         // Generate a unique farmer_id if not provided
         $farmer_id = $post_data['farmer_id'] ?? null;
         if (empty($farmer_id)) {
-            // Use legacy-style IDs to match existing records: FMRYYYYMM#####
+            // Use code-generated IDs to match the new format: FMRYYYY/MM/NNNN
             $farmer_id = generateFarmerId($conn);
         }
 
