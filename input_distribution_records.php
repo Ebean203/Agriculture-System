@@ -731,6 +731,9 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                             modal.classList.add('hidden');
                                                         }
                                                     }
+                                                    function escapeHtml(s){
+                                                        return (s||'').replace(/[&<>"]+/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]});
+                                                    }
                                                     // Mark as Done button
         document.querySelectorAll('.mark-done-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
@@ -778,89 +781,94 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                             });
                                                         });
                                                     });
-                                                    // Reschedule button
-        document.querySelectorAll('.reschedule-btn').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                var id = this.getAttribute('data-id');
-                showModal('rescheduleModal-' + id);
-            });
-        });
-                                                    // Close Reschedule modal
-        document.querySelectorAll('.close-reschedule-modal').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.getAttribute('data-id');
-                hideModal('rescheduleModal-' + id);
-            });
-        });
+                                                    if (!window.__distributionRescheduleHandlersBound) {
+                                                        window.__distributionRescheduleHandlersBound = true;
 
-                                                    // Open reschedule confirmation modal when user clicks Continue
-                                                    document.querySelectorAll('.open-reschedule-confirm').forEach(function(btn) {
-                                                        btn.addEventListener('click', function() {
-                                                            var id = this.getAttribute('data-id');
-                                                            var form = document.querySelector('.reschedule-form[data-id="'+id+'"]');
-                                                            
-                                                            // Check HTML5 form validity
-                                                            if (!form.checkValidity()) {
-                                                                form.reportValidity();
-                                                                return;
-                                                            }
-                                                            
-                                                            // Hide the reschedule modal and show confirmation modal
-                                                            hideModal('rescheduleModal-' + id);
-                                                            setTimeout(function() {
-                                                                showModal('rescheduleConfirmModal-' + id);
-                                                            }, 250);
-                                                        });
-                                                    });
-
-                                                    // Close reschedule confirmation modal
-                                                    document.querySelectorAll('.close-reschedule-confirm-modal').forEach(function(btn) {
-                                                        btn.addEventListener('click', function() {
-                                                            var id = this.getAttribute('data-id');
-                                                            hideModal('rescheduleConfirmModal-' + id);
-                                                            // Re-open the reschedule modal
-                                                            setTimeout(function() {
+                                                        // Reschedule button
+                                                        document.querySelectorAll('.reschedule-btn').forEach(function(btn) {
+                                                            btn.addEventListener('click', function(e) {
+                                                                e.preventDefault();
+                                                                var id = this.getAttribute('data-id');
                                                                 showModal('rescheduleModal-' + id);
-                                                            }, 250);
-                                                        });
-                                                    });
-
-                                                    // Confirm and submit reschedule
-                                                    document.querySelectorAll('.confirm-reschedule').forEach(function(btn) {
-                                                        btn.addEventListener('click', function() {
-                                                            var id = this.getAttribute('data-id');
-                                                            var form = document.querySelector('.reschedule-form[data-id="'+id+'"]');
-                                                            var newDate = form.querySelector('input[name="new_date"]').value;
-                                                            var reason  = (form.querySelector('textarea[name="reschedule_reason"]').value || '').trim();
-                                                            
-                                                            btn.disabled = true;
-                                                            fetch('mark_distribution_complete.php', {
-                                                                method: 'POST',
-                                                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                                                body: 'distribution_id=' + encodeURIComponent(id) + '&reschedule=1&new_date=' + encodeURIComponent(newDate) + '&reschedule_reason=' + encodeURIComponent(reason)
-                                                            })
-                                                            .then(response => response.json())
-                                                            .then(data => {
-                                                                if (data.success) {
-                                                                    hideModal('rescheduleConfirmModal-' + id);
-                                                                    showActionToast('Rescheduled successfully!', 'success');
-                                                                    setTimeout(function(){ location.reload(); }, 1300);
-                                                                } else {
-                                                                    hideModal('rescheduleConfirmModal-' + id);
-                                                                    showActionToast(data.message || 'Failed to reschedule.', 'error');
-                                                                    btn.disabled = false;
-                                                                    setTimeout(function(){ showModal('rescheduleModal-' + id); }, 250);
-                                                                }
-                                                            })
-                                                            .catch(() => {
-                                                                hideModal('rescheduleConfirmModal-' + id);
-                                                                showActionToast('Failed to reschedule.', 'error');
-                                                                btn.disabled = false;
-                                                                setTimeout(function(){ showModal('rescheduleModal-' + id); }, 250);
                                                             });
                                                         });
-                                                    });
+
+                                                        // Close Reschedule modal
+                                                        document.querySelectorAll('.close-reschedule-modal').forEach(function(btn) {
+                                                            btn.addEventListener('click', function() {
+                                                                var id = this.getAttribute('data-id');
+                                                                hideModal('rescheduleModal-' + id);
+                                                            });
+                                                        });
+
+                                                        // Open reschedule confirmation modal when user clicks Continue
+                                                        document.querySelectorAll('.open-reschedule-confirm').forEach(function(btn) {
+                                                            btn.addEventListener('click', function() {
+                                                                var id = this.getAttribute('data-id');
+                                                                var form = document.querySelector('.reschedule-form[data-id="'+id+'"]');
+                                                                
+                                                                // Check HTML5 form validity
+                                                                if (!form.checkValidity()) {
+                                                                    form.reportValidity();
+                                                                    return;
+                                                                }
+                                                                
+                                                                // Hide the reschedule modal and show confirmation modal
+                                                                hideModal('rescheduleModal-' + id);
+                                                                setTimeout(function() {
+                                                                    showModal('rescheduleConfirmModal-' + id);
+                                                                }, 250);
+                                                            });
+                                                        });
+
+                                                        // Close reschedule confirmation modal
+                                                        document.querySelectorAll('.close-reschedule-confirm-modal').forEach(function(btn) {
+                                                            btn.addEventListener('click', function() {
+                                                                var id = this.getAttribute('data-id');
+                                                                hideModal('rescheduleConfirmModal-' + id);
+                                                                // Re-open the reschedule modal
+                                                                setTimeout(function() {
+                                                                    showModal('rescheduleModal-' + id);
+                                                                }, 250);
+                                                            });
+                                                        });
+
+                                                        // Confirm and submit reschedule
+                                                        document.querySelectorAll('.confirm-reschedule').forEach(function(btn) {
+                                                            btn.addEventListener('click', function() {
+                                                                var id = this.getAttribute('data-id');
+                                                                var form = document.querySelector('.reschedule-form[data-id="'+id+'"]');
+                                                                var newDate = form.querySelector('input[name="new_date"]').value;
+                                                                var reason  = (form.querySelector('textarea[name="reschedule_reason"]').value || '').trim();
+                                                                
+                                                                btn.disabled = true;
+                                                                fetch('mark_distribution_complete.php', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                                                    body: 'distribution_id=' + encodeURIComponent(id) + '&reschedule=1&new_date=' + encodeURIComponent(newDate) + '&reschedule_reason=' + encodeURIComponent(reason)
+                                                                })
+                                                                .then(response => response.json())
+                                                                .then(data => {
+                                                                    if (data.success) {
+                                                                        hideModal('rescheduleConfirmModal-' + id);
+                                                                        showActionToast('Rescheduled successfully!', 'success');
+                                                                        setTimeout(function(){ location.reload(); }, 1300);
+                                                                    } else {
+                                                                        hideModal('rescheduleConfirmModal-' + id);
+                                                                        showActionToast(data.message || 'Failed to reschedule.', 'error');
+                                                                        btn.disabled = false;
+                                                                        setTimeout(function(){ showModal('rescheduleModal-' + id); }, 250);
+                                                                    }
+                                                                })
+                                                                .catch(() => {
+                                                                    hideModal('rescheduleConfirmModal-' + id);
+                                                                    showActionToast('Failed to reschedule.', 'error');
+                                                                    btn.disabled = false;
+                                                                    setTimeout(function(){ showModal('rescheduleModal-' + id); }, 250);
+                                                                });
+                                                            });
+                                                        });
+                                                    }
 
                                                     // View reschedule history (lightweight alert for now)
                                                     window.viewReschedHistory = function(id) {
@@ -871,14 +879,18 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                                     if (window.AgriToast) { AgriToast.show({ type: 'info', message: 'No reschedule history yet.', duration: 2500 }); }
                                                                     return;
                                                                 }
-                                                                const lines = data.items.map(i => {
-                                                                    const oldd = i.old_visitation_date || 'N/A';
-                                                                    const newd = i.new_visitation_date || 'N/A';
-                                                                    const who  = i.staff_name || 'System';
-                                                                    const when = i.created_at || '';
-                                                                    return `• ${oldd} → ${newd} — ${i.reason} (${who}, ${when})`;
-                                                                }).join('\n');
-                                                                if (window.AgriToast) { AgriToast.show({ type: 'info', message: lines, duration: 5000 }); }
+                                                                const lines = data.items.map(function(item, index) {
+                                                                    const date = item.new_visitation_date || item.old_visitation_date || 'N/A';
+                                                                    const reason = item.reason || 'No reason provided';
+                                                                    return `${index + 1}. ${date} - ${reason}`;
+                                                                });
+                                                                if (window.AgriToast) {
+                                                                    AgriToast.show({
+                                                                        type: 'info',
+                                                                        message: 'Previous reschedules:\n' + lines.join('\n'),
+                                                                        duration: 6000
+                                                                    });
+                                                                }
                                                             })
                                                             .catch(() => { if (window.AgriToast) { AgriToast.error('Failed to load history.'); } });
                                                     }
@@ -897,10 +909,6 @@ function buildUrlParams($page, $search = '', $barangay = '', $input_id = '', $st
                                                                 document.body.appendChild(el);
                                                             }
                                                             return el;
-                                                        }
-
-                                                        function escapeHtml(s){
-                                                            return (s||'').replace(/[&<>"]+/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]});
                                                         }
 
                                                         function formatDate(d){
