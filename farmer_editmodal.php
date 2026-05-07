@@ -216,16 +216,16 @@ if ($_SESSION['role'] !== 'admin') {
                     </div>
 
                     <!-- Photo Management Section -->
-                    <div class="card mb-4">
+                    <div class="card mb-4 d-none" id="editPhotoManagementSection">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="fas fa-camera me-2"></i>Farmer Photos</h6>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="edit_farmer_photo" class="form-label">Upload Geotagged Photo</label>
+                                    <label for="edit_farmer_photo" class="form-label">Update Geotagged Photo</label>
                                     <input type="file" class="form-control" id="edit_farmer_photo" name="farmer_photo" accept="image/*">
-                                    <small class="form-text text-muted">Upload photos with GPS coordinates embedded</small>
+                                    <small class="form-text text-muted">Replace the current geotagged photo with a new one</small>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Current Photos</label>
@@ -495,6 +495,28 @@ function editFarmer(farmerId) {
                 document.getElementById('edit_is_boat').checked = farmer.is_boat == '1';
                 // Trigger spouse field visibility
                 toggleEditSpouseField();
+                const photoManagementSection = document.getElementById('editPhotoManagementSection');
+                const photoLabel = document.querySelector('label[for="edit_farmer_photo"]');
+                const photoDisplay = document.getElementById('edit_farmer_photos_display');
+                const photos = Array.isArray(farmer.photos) ? farmer.photos : [];
+                if (photoManagementSection && photoDisplay) {
+                    if (photos.length > 0) {
+                        photoManagementSection.classList.remove('d-none');
+                        if (photoLabel) photoLabel.textContent = 'Update Geotagged Photo';
+                        photoDisplay.innerHTML = photos.map(function(photo) {
+                            const photoDate = photo.uploaded_at ? new Date(photo.uploaded_at).toLocaleDateString() : 'Unknown date';
+                            return `
+                                <div class="text-center">
+                                    <img src="${encodeURI(photo.file_path)}" alt="Farmer Photo" class="img-thumbnail" style="width: 110px; height: 110px; object-fit: cover;">
+                                    <div class="small text-muted mt-1">${photoDate}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        photoManagementSection.classList.add('d-none');
+                        photoDisplay.innerHTML = '';
+                    }
+                }
                 // --- PATCH: Multi-commodity support ---
                 // Set window.editCommodities from backend data (array of commodities)
                 window.editCommodities = Array.isArray(farmer.commodities) && farmer.commodities.length ? farmer.commodities : [{commodity_id:'',land_area_hectares:'',years_farming:'',is_primary:true}];

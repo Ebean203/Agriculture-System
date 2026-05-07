@@ -97,6 +97,11 @@ try {
     }
     
     $farmer_id = trim($_POST['farmer_id']);
+    $safe_farmer_id = preg_replace('/[^A-Za-z0-9_-]+/', '_', $farmer_id);
+    $safe_farmer_id = trim($safe_farmer_id, '_');
+    if ($safe_farmer_id === '') {
+        $safe_farmer_id = 'farmer';
+    }
     $photo = $_FILES['farmer_photo'];
     $latitude = null;
     $longitude = null;
@@ -143,7 +148,7 @@ try {
     // Use original filename with farmer ID prefix for uniqueness
     $original_filename = basename($photo['name']);
     $file_extension = pathinfo($original_filename, PATHINFO_EXTENSION);
-    $filename = $farmer_id . '_' . $original_filename;
+    $filename = $safe_farmer_id . '_' . $original_filename;
     $upload_path = 'uploads/farmer_photos/' . $filename;
     $relative_path = $upload_path; // Store relative path in database
 

@@ -7,10 +7,10 @@ require_once 'includes/activity_logger.php';
 
 $pageTitle = 'Farmers Management';
 
-// Generate a farmer ID in the format FMRYYYY/MM/NNNN
+// Generate a farmer ID in the format FMRYYYYMMNNNN
 function generateFarmerId($conn) {
     // Build prefix for current year-month
-    $prefix = 'FMR' . date('Y') . '/' . date('m') . '/';
+    $prefix = 'FMR' . date('Y') . date('m');
 
     // Find the maximum numeric suffix for this prefix
     $sql = "SELECT farmer_id FROM farmers WHERE farmer_id LIKE ? ORDER BY farmer_id DESC LIMIT 1";
@@ -24,8 +24,8 @@ function generateFarmerId($conn) {
             $row = $res->fetch_assoc();
             $existing = $row['farmer_id'];
             // Extract trailing digits
-            if (preg_match('/^FMR\d{4}\/\d{2}\/(\d+)$/', $existing, $m)) {
-                $num = intval($m[2]);
+            if (preg_match('/^FMR\d{6}(\d{4})$/', $existing, $m)) {
+                $num = intval($m[1]);
                 $next = $num + 1;
             } else {
                 // If pattern doesn't match, fallback to 1
@@ -191,7 +191,12 @@ function handleFarmerEdit($conn, $post_data) {
             $photo_dir = 'uploads/farmer_photos/';
             $original_name = basename($_FILES['farmer_photo']['name']);
             $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-            $new_filename = $farmer_id . '_' . time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '', $original_name);
+            $safe_farmer_id = preg_replace('/[^A-Za-z0-9_-]+/', '_', $farmer_id);
+            $safe_farmer_id = trim($safe_farmer_id, '_');
+            if ($safe_farmer_id === '') {
+                $safe_farmer_id = 'farmer';
+            }
+            $new_filename = $safe_farmer_id . '_' . time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '', $original_name);
             $target_path = $photo_dir . $new_filename;
             
             if (move_uploaded_file($_FILES['farmer_photo']['tmp_name'], $target_path)) {
@@ -231,7 +236,7 @@ function handleFarmerRegistration($conn, $post_data) {
         // Generate a unique farmer_id if not provided
         $farmer_id = $post_data['farmer_id'] ?? null;
         if (empty($farmer_id)) {
-            // Use code-generated IDs to match the new format: FMRYYYY/MM/NNNN
+            // Use code-generated IDs to match the new format: FMRYYYYMMNNNN
             $farmer_id = generateFarmerId($conn);
         }
 
@@ -312,7 +317,12 @@ function handleFarmerRegistration($conn, $post_data) {
             if (!is_dir($photo_dir)) @mkdir($photo_dir, 0755, true);
             $original_name = basename($_FILES['farmer_photo']['name']);
             $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-            $new_filename = $farmer_id . '_' . time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '', $original_name);
+            $safe_farmer_id = preg_replace('/[^A-Za-z0-9_-]+/', '_', $farmer_id);
+            $safe_farmer_id = trim($safe_farmer_id, '_');
+            if ($safe_farmer_id === '') {
+                $safe_farmer_id = 'farmer';
+            }
+            $new_filename = $safe_farmer_id . '_' . time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '', $original_name);
             $target_path = $photo_dir . $new_filename;
             if (move_uploaded_file($_FILES['farmer_photo']['tmp_name'], $target_path)) {
                 $ins_photo = $conn->prepare("INSERT INTO farmer_photos (farmer_id, file_path, uploaded_at) VALUES (?, ?, NOW())");
@@ -404,6 +414,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
                 $farmer_result = $conn->query($farmer_sql);
                 if ($farmer_result && $farmer_result->num_rows > 0) {
                     $farmer = $farmer_result->fetch_assoc();
+                    $photo_sql = "SELECT file_path, uploaded_at FROM farmer_photos WHERE farmer_id = '$farmer_id' ORDER BY uploaded_at DESC";
+                    $photo_result = $conn->query($photo_sql);
+                    $photos = [];
+                    if ($photo_result) {
+                        while ($photo = $photo_result->fetch_assoc()) {
+                            $photos[] = $photo;
+                        }
+                    }
+                    $farmer['photos'] = $photos;
+                    $farmer['has_photos'] = !empty($photos);
                     // Fetch household info for this farmer
                     $household_sql = "SELECT civil_status, spouse_name, household_size, education_level, occupation FROM household_info WHERE farmer_id = '$farmer_id' LIMIT 1";
                     $household_result = $conn->query($household_sql);
@@ -532,7 +552,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['action'])) {
 
 // Function to generate farmer view HTML
 function generateFarmerViewHTML($farmer) {
-    $fullName = trim($farmer['first_name'] . ' ' . $farmer['middle_name'] . ' ' . $farmer['last_name'] . ' ' . $farmer['suffix']);
+    $nameParts = array_filter([
+        $farmer['first_name'] ?? '',
+        $farmer['middle_name'] ?? '',
+        $farmer['last_name'] ?? '',
+        ($farmer['suffix'] && $farmer['suffix'] !== 'N/A') ? $farmer['suffix'] : ''
+    ]);
+    $fullName = implode(' ', $nameParts);
     
     $html = '<div class="container-fluid p-0">';
     
@@ -577,6 +603,21 @@ function generateFarmerViewHTML($farmer) {
         $html .= '</div>';
         $html .= '</div>'; // .position-relative
         $html .= '</div>'; // .d-flex
+        $html .= '</div>';
+        $html .= '</div>';
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="row g-3 mb-3">';
+        $html .= '<div class="col-12">';
+        $html .= '<div class="card border-0 shadow-sm">';
+        $html .= '<div class="card-header bg-light border-0">';
+        $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-camera me-2"></i>Farmer Photo</h6>';
+        $html .= '</div>';
+        $html .= '<div class="card-body text-center text-muted py-4">';
+        $html .= '<i class="fas fa-image fa-2x mb-3 text-secondary"></i>';
+        $html .= '<div>No geotagged photo has been uploaded yet.</div>';
+        $html .= '<small>Use the Geo-tag Farmer button to add the first image.</small>';
+        $html .= '</div>';
         $html .= '</div>';
         $html .= '</div>';
         $html .= '</div>';

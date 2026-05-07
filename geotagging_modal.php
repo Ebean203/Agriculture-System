@@ -309,7 +309,16 @@ document.addEventListener('DOMContentLoaded', function() {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(async response => {
+        const responseText = await response.text();
+        let data = null;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            throw new Error(responseText.trim() || 'Unexpected server response while uploading the photo.');
+        }
+        return data;
+    })
     .then(data => {
         if (data.success) {
             // Close modal first
@@ -318,16 +327,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Simple toast only
             if (window.AgriToast) { AgriToast.success('Photo uploaded successfully.'); }
-
-            // Refresh page after a short delay so toast is visible
-            setTimeout(() => { window.location.reload(); }, 1600);
         } else {
             // Error toast only
             if (window.AgriToast) { AgriToast.error(data.message || 'Failed to upload photo.'); }
         }
     })
     .catch(error => {
-        if (window.AgriToast) { AgriToast.error('An error occurred while uploading the photo.'); }
+        if (window.AgriToast) { AgriToast.error(error.message || 'An error occurred while uploading the photo.'); }
     })
     .finally(() => {
         // Reset button
