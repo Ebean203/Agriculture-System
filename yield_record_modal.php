@@ -1,15 +1,15 @@
 <!-- Yield Monitoring Modal -->
 <div class="modal fade" id="addVisitModal" tabindex="-1" aria-labelledby="addVisitModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg yield-visit-modal-dialog">
+        <div class="modal-content yield-visit-modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title" id="addVisitModalLabel">
                     <i class="fas fa-plus-circle me-2"></i>Record Yield Visit
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="yieldVisitForm" method="POST" action="yield_monitoring.php">
-                <div class="modal-body">
+            <form id="yieldVisitForm" method="POST" action="yield_monitoring.php" class="yield-visit-modal-form">
+                <div class="modal-body yield-visit-modal-body">
                     <input type="hidden" name="action" value="record_visit">
                     
                     <!-- Yield Information Section -->
@@ -308,7 +308,7 @@
                     </div>
                 </div>
 
-                <div class="modal-footer">
+                <div class="modal-footer yield-visit-modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i>Cancel
                     </button>
@@ -638,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const viewUnit = record.unit || '';
             document.getElementById('view_yield_amount').textContent = (record.yield_amount !== undefined) ? Number(record.yield_amount).toFixed(2) + (viewUnit ? ' ' + viewUnit : '') : '';
             document.getElementById('view_unit').textContent = viewUnit;
-            document.getElementById('view_visit_date').textContent = record.visit_date ? new Date(record.visit_date).toLocaleDateString() : '';
+            document.getElementById('view_visit_date').textContent = record.visit_date ? new window.Date(record.visit_date).toLocaleDateString() : '';
             document.getElementById('view_distributed_input').textContent = record.distributed_input || '';
             document.getElementById('view_quality_grade').textContent = record.quality_grade || '';
             document.getElementById('view_growth_stage').textContent = record.growth_stage || '';
@@ -675,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Set selected value
                         select.value = record.commodity_id || '';
                         // Dispatch event so season options update for the selected commodity
-                        document.dispatchEvent(new Event('refreshEditSeason'));
+                        document.dispatchEvent(new window.Event('refreshEditSeason'));
                     } else {
                         // Fallback: show only the current commodity
                         if (record.commodity_id && record.commodity_name) {
@@ -713,7 +713,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
         submitBtn.disabled = true;
 
-        const formData = new FormData(form);
+        const formData = new window.FormData(form);
         // Ensure action is set
         formData.set('action', 'edit_record');
 
@@ -742,7 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const yieldCell = row.querySelector('td:nth-child(4) .text-sm.font-medium');
                         if (yieldCell && updated.yield_amount !== undefined) yieldCell.textContent = Number(updated.yield_amount).toFixed(2) + (updated.unit ? ' ' + updated.unit : '');
                         const dateCell = row.querySelector('td:nth-child(5)');
-                        if (dateCell && updated.record_date) dateCell.textContent = new Date(updated.record_date).toLocaleDateString();
+                        if (dateCell && updated.record_date) dateCell.textContent = new window.Date(updated.record_date).toLocaleDateString();
                         // Also update the data-record attribute on action buttons so future edits use latest data
                         const viewBtn = row.querySelector('.btn-view-record');
                         const editBtn = row.querySelector('.btn-edit-record');

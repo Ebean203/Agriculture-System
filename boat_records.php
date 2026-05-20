@@ -583,8 +583,9 @@ function buildUrlParams($page, $search = '', $barangay = '', $farmer_id = '') {
     <script>
         // Function to export Boat records to PDF
         function exportToPDF() {
-            const search = new URLSearchParams(window.location.search).get('search') || '';
-            const barangay = new URLSearchParams(window.location.search).get('barangay') || '';
+            const searchParams = new window.URLSearchParams(window.location.search);
+            const search = searchParams.get('search') || '';
+            const barangay = searchParams.get('barangay') || '';
             let exportUrl = 'pdf_export.php?action=export_pdf&is_boat=1';
             if (search) exportUrl += `&search=${encodeURIComponent(search)}`;
             if (barangay) exportUrl += `&barangay=${encodeURIComponent(barangay)}`;

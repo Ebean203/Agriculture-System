@@ -860,7 +860,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setActiveTab();
     
     // Initialize commodity filtering based on current category
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new window.URLSearchParams(window.location.search);
     const categoryFilter = urlParams.get('category_filter');
     if (categoryFilter) {
         filterCommodityDropdown(categoryFilter);
@@ -1280,7 +1280,7 @@ function handleFilterChange(filterValue) {
 
 function setActiveTab() {
     // Get current category filter from URL
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new window.URLSearchParams(window.location.search);
     const categoryFilter = urlParams.get('category_filter');
     const clearBtn = document.getElementById('clearFilterBtn');
     
@@ -1511,7 +1511,7 @@ function applyDrawerFilters() {
     const customDateFrom = (document.getElementById('drawer_date_from')?.value || '').trim();
     const customDateTo = (document.getElementById('drawer_date_to')?.value || '').trim();
 
-    const today = new Date();
+    const today = new window.Date();
     today.setHours(0, 0, 0, 0);
     
     // Get all table rows
@@ -1545,18 +1545,18 @@ function applyDrawerFilters() {
 
         // Filter by date range.
         if (showRow && selectedDateRange !== '') {
-            const recordDate = recordDateRaw ? new Date(recordDateRaw + 'T00:00:00') : null;
+            const recordDate = recordDateRaw ? new window.Date(recordDateRaw + 'T00:00:00') : null;
             if (!recordDate || isNaN(recordDate.getTime())) {
                 showRow = false;
             } else if (selectedDateRange === 'custom') {
                 if (customDateFrom) {
-                    const fromDate = new Date(customDateFrom + 'T00:00:00');
+                    const fromDate = new window.Date(customDateFrom + 'T00:00:00');
                     if (!isNaN(fromDate.getTime()) && recordDate < fromDate) {
                         showRow = false;
                     }
                 }
                 if (showRow && customDateTo) {
-                    const toDate = new Date(customDateTo + 'T00:00:00');
+                    const toDate = new window.Date(customDateTo + 'T00:00:00');
                     if (!isNaN(toDate.getTime()) && recordDate > toDate) {
                         showRow = false;
                     }
@@ -1564,7 +1564,7 @@ function applyDrawerFilters() {
             } else if (/^\d+$/.test(selectedDateRange)) {
                 const dayCount = parseInt(selectedDateRange, 10);
                 if (!isNaN(dayCount)) {
-                    const startDate = new Date(today);
+                    const startDate = new window.Date(today);
                     startDate.setDate(startDate.getDate() - dayCount);
                     if (recordDate < startDate || recordDate > today) {
                         showRow = false;
@@ -1636,7 +1636,7 @@ function updateRecordCount() {
 }
 
 function initializeDrawerFromURL() {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new window.URLSearchParams(window.location.search);
     const categoryFilter = urlParams.get('category_filter');
     const dateFilter = urlParams.get('date_filter') || '';
     const dateFrom = urlParams.get('date_from') || '';
@@ -1830,6 +1830,82 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .modal-footer {
     border-radius: 0 0 10px 10px;
+}
+
+/* Yield visit modal: responsive layout for 13-14 inch laptop screens */
+.yield-visit-modal-dialog {
+    max-width: min(94vw, 72rem);
+}
+
+.yield-visit-modal-content {
+    max-height: calc(100vh - 2rem);
+    height: calc(100vh - 2rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.yield-visit-modal-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.yield-visit-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.yield-visit-modal-footer {
+    flex-shrink: 0;
+    padding-top: 0.9rem;
+    padding-bottom: 1rem;
+}
+
+@media (max-width: 1366px) {
+    .yield-visit-modal-dialog {
+        max-width: 96vw;
+    }
+}
+
+@media (max-width: 1280px) {
+    .yield-visit-modal-dialog {
+        max-width: 97vw;
+    }
+
+    .yield-visit-modal-body,
+    .yield-visit-modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+@media (max-width: 1024px) {
+    .yield-visit-modal-dialog {
+        max-width: 98vw;
+    }
+
+    .yield-visit-modal-content {
+        height: calc(100vh - 1rem);
+        max-height: calc(100vh - 1rem);
+    }
+
+    .yield-visit-modal-body {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .yield-visit-modal-footer {
+        padding-top: 0.85rem;
+        padding-bottom: 1rem;
+    }
+
+    .yield-visit-modal-footer .btn {
+        padding: 0.65rem 1rem;
+        font-size: 0.95rem;
+    }
 }
 
 /* Animation for modal */

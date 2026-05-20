@@ -404,9 +404,9 @@ function validateEditForm() {
     
     // Validate birth date
     if (birthDate) {
-        const birth = new Date(birthDate);
-        const today = new Date();
-        const minDate = new Date('1900-01-01');
+        const birth = new window.Date(birthDate);
+        const today = new window.Date();
+        const minDate = new window.Date('1900-01-01');
         
         if (birth > today) {
             errors.push('Birth date cannot be in the future');
@@ -506,7 +506,7 @@ function editFarmer(farmerId) {
                         photoManagementSection.classList.remove('d-none');
                         if (photoLabel) photoLabel.textContent = 'Update Geotagged Photo';
                         photoDisplay.innerHTML = photos.map(function(photo) {
-                            const photoDate = photo.uploaded_at ? new Date(photo.uploaded_at).toLocaleDateString() : 'Unknown date';
+                            const photoDate = photo.uploaded_at ? new window.Date(photo.uploaded_at).toLocaleDateString() : 'Unknown date';
                             return `
                                 <div class="text-center">
                                     <img src="${encodeURI(photo.file_path)}" alt="Farmer Photo" class="img-thumbnail" style="width: 110px; height: 110px; object-fit: cover;">

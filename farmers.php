@@ -1480,7 +1480,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         // Function to view photo in modal
         function viewPhotoModal(photoPath, uploadDate) {
             document.getElementById('modalPhotoImage').src = photoPath;
-            document.getElementById('modalPhotoDate').textContent = 'Uploaded: ' + new Date(uploadDate).toLocaleDateString();
+            document.getElementById('modalPhotoDate').textContent = 'Uploaded: ' + new window.Date(uploadDate).toLocaleDateString();
             new bootstrap.Modal(document.getElementById('photoViewModal')).show();
         }
 
@@ -1493,8 +1493,9 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
         // Function to export farmers data to PDF
         function exportToPDF() {
-            const search = new URLSearchParams(window.location.search).get('search') || '';
-            const barangay = new URLSearchParams(window.location.search).get('barangay') || '';
+            const searchParams = new window.URLSearchParams(window.location.search);
+            const search = searchParams.get('search') || '';
+            const barangay = searchParams.get('barangay') || '';
             
             let exportUrl = 'pdf_export.php?action=export_pdf';
             if (search) exportUrl += `&search=${encodeURIComponent(search)}`;
