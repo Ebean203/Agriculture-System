@@ -268,17 +268,17 @@ if ($_SESSION['role'] !== 'admin') {
                                 <div class="commodity-row mb-3 p-3 border rounded bg-light" data-commodity-index="0">
                                     <div class="row align-items-end">
                                         <div class="col-md-5 mb-3 position-relative">
-                                            <input type="text" class="form-control commodity-search" name="commodities[0][commodity_name]" autocomplete="off" required placeholder="Type to search commodity...">
+                                            <input type="text" class="form-control commodity-search" name="commodities[0][commodity_name]" autocomplete="off" placeholder="Type to search commodity...">
                                             <!-- Hidden field to store the selected commodity ID so backend receives commodity_id -->
                                             <input type="hidden" name="commodities[0][commodity_id]" class="commodity-id" value="">
                                             <ul class="commodity-suggestions position-absolute w-100 bg-white border rounded shadow-sm mt-1 d-none list-unstyled mb-0" style="z-index: 1050; max-height: 200px; overflow-y: auto;"></ul>
                                         </div>
                                         <div class="col-md-3 mb-3">
-                                            <input type="number" min="0" max="100" class="form-control text-center" name="commodities[0][years_farming]" placeholder="0" required>
+                                            <input type="number" min="0" max="100" class="form-control text-center" name="commodities[0][years_farming]" placeholder="0">
                                         </div>
                                         <div class="col-md-2 mb-3">
                                             <div class="form-check mt-2 text-center">
-                                                <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="0" checked required>
+                                                <input class="form-check-input primary-commodity-radio" type="radio" name="primary_commodity_index" value="0" checked>
                                                 <label class="form-check-label text-success fw-bold d-block">
                                                     <i class="fas fa-star me-1"></i>Primary
                                                 </label>
@@ -382,13 +382,13 @@ function addCommodityRow() {
     newRow.innerHTML = `
         <div class="row align-items-end">
             <div class="col-md-5 mb-3 position-relative">
-                <input type="text" class="form-control commodity-search" name="commodities[${commodityIndex}][commodity_name]" autocomplete="off" required placeholder="Type to search commodity...">
+                <input type="text" class="form-control commodity-search" name="commodities[${commodityIndex}][commodity_name]" autocomplete="off" placeholder="Type to search commodity...">
                 <!-- Hidden field to store selected commodity id for backend -->
                 <input type="hidden" name="commodities[${commodityIndex}][commodity_id]" class="commodity-id" value="">
                 <ul class="commodity-suggestions position-absolute w-100 bg-white border rounded shadow-sm mt-1 d-none list-unstyled mb-0" id="commoditySuggestions${commodityIndex}" style="z-index: 1050; max-height: 200px; overflow-y: auto;"></ul>
             </div>
-            <div class="col-md-3 mb-3">
-                <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${commodityIndex}][years_farming]" placeholder="0" required>
+                <div class="col-md-3 mb-3">
+                <input type="number" min="0" max="100" class="form-control text-center" name="commodities[${commodityIndex}][years_farming]" placeholder="0">
             </div>
             <div class="col-md-2 mb-3">
                 <div class="form-check mt-2 text-center">
@@ -420,6 +420,9 @@ function addCommodityRow() {
         newRow.querySelector('.commodity-search').addEventListener('change', function() {
             validateDuplicateCommodities();
         });
+
+    // Keep commodity UI state consistent (respect Has Boat)
+    if (typeof toggleCommodityRequirements === 'function') toggleCommodityRequirements();
 }
 
 function removeCommodityRow(row) {
@@ -562,23 +565,27 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
         if (inp.value && inp.value.trim()) hasValidCommodity = true;
     });
 
-    if (!hasValidCommodity) {
+    // If farmer has a boat, commodities are optional
+    const isBoat = document.getElementById('is_boat') && document.getElementById('is_boat').checked;
+    if (!hasValidCommodity && !isBoat) {
         e.preventDefault();
         if (window.AgriToast) { AgriToast.error('At least one commodity must be selected.'); }
         return false;
     }
 
-    // Check if a primary commodity is selected
-    const primaryRadios = document.querySelectorAll('.primary-commodity-radio');
-    let hasPrimary = false;
-    primaryRadios.forEach(radio => {
-        if (radio.checked) hasPrimary = true;
-    });
+    // Check if a primary commodity is selected only when commodities are provided
+    if (hasValidCommodity) {
+        const primaryRadios = document.querySelectorAll('.primary-commodity-radio');
+        let hasPrimary = false;
+        primaryRadios.forEach(radio => {
+            if (radio.checked) hasPrimary = true;
+        });
 
-    if (!hasPrimary) {
-        e.preventDefault();
-        if (window.AgriToast) { AgriToast.error('Please select which commodity is the primary one.'); }
-        return false;
+        if (!hasPrimary) {
+            e.preventDefault();
+            if (window.AgriToast) { AgriToast.error('Please select which commodity is the primary one.'); }
+            return false;
+        }
     }
 
     // Prevent duplicate farmer registration (same first, last, birthdate)
@@ -602,9 +609,66 @@ document.getElementById('farmerRegistrationForm').addEventListener('submit', fun
                 if (window.AgriToast) { AgriToast.error('A farmer with the same name and birth date already exists.'); }
                 return false;
             } else {
+                // Ensure land area is set to 0.0 when no commodity is chosen or left blank
+                const landAreaEl = document.getElementById('land_area_hectares');
+                if (landAreaEl) {
+                    if (!landAreaEl.value || landAreaEl.value.trim() === '') {
+                        landAreaEl.value = '0.0';
+                    }
+                }
                 e.target.submit();
             }
         });
+});
+
+// Toggle commodity required attributes and UI when Has Boat is checked
+function toggleCommodityRequirements() {
+    const isBoatEl = document.getElementById('is_boat');
+    const hasBoat = isBoatEl && isBoatEl.checked;
+    const commodityInputs = document.querySelectorAll('.commodity-search');
+    const primaryRadios = document.querySelectorAll('.primary-commodity-radio');
+    const addBtn = document.getElementById('addCommodityBtn');
+    const container = document.getElementById('commoditiesContainer');
+
+    if (hasBoat) {
+        // Remove required and disable inputs
+        commodityInputs.forEach((inp, idx) => {
+            inp.removeAttribute('required');
+            inp.setAttribute('disabled', 'disabled');
+        });
+        primaryRadios.forEach(r => r.removeAttribute('required'));
+        // Remove required on years inputs as well
+        const yearsInputs = document.querySelectorAll('input[name$="[years_farming]"]');
+        yearsInputs.forEach(y => y.removeAttribute('required'));
+        if (addBtn) addBtn.setAttribute('disabled', 'disabled');
+        if (container) container.classList.add('opacity-50');
+    } else {
+        // Enable inputs and enforce required only for first row if at least one commodity exists
+        commodityInputs.forEach((inp, idx) => {
+            inp.removeAttribute('disabled');
+        });
+        if (commodityInputs.length > 0) {
+            commodityInputs[0].setAttribute('required', 'required');
+            // Ensure at least one primary radio is required by making radios required on the first
+            if (primaryRadios.length > 0) primaryRadios[0].setAttribute('required', 'required');
+            // Ensure the first years input is required
+            const firstYears = document.querySelector('input[name="commodities[0][years_farming]"]');
+            if (firstYears) firstYears.setAttribute('required', 'required');
+        }
+        if (addBtn) addBtn.removeAttribute('disabled');
+        if (container) container.classList.remove('opacity-50');
+    }
+}
+
+// Hook up change listener for the Has Boat checkbox
+const isBoatCheckbox = document.getElementById('is_boat');
+if (isBoatCheckbox) {
+    isBoatCheckbox.addEventListener('change', toggleCommodityRequirements);
+}
+
+// Initialize commodity UI state on load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCommodityRequirements();
 });
 
 

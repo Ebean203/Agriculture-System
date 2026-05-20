@@ -110,7 +110,10 @@ function handleFarmerEdit($conn, $post_data) {
         // --- Update multiple commodities ---
         $submitted_commodities = $post_data['commodities'] ?? [];
         if (!is_array($submitted_commodities) || count($submitted_commodities) === 0) {
-            throw new Exception("At least one commodity is required.");
+            // Allow no commodities when farmer is marked as having a boat
+            if (empty($validated['is_boat'])) {
+                throw new Exception("At least one commodity is required.");
+            }
         }
         
         // Remove all existing commodities for this farmer (will re-insert)

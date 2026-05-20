@@ -31,12 +31,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     // Get Boat records for PDF export
     $export_sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
                    f.contact_number, f.address_details, b.barangay_name,
-                   GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
+                   
                    f.registration_date as boat_registration_date
                    FROM farmers f
                    LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-                   LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
-                   LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
+                   
                    $search_condition
                    GROUP BY f.farmer_id
                    ORDER BY f.registration_date DESC";
@@ -59,14 +58,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
     </div>';
     
     if ($export_result->num_rows > 0) {
-        $html .= '<table>
+            $html .= '<table>
             <thead>
                 <tr>
                     <th>Farmer ID</th>
                     <th>Farmer Name</th>
                     <th>Contact</th>
                     <th>Barangay</th>
-                    <th>Commodities</th>
                     <th>Registration Date</th>
                 </tr>
             </thead>
@@ -75,12 +73,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_pdf') {
         while ($row = $export_result->fetch_assoc()) {
             $full_name = formatFarmerName($row['first_name'], $row['middle_name'], $row['last_name'], $row['suffix']);
             
-            $html .= '<tr>
+                $html .= '<tr>
                 <td>' . htmlspecialchars($row['farmer_id']) . '</td>
                 <td>' . htmlspecialchars($full_name) . '</td>
                 <td>' . htmlspecialchars($row['contact_number']) . '</td>
                 <td>' . htmlspecialchars($row['barangay_name']) . '</td>
-                <td>' . htmlspecialchars($row['commodities_info'] ?? 'N/A') . '</td>
                 <td>' . htmlspecialchars(date('M d, Y', strtotime($row['boat_registration_date']))) . '</td>
             </tr>';
         }
@@ -209,8 +206,7 @@ if (!empty($barangay_filter)) {
 $count_sql = "SELECT COUNT(DISTINCT f.farmer_id) as total 
               FROM farmers f 
               LEFT JOIN barangays b ON f.barangay_id = b.barangay_id 
-              LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
-              LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id 
+              LEFT JOIN household_info h ON f.farmer_id = h.farmer_id 
               $search_condition";
 
 if (!empty($search_params)) {
@@ -228,16 +224,12 @@ $total_pages = ceil($total_records / $records_per_page);
 // Fetch Boat records with pagination
 $sql = "SELECT f.farmer_id, f.first_name, f.middle_name, f.last_name, f.suffix,
         f.contact_number, f.gender, f.birth_date, f.address_details, f.registration_date,
-        GROUP_CONCAT(DISTINCT c.commodity_name SEPARATOR ', ') as commodities_info,
         b.barangay_name, h.household_size,
         f.registration_date as boat_registration_date
         FROM farmers f
         LEFT JOIN barangays b ON f.barangay_id = b.barangay_id
-        LEFT JOIN farmer_commodities fc ON f.farmer_id = fc.farmer_id
-        LEFT JOIN commodities c ON fc.commodity_id = c.commodity_id
         LEFT JOIN household_info h ON f.farmer_id = h.farmer_id
         $search_condition
-        GROUP BY f.farmer_id
         ORDER BY f.registration_date DESC, f.farmer_id DESC
         LIMIT ? OFFSET ?";
 
@@ -484,9 +476,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $farmer_id = '') {
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                                     <i class="fas fa-map-marker-alt mr-1"></i>Barangay
                                 </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                                    <i class="fas fa-seedling mr-1"></i>Commodities
-                                </th>
+                                
                                 <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                                     <i class="fas fa-calendar mr-1"></i>Registration Date
                                 </th>
@@ -521,20 +511,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $farmer_id = '') {
                                             <i class="fas fa-map-pin mr-1 text-red-600"></i>
                                             <?php echo htmlspecialchars($farmer['barangay_name']); ?>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <?php 
-                                                if (!empty($farmer['commodities_info'])) {
-                                                    $commodities = explode(', ', $farmer['commodities_info']);
-                                                    echo '<div class="flex flex-col gap-1">';
-                                                    foreach ($commodities as $commodity) {
-                                                        echo '<div class="bg-green-100 text-green-800 rounded px-2 py-1 text-xs flex items-center"><i class="fas fa-leaf mr-1"></i>' . htmlspecialchars($commodity) . '</div>';
-                                                    }
-                                                    echo '</div>';
-                                                } else {
-                                                    echo 'N/A';
-                                                }
-                                            ?>
-                                        </td>
+                                        
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <?php echo date('M d, Y', strtotime($farmer['boat_registration_date'])); ?>
                                         </td>
@@ -547,7 +524,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $farmer_id = '') {
                                 <?php endwhile; ?>
                             <?php else: ?>
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center">
                                         <i class="fas fa-ship text-6xl text-gray-300 mb-4"></i>
                                         <h3 class="text-lg font-medium text-gray-900 mb-2">No Boat Records Found</h3>

@@ -495,6 +495,8 @@ function editFarmer(farmerId) {
                 document.getElementById('edit_is_boat').checked = farmer.is_boat == '1';
                 // Trigger spouse field visibility
                 toggleEditSpouseField();
+                // Toggle commodity requirements based on boat status
+                toggleEditCommodityRequirements();
                 const photoManagementSection = document.getElementById('editPhotoManagementSection');
                 const photoLabel = document.querySelector('label[for="edit_farmer_photo"]');
                 const photoDisplay = document.getElementById('edit_farmer_photos_display');
@@ -532,6 +534,42 @@ function editFarmer(farmerId) {
             if (window.AgriToast) { AgriToast.error('Error loading farmer data'); }
         });
 }
+
+// Toggle commodity inputs in edit modal when Has Boat is checked
+function toggleEditCommodityRequirements() {
+    const isBoatEl = document.getElementById('edit_is_boat');
+    const hasBoat = isBoatEl && isBoatEl.checked;
+    const container = document.getElementById('editCommoditiesContainer');
+    if (!container) return;
+    const commodityInputs = container.querySelectorAll('.commodity-search');
+    const yearsInputs = container.querySelectorAll('input[name$="[years_farming]"]');
+    const primaryRadios = container.querySelectorAll('.primary-commodity-radio');
+
+    if (hasBoat) {
+        commodityInputs.forEach(i => { i.setAttribute('disabled', 'disabled'); i.removeAttribute('required'); });
+        yearsInputs.forEach(y => { y.setAttribute('disabled', 'disabled'); y.removeAttribute('required'); });
+        primaryRadios.forEach(r => r.removeAttribute('required'));
+        document.getElementById('editAddCommodityBtn').setAttribute('disabled', 'disabled');
+        container.classList.add('opacity-50');
+    } else {
+        commodityInputs.forEach(i => { i.removeAttribute('disabled'); });
+        yearsInputs.forEach(y => { y.removeAttribute('disabled'); });
+        if (commodityInputs.length > 0) {
+            commodityInputs[0].setAttribute('required', 'required');
+            const firstYears = container.querySelector('input[name$="[years_farming]"]');
+            if (firstYears) firstYears.setAttribute('required', 'required');
+            if (primaryRadios.length > 0) primaryRadios[0].setAttribute('required', 'required');
+        }
+        document.getElementById('editAddCommodityBtn').removeAttribute('disabled');
+        container.classList.remove('opacity-50');
+    }
+}
+
+// Wire change listener
+document.addEventListener('DOMContentLoaded', function() {
+    const editBoat = document.getElementById('edit_is_boat');
+    if (editBoat) editBoat.addEventListener('change', toggleEditCommodityRequirements);
+});
 
 // Handle edit form submission
 document.addEventListener('DOMContentLoaded', function() {
