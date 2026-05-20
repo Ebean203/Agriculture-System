@@ -317,7 +317,7 @@ function buildUrlParams($page, $search = '', $barangay = '', $farmer_id = '') {
                         </h3>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="no-h-scroll compact">
                         <table class="w-full divide-y divide-gray-200">
                             <thead class="bg-agri-green text-white">
                                 <tr>

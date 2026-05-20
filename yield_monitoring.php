@@ -1802,9 +1802,6 @@ document.addEventListener('DOMContentLoaded', function() {
         left: 1.25rem;
         pointer-events: none;
     }
-.modal-lg {
-    max-width: 800px;
-}
 
 .card-header {
     font-weight: 600;

@@ -1044,9 +1044,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
         }
 
         /* Edit Modal Styles - Match Registration Modal */
-        .modal-lg {
-            max-width: 800px;
-        }
+        /* Leave modal sizing to global responsive CSS */
 
         .card-header {
             font-weight: 600;
@@ -1303,7 +1301,7 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
                                             ?>
                                         </td>
                                         <td class="px-3 py-4 text-sm font-medium">
-                                            <div class="flex space-x-2">
+                                            <div class="flex space-x-2 table-actions items-center justify-center">
                                                 <button onclick="viewFarmer('<?php echo $farmer['farmer_id']; ?>')" 
                                                         class="text-blue-600 hover:text-blue-900 transition-colors p-2 rounded hover:bg-blue-50" title="View">
                                                     <i class="fas fa-eye text-sm"></i>

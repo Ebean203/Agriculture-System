@@ -270,11 +270,11 @@ if ($_SESSION['role'] !== 'admin') {
                     </div>
                 </div>
 
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <div class="modal-footer farmer-modal-footer border-0 px-6 pb-6 pt-5 justify-content-end gap-0">
+                    <button type="button" class="btn btn-secondary px-5 py-3" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success px-5 py-3">
                         <i class="fas fa-save me-1"></i>Update Farmer
                     </button>
                 </div>
@@ -598,10 +598,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-.modal-lg {
-    max-width: 800px;
-}
-
 .card-header {
     font-weight: 600;
 }

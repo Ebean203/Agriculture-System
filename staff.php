@@ -207,14 +207,16 @@ if ($stmt) {
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                            <button onclick="viewStaff(<?php echo htmlspecialchars(json_encode($staff)); ?>)" 
-                                                    class="text-blue-600 hover:text-blue-900 mr-3 transition-colors duration-200">
-                                                <i class="fas fa-eye text-lg"></i>
-                                            </button>
-                                            <button onclick="archiveStaff(<?php echo $staff['staff_id']; ?>, '<?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>')" 
-                                                    class="text-orange-600 hover:text-orange-900 transition-colors duration-200">
-                                                <i class="fas fa-archive text-lg"></i>
-                                            </button>
+                                            <div class="flex items-center justify-center table-actions">
+                                                <button onclick="viewStaff(<?php echo htmlspecialchars(json_encode($staff)); ?>)" 
+                                                        class="text-blue-600 hover:text-blue-900 mr-3 transition-colors duration-200" title="View">
+                                                    <i class="fas fa-eye text-lg"></i>
+                                                </button>
+                                                <button onclick="archiveStaff(<?php echo $staff['staff_id']; ?>, '<?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>')" 
+                                                        class="text-orange-600 hover:text-orange-900 transition-colors duration-200" title="Archive">
+                                                    <i class="fas fa-archive text-lg"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     <?php endwhile; ?>
@@ -238,12 +240,12 @@ if ($stmt) {
    
 
     <!-- View Staff Modal -->
-    <div id="viewStaffModal" class="modal fade" tabindex="-1">
+    <div id="viewStaffModal" class="modal" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="modal-header border-0 px-4 py-3 bg-white">
                     <h5 class="modal-title text-success fw-semibold"><i class="fas fa-user-circle me-2"></i>Staff Details</h5>
-                    <button type="button" class="btn-close" onclick="closeViewModal()"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" id="viewStaffContent">
                     <!-- Content will be loaded via JS -->
@@ -303,7 +305,7 @@ if ($stmt) {
     </div>
 
     <!-- Archive Confirmation Modal -->
-    <div id="archiveModal" class="modal fade" tabindex="-1">
+    <div id="archiveModal" class="modal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="modal-body px-4 py-4 text-center">
@@ -317,7 +319,7 @@ if ($stmt) {
                     </p>
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0 bg-white justify-content-center gap-2">
-                    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" onclick="closeArchiveModal()">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-warning text-white d-inline-flex align-items-center gap-2 fw-semibold rounded-3 py-2 px-4" onclick="confirmArchive()">
                         <i class="fas fa-archive"></i>Archive
                     </button>
@@ -448,14 +450,21 @@ if ($stmt) {
             }
         }
 
-        // Close dropdown when clicking outside
+        // Close dropdown when clicking outside (guard elements exist)
         document.addEventListener('click', function(event) {
             const dropdown = document.getElementById('navigationDropdown');
+            const arrow = document.getElementById('navigationArrow');
             const button = event.target.closest('button');
-            
-            if (!dropdown.contains(event.target) && (!button || !button.getAttribute('onclick')?.includes('toggleNavigationDropdown'))) {
+
+            // If dropdown isn't present on the page, nothing to do
+            if (!dropdown) return;
+
+            const clickedInsideDropdown = dropdown.contains ? dropdown.contains(event.target) : false;
+            const isToggleButton = button && button.getAttribute && button.getAttribute('onclick') && button.getAttribute('onclick').includes('toggleNavigationDropdown');
+
+            if (!clickedInsideDropdown && !isToggleButton) {
                 dropdown.classList.add('hidden');
-                document.getElementById('navigationArrow').style.transform = 'rotate(0deg)';
+                if (arrow && arrow.style) arrow.style.transform = 'rotate(0deg)';
             }
         });
 
@@ -597,19 +606,6 @@ if ($stmt) {
             hint.className = 'form-text text-success mt-2';
         });
 
-        function closeViewModal() {
-            // Use Bootstrap's API to hide the modal
-            var modalEl = document.getElementById('viewStaffModal');
-            var modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) {
-                modal.hide();
-            } else {
-                // fallback for manual hide if modal instance not found
-                modalEl.classList.add('hidden');
-            }
-            currentViewedStaff = null;
-        }
-
         function archiveStaff(staffId, staffName) {
             staffToArchive = staffId;
             document.getElementById('archive_staff_name').textContent = staffName;
@@ -621,7 +617,6 @@ if ($stmt) {
             if (modal) {
                 modal.hide();
             }
-            staffToArchive = null;
         }
 
         function confirmArchive() {
@@ -632,12 +627,21 @@ if ($stmt) {
             }
         }
 
+        // Clear staff state after the view modal is fully hidden
+        document.getElementById('viewStaffModal').addEventListener('hidden.bs.modal', function() {
+            currentViewedStaff = null;
+        });
+
+        document.getElementById('archiveModal').addEventListener('hidden.bs.modal', function() {
+            staffToArchive = null;
+        });
+
         // Close modals when clicking outside
         window.onclick = function(event) {
             const viewModal = document.getElementById('viewStaffModal');
             
             if (event.target === viewModal) {
-                closeViewModal();
+                bootstrap.Modal.getInstance(viewModal)?.hide();
             }
         }
     </script>

@@ -845,15 +845,15 @@ foreach ($notifications as $notification) {
 
     <!-- Distribute Modal -->
     <div id="distributeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto">
+        <div class="distribution-modal-panel bg-white rounded-lg shadow-xl w-full">
             <div class="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
                 <h3 class="text-xl font-semibold text-gray-900 flex items-center">
                     <i class="fas fa-share-square text-agri-green mr-3"></i>Distribute Agricultural Input
                 </h3>
                 <p class="text-sm text-gray-600 mt-1">Manage input distribution and tracking</p>
             </div>
-            <form method="POST" action="distribute_input.php">
-                <div class="px-6 py-6">
+            <form method="POST" action="distribute_input.php" class="distribution-modal-form">
+                <div class="distribution-modal-body px-6 py-6">
                     <!-- Hidden input for selected input ID -->
                     <input type="hidden" name="input_id" id="selected_input_id">
                     
@@ -954,7 +954,7 @@ foreach ($notifications as $notification) {
                         </div>
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-4 rounded-b-lg sticky bottom-0 border-t border-gray-200 z-10">
+                <div class="distribution-modal-footer px-6 py-4 bg-gray-50 flex justify-end space-x-4 rounded-b-lg border-t border-gray-200 z-10">
                     <button type="button" class="px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium" onclick="closeModal('distributeModal')">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
@@ -968,6 +968,84 @@ foreach ($notifications as $notification) {
 
     
 
+    <style>
+        /* Distribution modal: responsive shell for 13-14 inch laptops */
+        #distributeModal {
+            z-index: 1100 !important;
+        }
+
+        #distributeModal .distribution-modal-panel {
+            max-width: min(94vw, 72rem);
+            max-height: calc(100vh - 2rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        #distributeModal .distribution-modal-form {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #distributeModal .distribution-modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        #distributeModal .distribution-modal-footer {
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1366px) {
+            #distributeModal .distribution-modal-panel {
+                max-width: 96vw;
+            }
+        }
+
+        @media (max-width: 1280px) {
+            #distributeModal .distribution-modal-panel {
+                max-width: 97vw;
+            }
+
+            #distributeModal .distribution-modal-body,
+            #distributeModal .distribution-modal-footer {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            #distributeModal .distribution-modal-footer {
+                padding-top: 0.85rem;
+                padding-bottom: 0.85rem;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            #distributeModal .distribution-modal-panel {
+                max-width: 98vw;
+                max-height: calc(100vh - 1.25rem);
+            }
+
+            #distributeModal .distribution-modal-body {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+
+            #distributeModal .distribution-modal-footer {
+                padding-top: 0.85rem;
+                padding-bottom: 1rem;
+            }
+
+            #distributeModal .distribution-modal-footer button {
+                padding: 0.7rem 1rem;
+                font-size: 0.95rem;
+            }
+        }
+    </style>
     <script>
         // Modal functions
         function openModal(modalId) {

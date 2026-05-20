@@ -171,3 +171,173 @@ body.modal-open {
 
 @keyframes agriToastSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes agriToastSlideOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
+
+/* Responsive adjustments for smaller/lower-density laptop screens */
+@media (max-width: 1366px) {
+  /* Slightly smaller base text for cramped displays */
+  html, body { font-size: 14px; }
+
+  /* Reduce table cell paddings in wide table layouts to avoid horizontal overflow */
+  .overflow-x-auto table th, .overflow-x-auto table td {
+    padding-left: 0.6rem !important;
+    padding-right: 0.6rem !important;
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+  }
+
+  /* Reduce spacing in header areas */
+  .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+}
+
+@media (max-width: 1280px) {
+  /* Make modal dialogs use more of the viewport and reduce inner padding */
+  /* Ensure modal dialog scales down on narrower laptop screens */
+  .modal-dialog, .modal-dialog.modal-lg, .modal-lg { max-width: 92% !important; width: auto !important; }
+  .modal .modal-body { padding: 0.75rem !important; }
+  .modal .modal-footer { padding: 0.6rem !important; }
+
+  /* Smaller headings where space is tight */
+  .heading-xl { font-size: 1.35rem; }
+
+  /* Reduce button paddings to fit more actions inline */
+  .btn { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .btn .fas { margin-right: .4rem; }
+}
+
+@media (max-width: 1024px) {
+  /* For smaller laptops/tablets, make cards and tables more compact */
+  .card, .bg-white { padding: 0.6rem !important; }
+  .card .card-body { padding: 0.6rem !important; }
+
+  /* Make navigation buttons wrap instead of overflowing */
+  .flex { flex-wrap: wrap !important; }
+
+  /* Ensure modals fit and are centered on small laptop screens (1024x768 and below) */
+  /* Only center/lay out when modal is visible to avoid breaking Bootstrap show/hide */
+  .modal.show {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important; /* ensure small gap around */
+  }
+
+  /* Dialog sizing: keep balanced space on left/right and center it */
+  .modal-dialog, .modal-dialog.modal-lg, .modal-lg {
+    max-width: 92% !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+
+  /* Modal content: vertically constrain and allow internal scrolling */
+  .modal-content {
+    max-height: calc(100vh - 2.5rem) !important;
+    overflow: hidden !important;
+    border-radius: 8px;
+  }
+
+  #farmerRegistrationModal .modal-content,
+  #editFarmerModal .modal-content {
+    max-height: calc(100vh - 2rem) !important;
+    overflow: hidden !important;
+  }
+
+  #farmerRegistrationModal .modal-body,
+  #editFarmerModal .modal-body {
+    max-height: calc(100vh - 15rem) !important;
+    overflow-y: auto !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Keep the farmer footer visible and separated from the border */
+  .farmer-modal-footer {
+    padding: 0.9rem 1.5rem 1.45rem !important;
+    background: #fff !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .farmer-modal-footer .btn {
+    min-width: 112px;
+    padding: 0.5rem 0.95rem !important;
+    font-size: 0.93rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .farmer-modal-footer .btn + .btn {
+    margin-left: 0 !important;
+  }
+
+  /* Reduce toast width for small screens */
+  .agri-toast { min-width: 220px; max-width: 340px; }
+}
+
+/* Utility: compact table cells for dense lists (applied where overflow-x-auto wrapper exists) */
+.overflow-x-auto.compact td, .overflow-x-auto.compact th {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  font-size: 0.92rem !important;
+}
+
+/* Generic compact utility (for tables wrapped in .compact) */
+.compact td, .compact th {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  font-size: 0.92rem !important;
+}
+
+/* Utility: prevent horizontal scroll by allowing cells to wrap and constraining table width */
+.no-h-scroll {
+  overflow-x: visible !important;
+}
+.no-h-scroll table {
+  table-layout: auto !important;
+  width: 100% !important;
+}
+.no-h-scroll th, .no-h-scroll td {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+}
+
+/* Ensure action button groups are vertically centered within table cells */
+.table-actions {
+  height: 100%;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem;
+}
+.table-actions button {
+  vertical-align: middle !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Hide table icons on narrower laptop screens to improve layout */
+@media (max-width: 1024px) {
+  /* Hide decorative icons inside tables on narrow screens, but keep icons inside actionable controls */
+  .no-h-scroll table i,
+  .overflow-x-auto table i,
+  .no-h-scroll table .fa,
+  .overflow-x-auto table .fa {
+    display: none !important;
+  }
+  /* Re-enable icons that live inside buttons or anchors (action buttons) */
+  .no-h-scroll table button i,
+  .no-h-scroll table a i,
+  .overflow-x-auto table button i,
+  .overflow-x-auto table a i {
+    display: inline-block !important;
+  }
+  /* Compact action buttons sizing */
+  .table-actions button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0.375rem !important;
+    border-radius: 0.5rem !important;
+  }
+}
