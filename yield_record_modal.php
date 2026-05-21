@@ -229,11 +229,13 @@
                                     <label for="season" class="form-label">Season <span class="text-danger">*</span></label>
                                     <select class="form-select" id="season" name="season" required>
                                         <option value="">Select Season</option>
-                                        <option value="Dry Season">Dry Season</option>
-                                        <option value="Wet Season">Wet Season</option>
-                                        <option value="First Cropping">First Cropping</option>
-                                        <option value="Second Cropping">Second Cropping</option>
-                                        <option value="Third Cropping">Third Cropping</option>
+                                        <option value="First Cropping" data-categories="Agronomic Crops">First Cropping</option>
+                                        <option value="Second Cropping" data-categories="Agronomic Crops">Second Cropping</option>
+                                        <option value="Third Cropping" data-categories="Agronomic Crops">Third Cropping</option>
+                                        <option value="Fourth Cropping" data-categories="Agronomic Crops">Fourth Cropping</option>
+                                        <option value="Fifth Cropping" data-categories="Agronomic Crops">Fifth Cropping</option>
+                                        <option value="Harvest Season" data-categories="High Value Crops">Harvest Season</option>
+                                        <option value="Off-Season" data-categories="High Value Crops">Off-Season</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -438,27 +440,47 @@
 
                             function setSeasonOptionsForCategory(selectEl, categoryName) {
                                 if (!selectEl) return;
-                                // agronomic and high-value: Dry/Wet + First..Fifth Cropping
-                                const agronomicNames = ['Agronomic Crops', 'High Value Crops'];
+                                // Different season options for different categories
                                 let options = [];
-                                if (agronomicNames.includes(categoryName)) {
+                                const normalizedCategory = (categoryName || '').trim().toLowerCase();
+                                const isAgronomic = normalizedCategory === 'agronomic crops';
+                                const isHighValue = normalizedCategory === 'high value crops';
+                                const isLivestockOrFishery = ['livestock', 'livestocks', 'poultry', 'fishery', 'fisheries'].includes(normalizedCategory);
+
+                                if (isAgronomic) {
+                                    // Agronomic crops: Only cropping seasons (First..Fifth Cropping)
                                     options = [
                                         ['', 'Select Season'],
-                                        ['Dry Season','Dry Season'],
-                                        ['Wet Season','Wet Season'],
                                         ['First Cropping','First Cropping'],
                                         ['Second Cropping','Second Cropping'],
                                         ['Third Cropping','Third Cropping'],
                                         ['Fourth Cropping','Fourth Cropping'],
                                         ['Fifth Cropping','Fifth Cropping']
                                     ];
-                                } else {
-                                    // livestock/poultry and other: Batch/Flock 1..3
+                                } else if (isHighValue) {
+                                    // High value crops (perennials): Harvest seasons
+                                    options = [
+                                        ['', 'Select Season'],
+                                        ['Harvest Season','Harvest Season'],
+                                        ['Off-Season','Off-Season']
+                                    ];
+                                } else if (isLivestockOrFishery) {
+                                    // Livestock/Poultry/Fishery: Batch/Flock/Cycle seasons
                                     options = [
                                         ['', 'Select Season'],
                                         ['Batch/Flock 1','Batch/Flock 1 (or Cycle 1)'],
                                         ['Batch/Flock 2','Batch/Flock 2 (or Cycle 2)'],
                                         ['Batch/Flock 3','Batch/Flock 3 (or Cycle 3)']
+                                    ];
+                                } else {
+                                    // Default: all cropping options
+                                    options = [
+                                        ['', 'Select Season'],
+                                        ['First Cropping','First Cropping'],
+                                        ['Second Cropping','Second Cropping'],
+                                        ['Third Cropping','Third Cropping'],
+                                        ['Fourth Cropping','Fourth Cropping'],
+                                        ['Fifth Cropping','Fifth Cropping']
                                     ];
                                 }
                                 // Replace options
@@ -471,61 +493,64 @@
                                 });
                             }
 
-                            // Watch commodity select change to auto-update season
+                            // Keep season options driven by the selected commodity category
                             document.addEventListener('DOMContentLoaded', function() {
                                 const commoditySelect = document.getElementById('commodity_id');
                                 const seasonSelect = document.getElementById('season');
-                                const editCommoditySelect = document.getElementById('edit_commodity_id');
-                                const editSeasonSelect = document.getElementById('edit_season');
-                                let pendingEditSeason = '';
+                                const categorySelect = document.getElementById('commodity_category_filter');
 
-                                function updateForSelectedCommodity(sel, seasonSel) {
-                                    if (!sel || !seasonSel) return;
-                                    const opt = sel.options[sel.selectedIndex];
-                                    if (!opt) return;
-                                    const catId = opt.getAttribute('data-category') || '';
-                                    const catName = categoryMap[catId] || '';
-                                    setSeasonOptionsForCategory(seasonSel, catName);
+                                function updateSeasonForSelectedCategory() {
+                                    if (!seasonSelect || !categorySelect) return;
+                                    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+                                    const categoryName = selectedOption ? selectedOption.textContent.trim() : '';
+                                    const currentSeason = seasonSelect.value;
 
-                                    if (seasonSel.id === 'edit_season' && pendingEditSeason) {
-                                        const seasonExists = Array.from(seasonSel.options).some(function(option) {
-                                            return option.value === pendingEditSeason;
+                                    setSeasonOptionsForCategory(seasonSelect, categoryName);
+
+                                    if (currentSeason) {
+                                        const seasonExists = Array.from(seasonSelect.options).some(function(option) {
+                                            return option.value === currentSeason;
                                         });
                                         if (seasonExists) {
-                                            seasonSel.value = pendingEditSeason;
+                                            seasonSelect.value = currentSeason;
                                         }
                                     }
                                 }
 
-                                if (commoditySelect && seasonSelect) {
+                                if (categorySelect) {
+                                    categorySelect.addEventListener('change', updateSeasonForSelectedCategory);
+                                }
+
+                                if (commoditySelect && categorySelect) {
                                     commoditySelect.addEventListener('change', function() {
-                                        updateForSelectedCommodity(commoditySelect, seasonSelect);
-                                    });
-                                }
-                                if (editCommoditySelect && editSeasonSelect) {
-                                    editCommoditySelect.addEventListener('change', function() {
-                                        updateForSelectedCommodity(editCommoditySelect, editSeasonSelect);
-                                    });
-                                }
+                                        const selected = commoditySelect.options[commoditySelect.selectedIndex];
+                                        if (!selected) return;
+                                        const catId = selected.getAttribute('data-category');
+                                        if (!catId) return;
 
-                                // Also ensure when edit modal populates, the edit season options are set appropriately
-                                // This will run whenever edit buttons populate fields (we already set edit_commodity_id value there)
-                                // Listen to a small custom event to refresh edit season
-                                document.addEventListener('refreshEditSeason', function() {
-                                    updateForSelectedCommodity(editCommoditySelect, editSeasonSelect);
-                                });
-
-                                window.setPendingEditSeason = function(seasonValue) {
-                                    pendingEditSeason = seasonValue || '';
-                                    if (editSeasonSelect && pendingEditSeason) {
-                                        const seasonExists = Array.from(editSeasonSelect.options).some(function(option) {
-                                            return option.value === pendingEditSeason;
-                                        });
-                                        if (seasonExists) {
-                                            editSeasonSelect.value = pendingEditSeason;
+                                        const previousCategory = categorySelect.value;
+                                        categorySelect.value = catId;
+                                        if (previousCategory !== catId) {
+                                            updateSeasonForSelectedCategory();
+                                        } else {
+                                            updateSeasonForSelectedCategory();
                                         }
-                                    }
-                                };
+
+                                        // Also try to auto-fill the Unit field using last used unit for this commodity (if empty)
+                                        try {
+                                            var unitInput = document.getElementById('unit');
+                                            var commodityName = selected && selected.textContent ? selected.textContent.trim() : '';
+                                            if (unitInput && (!unitInput.value || unitInput.value.trim() === '') && commodityName) {
+                                                fetch('get_yield_unit.php?commodity=' + encodeURIComponent(commodityName))
+                                                    .then(function(r){ return r.ok ? r.json() : {}; })
+                                                    .then(function(j){ if (j && j.unit && (!unitInput.value || unitInput.value.trim() === '')) unitInput.value = j.unit; })
+                                                    .catch(function(){});
+                                            }
+                                        } catch(e) {}
+                                    });
+                                }
+
+                                updateSeasonForSelectedCategory();
                             });
                             </script>
                         </div>
@@ -535,11 +560,16 @@
                             <label class="form-label">Season</label>
                             <select class="form-select" id="edit_season" name="season">
                                 <option value="">Select Season</option>
-                                <option value="Dry Season">Dry Season</option>
-                                <option value="Wet Season">Wet Season</option>
                                 <option value="First Cropping">First Cropping</option>
                                 <option value="Second Cropping">Second Cropping</option>
                                 <option value="Third Cropping">Third Cropping</option>
+                                <option value="Fourth Cropping">Fourth Cropping</option>
+                                <option value="Fifth Cropping">Fifth Cropping</option>
+                                <option value="Harvest Season">Harvest Season</option>
+                                <option value="Off-Season">Off-Season</option>
+                                <option value="Batch/Flock 1">Batch/Flock 1 (or Cycle 1)</option>
+                                <option value="Batch/Flock 2">Batch/Flock 2 (or Cycle 2)</option>
+                                <option value="Batch/Flock 3">Batch/Flock 3 (or Cycle 3)</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">

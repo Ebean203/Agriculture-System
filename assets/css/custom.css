@@ -213,11 +213,8 @@ body.modal-open {
   .flex { flex-wrap: wrap !important; }
 
   /* Ensure modals fit and are centered on small laptop screens (1024x768 and below) */
-  /* Only center/lay out when modal is visible to avoid breaking Bootstrap show/hide */
-  .modal.show {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+  /* Use padding for spacing instead of flex to avoid breaking Bootstrap fade transition */
+  .modal {
     padding: 1rem !important; /* ensure small gap around */
   }
 
@@ -225,7 +222,7 @@ body.modal-open {
   .modal-dialog, .modal-dialog.modal-lg, .modal-lg {
     max-width: 92% !important;
     width: auto !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
   }
 
   /* Modal content: vertically constrain and allow internal scrolling */
