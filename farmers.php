@@ -563,363 +563,193 @@ function generateFarmerViewHTML($farmer) {
     ]);
     $fullName = implode(' ', $nameParts);
     
-    $html = '<div class="container-fluid p-0">';
+    $html = '<div class="container-fluid p-0 modern-farmer-profile">';
     
-    // Header with farmer name and ID
-    $html .= '<div class="bg-gradient-primary text-white p-3 rounded-top mb-3" style="background: linear-gradient(135deg, #28a745, #20c997);">';
-    $html .= '<div class="row align-items-center">';
-    $html .= '<div class="col">';
-    $html .= '<h4 class="mb-1"><i class="fas fa-user-circle me-2"></i>' . htmlspecialchars($fullName) . '</h4>';
-    $html .= '<small class="opacity-75"><i class="fas fa-id-card me-1"></i>Farmer ID: ' . htmlspecialchars($farmer['farmer_id']) . '</small>';
-    $html .= '</div>';
-    if (isset($farmer['formatted_registration_date'])) {
-        $html .= '<div class="col-auto text-end">';
-        $html .= '<small class="opacity-75"><i class="fas fa-calendar-check me-1"></i>Registered<br>' . htmlspecialchars($farmer['formatted_registration_date']) . '</small>';
-        $html .= '</div>';
-    }
-    $html .= '</div>';
-    $html .= '</div>';
+    $html .= '<div class="row g-4">';
     
-    // Farmer Photo Section (show only the most recent photo)
+    // --- LEFT COLUMN: Identity & Contact (col-lg-4) ---
+    $html .= '<div class="col-lg-4">';
+    $html .= '<div class="profile-sidebar card border-0 shadow-sm h-100">';
+    
+    // Photo & Identity Header
+    $html .= '<div class="profile-header text-center">';
+    $html .= '<div class="profile-cover"></div>'; // Banner background
+    
     if (isset($farmer['photos']) && !empty($farmer['photos'])) {
-        $latestPhoto = $farmer['photos'][0]; // photos expected ORDER BY uploaded_at DESC
+        $latestPhoto = $farmer['photos'][0];
         $photoPath = $latestPhoto['file_path'];
-        $uploadedAt = $latestPhoto['uploaded_at'];
-
-        $html .= '<div class="row g-3 mb-3">';
-        $html .= '<div class="col-12">';
-        $html .= '<div class="card border-0 shadow-sm">';
-        $html .= '<div class="card-header bg-light border-0">';
-        $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-camera me-2"></i>Farmer Photo</h6>';
-        $html .= '</div>';
-        $html .= '<div class="card-body">';
-        $html .= '<div class="row g-2">';
-        $html .= '<div class="col-12">';
-        // Center the photo and constrain its size so it matches the red-box reference
-        $html .= '<div class="d-flex justify-content-center">';
-        $html .= '<div class="position-relative" style="display:inline-block;">';
-    // Smaller, centered image with ~300x300px size and safe JS quoting for onclick
-    $html .= '<img src="' . htmlspecialchars($photoPath) . '" class="img-fluid rounded shadow-sm farmer-photo" alt="Farmer Photo" style="display:block; width:300px; height:300px; object-fit:contain; cursor:pointer; background:#fff;" onclick="viewPhotoModal(\'' . addslashes($photoPath) . '\', \'" . addslashes($uploadedAt) . "\')">';
-        $html .= '<div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white p-2 rounded-bottom" style="width:100%;">';
-        $html .= '<small class="d-block"><i class="fas fa-calendar me-1"></i>' . date('M j, Y', strtotime($uploadedAt)) . '</small>';
-        $html .= '<span class="badge bg-success ms-2">Current Photo</span>';
-        $html .= '</div>';
-        $html .= '</div>'; // .position-relative
-        $html .= '</div>'; // .d-flex
-        $html .= '</div>';
-        $html .= '</div>';
+        $html .= '<div class="profile-photo-wrapper mx-auto mb-3 mt-2">';
+        $html .= '<img src="' . htmlspecialchars($photoPath) . '" class="profile-photo shadow-sm" alt="Farmer Photo" onclick="viewPhotoModal(' . htmlspecialchars(json_encode($photoPath), ENT_QUOTES, 'UTF-8') . ', ' . htmlspecialchars(json_encode($latestPhoto['uploaded_at']), ENT_QUOTES, 'UTF-8') . ')">';
+        $html .= '<div class="photo-indicator"><i class="fas fa-check-circle"></i></div>';
         $html .= '</div>';
     } else {
-        $html .= '<div class="row g-3 mb-3">';
-        $html .= '<div class="col-12">';
-        $html .= '<div class="card border-0 shadow-sm">';
-        $html .= '<div class="card-header bg-light border-0">';
-        $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-camera me-2"></i>Farmer Photo</h6>';
-        $html .= '</div>';
-        $html .= '<div class="card-body text-center text-muted py-4">';
-        $html .= '<i class="fas fa-image fa-2x mb-3 text-secondary"></i>';
-        $html .= '<div>No geotagged photo has been uploaded yet.</div>';
-        $html .= '<small>Use the Geo-tag Farmer button to add the first image.</small>';
-        $html .= '</div>';
-        $html .= '</div>';
+        $html .= '<div class="profile-photo-wrapper mx-auto mb-3 mt-2">';
+        $html .= '<div class="profile-photo-placeholder d-flex align-items-center justify-content-center shadow-sm">';
+        $html .= '<i class="fas fa-camera text-muted fa-3x"></i>';
         $html .= '</div>';
         $html .= '</div>';
     }
     
-    // Information cards
-    $html .= '<div class="row g-3">';
-    
-    // Personal Information Card
-    $html .= '<div class="col-md-6">';
-    $html .= '<div class="card border-0 shadow-sm h-100">';
-    $html .= '<div class="card-header bg-light border-0">';
-    $html .= '<h6 class="card-title mb-0 text-success"><i class="fas fa-user me-2"></i>Personal Information</h6>';
-    $html .= '</div>';
-    $html .= '<div class="card-body">';
-    $html .= '<div class="row g-3">';
-    
-    $html .= '<div class="col-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-birthday-cake text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Birth Date</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['birth_date'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-venus-mars text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Gender</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['gender'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-12">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-phone text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Contact Number</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['contact_number'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-12">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-map-marker-alt text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Address</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['address_details'] ?: 'Not specified') . ', ' . htmlspecialchars($farmer['barangay_name'] ?: 'N/A') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    // Household Information Card
-    $html .= '<div class="col-md-6">';
-    $html .= '<div class="card border-0 shadow-sm h-100">';
-    $html .= '<div class="card-header bg-light border-0">';
-    $html .= '<h6 class="card-title mb-0 text-info"><i class="fas fa-home me-2"></i>Household Information</h6>';
-    $html .= '</div>';
-    $html .= '<div class="card-body">';
-    $html .= '<div class="row g-3">';
-    
-    $html .= '<div class="col-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-heart text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Civil Status</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['civil_status'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-users text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Household Size</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['household_size'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    if (!empty($farmer['spouse_name'])) {
-        $html .= '<div class="col-12">';
-        $html .= '<div class="d-flex align-items-center mb-2">';
-        $html .= '<i class="fas fa-ring text-muted me-2" style="width: 16px;"></i>';
-        $html .= '<small class="text-muted">Spouse</small>';
-        $html .= '</div>';
-        $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['spouse_name']) . '</div>';
-        $html .= '</div>';
+    $html .= '<h4 class="mb-1 fw-bold text-dark">' . htmlspecialchars($fullName) . '</h4>';
+    $html .= '<div class="badge bg-light text-primary border border-primary-subtle px-3 py-2 mb-2 shadow-sm rounded-pill"><i class="fas fa-id-card me-2"></i>' . htmlspecialchars($farmer['farmer_id']) . '</div>';
+    if (isset($farmer['formatted_registration_date'])) {
+        $html .= '<small class="d-block text-muted fw-medium"><i class="fas fa-calendar-check me-1"></i>Registered: ' . htmlspecialchars($farmer['formatted_registration_date']) . '</small>';
     }
-    
-    $html .= '<div class="col-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-graduation-cap text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Education</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['education_level'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-briefcase text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Occupation</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['occupation'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    $html .= '</div>';
-    
-    // Farm Information Card (Full Width)
-    $html .= '<div class="row g-3 mt-2">';
-    $html .= '<div class="col-12">';
-    $html .= '<div class="card border-0 shadow-sm">';
-    $html .= '<div class="card-header bg-light border-0">';
-    $html .= '<h6 class="card-title mb-0 text-warning"><i class="fas fa-seedling me-2"></i>Farm Information</h6>';
-    $html .= '</div>';
-    $html .= '<div class="card-body">';
-    $html .= '<div class="row g-3">';
-    
-    $html .= '<div class="col-md-4">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-leaf text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Primary Commodity</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['commodity_name'] ?: 'Not specified') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-md-4">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-ruler-combined text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Land Area</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['land_area_hectares'] ?: 'Not specified') . ' hectares</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-md-4">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-calendar-alt text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Years Farming</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['years_farming'] ?: 'Not specified') . ' years</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-md-6">';
-    $html .= '<div class="d-flex align-items-center mb-2">';
-    $html .= '<i class="fas fa-dollar-sign text-muted me-2" style="width: 16px;"></i>';
-    $html .= '<small class="text-muted">Other Income Source</small>';
-    $html .= '</div>';
-    $html .= '<div class="fw-semibold">' . htmlspecialchars($farmer['other_income_source'] ?: 'None') . '</div>';
-    $html .= '</div>';
-    
-    $html .= '<div class="col-md-6">';
-    $html .= '<div class="row g-2">';
-    $html .= '<div class="col-6">';
-    $html .= '<div class="text-center p-2 rounded ' . ($farmer['is_member_of_4ps'] ? 'bg-success-subtle text-success' : 'bg-light text-muted') . '">';
-    $html .= '<i class="fas fa-hand-holding-heart d-block mb-1"></i>';
-    $html .= '<small class="fw-semibold">4Ps Member</small><br>';
-    $html .= '<span class="badge ' . ($farmer['is_member_of_4ps'] ? 'bg-success' : 'bg-secondary') . '">' . ($farmer['is_member_of_4ps'] ? 'Yes' : 'No') . '</span>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '<div class="col-6">';
-    $html .= '<div class="text-center p-2 rounded ' . ($farmer['is_ip'] ? 'bg-warning-subtle text-warning' : 'bg-light text-muted') . '">';
-    $html .= '<i class="fas fa-mountain d-block mb-1"></i>';
-    $html .= '<small class="fw-semibold">Indigenous People</small><br>';
-    $html .= '<span class="badge ' . ($farmer['is_ip'] ? 'bg-warning' : 'bg-secondary') . '">' . ($farmer['is_ip'] ? 'Yes' : 'No') . '</span>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    // Registration Programs Section
-    $html .= '<div class="row g-3 mt-2">';
-    $html .= '<div class="col-12">';
-    $html .= '<div class="card border-0 shadow-sm">';
-    $html .= '<div class="card-header bg-light border-0">';
-    $html .= '<h6 class="card-title mb-0 text-info"><i class="fas fa-clipboard-list me-2"></i>Program Registrations</h6>';
-    $html .= '</div>';
-    $html .= '<div class="card-body">';
-    $html .= '<div class="row g-3">';
-    
-    // RSBSA Registration
-    $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_rsbsa']) ? 'bg-primary-subtle text-primary' : 'bg-light text-muted') . '">';
-    $html .= '<i class="fas fa-file-contract d-block mb-2 fs-4"></i>';
-    $html .= '<div class="fw-semibold mb-1">RSBSA</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['is_rsbsa']) ? 'bg-primary' : 'bg-secondary') . '">' . (!empty($farmer['is_rsbsa']) ? 'Registered' : 'Not Registered') . '</span>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    // NCFRS Registration
-    $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_ncfrs']) ? 'bg-success-subtle text-success' : 'bg-light text-muted') . '">';
-    $html .= '<i class="fas fa-database d-block mb-2 fs-4"></i>';
-    $html .= '<div class="fw-semibold mb-1">NCFRS</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['is_ncfrs']) ? 'bg-success' : 'bg-secondary') . '">' . (!empty($farmer['is_ncfrs']) ? 'Registered' : 'Not Registered') . '</span>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    // Fisherfolk Registration
-    $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_fisherfolk']) ? 'bg-info-subtle text-info' : 'bg-light text-muted') . '">';
-    $html .= '<i class="fas fa-fish d-block mb-2 fs-4"></i>';
-    $html .= '<div class="fw-semibold mb-1">Fisherfolk</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['is_fisherfolk']) ? 'bg-info' : 'bg-secondary') . '">' . (!empty($farmer['is_fisherfolk']) ? 'Registered' : 'Not Registered') . '</span>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    // Vessel Information
-    $html .= '<div class="col-md-6 col-lg-3">';
-    $html .= '<div class="text-center p-3 rounded ' . (!empty($farmer['is_boat']) ? 'bg-warning-subtle text-warning' : 'bg-light text-muted') . '">';
-    $html .= '<i class="fas fa-ship d-block mb-2 fs-4"></i>';
-    $html .= '<div class="fw-semibold mb-1">Vessel</div>';
-    $html .= '<span class="badge ' . (!empty($farmer['is_boat']) ? 'bg-warning' : 'bg-secondary') . '">' . (!empty($farmer['is_boat']) ? 'Has Boat' : 'No Boat') . '</span>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-    
-    // Recent Yields and Inputs Section
-    $html .= '<div class="row g-3 mt-3">';
+    $html .= '</div>'; // end profile-header
 
+    // Quick Registration Badges Section
+    $html .= '<div class="px-4 pb-3 pt-3 bg-light bg-opacity-50 border-bottom">';
+    $html .= '<h6 class="text-xs fw-bold text-muted text-uppercase mb-2 text-center">Registrations</h6>';
+    $html .= '<div class="d-flex flex-wrap gap-2 justify-content-center">';
+    if (!empty($farmer['is_rsbsa'])) $html .= '<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill shadow-sm"><i class="fas fa-file-contract me-1"></i>RSBSA</span>';
+    if (!empty($farmer['is_ncfrs'])) $html .= '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill shadow-sm"><i class="fas fa-database me-1"></i>NCFRS</span>';
+    if (!empty($farmer['is_fisherfolk'])) $html .= '<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill shadow-sm"><i class="fas fa-fish me-1"></i>Fisheries</span>';
+    if (!empty($farmer['is_boat'])) $html .= '<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill shadow-sm"><i class="fas fa-ship me-1"></i>Vessel</span>';
+    if ($farmer['is_member_of_4ps']) $html .= '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill shadow-sm"><i class="fas fa-hand-holding-heart me-1"></i>4Ps</span>';
+    if ($farmer['is_ip']) $html .= '<span class="badge bg-dark-subtle text-dark border border-dark-subtle rounded-pill shadow-sm"><i class="fas fa-mountain me-1"></i>IP</span>';
+    $html .= '</div>';
+    $html .= '</div>';
+
+    // Contact & Basic Demographics
+    $html .= '<div class="p-4 flex-grow-1 d-flex flex-column justify-content-center">';
+    $html .= '<h6 class="text-xs fw-bold text-muted text-uppercase mb-3">Contact & Demographics</h6>';
+    
+    $html .= '<div class="d-flex align-items-center mb-3">';
+    $html .= '<div class="icon-circle bg-light text-primary me-3"><i class="fas fa-phone"></i></div>';
+    $html .= '<div><div class="text-xs text-muted mb-0">Contact Number</div><div class="fw-semibold">' . htmlspecialchars($farmer['contact_number'] ?: 'Not specified') . '</div></div>';
+    $html .= '</div>';
+
+    $html .= '<div class="d-flex align-items-center mb-3">';
+    $html .= '<div class="icon-circle bg-light text-success me-3"><i class="fas fa-map-marker-alt"></i></div>';
+    $html .= '<div><div class="text-xs text-muted mb-0">Address</div><div class="fw-semibold lh-sm">' . htmlspecialchars($farmer['address_details'] ?: 'Not specified') . ', ' . htmlspecialchars($farmer['barangay_name'] ?: 'N/A') . '</div></div>';
+    $html .= '</div>';
+
+    $html .= '<div class="row g-2 mt-2">';
+    $html .= '<div class="col-6"><div class="p-2 bg-light rounded text-center shadow-sm"><small class="text-muted d-block text-xs text-uppercase fw-bold mb-1">Birth Date</small><span class="fw-bold text-dark fs-sm">' . htmlspecialchars($farmer['birth_date'] ?: 'N/A') . '</span></div></div>';
+    $html .= '<div class="col-6"><div class="p-2 bg-light rounded text-center shadow-sm"><small class="text-muted d-block text-xs text-uppercase fw-bold mb-1">Gender</small><span class="fw-bold text-dark fs-sm">' . htmlspecialchars($farmer['gender'] ?: 'N/A') . '</span></div></div>';
+    $html .= '</div>';
+    
+    $html .= '</div>'; // end contact container
+    $html .= '</div>'; // end sidebar card
+    $html .= '</div>'; // end col
+    
+    // --- RIGHT COLUMN: Details (col-lg-8) ---
+    $html .= '<div class="col-lg-8">';
+    $html .= '<div class="d-flex flex-column gap-4 h-100">';
+    
+    // Quick Stats Bar
+    $yieldCount = isset($farmer['recent_yields']) ? count($farmer['recent_yields']) : 0;
+    $inputCount = isset($farmer['recent_inputs']) ? count($farmer['recent_inputs']) : 0;
+    
+    $html .= '<div class="row g-3">';
+    $html .= '<div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value text-success">' . htmlspecialchars($farmer['land_area_hectares'] ?: '0.00') . '</div><div class="stat-label">Hectares</div></div></div>';
+    $html .= '<div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value text-primary">' . htmlspecialchars($farmer['years_farming'] ?: '0') . '</div><div class="stat-label">Yrs Farming</div></div></div>';
+    $html .= '<div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value text-warning">' . $yieldCount . '</div><div class="stat-label">Yields Logged</div></div></div>';
+    $html .= '<div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value text-info">' . $inputCount . '</div><div class="stat-label">Inputs Given</div></div></div>';
+    $html .= '</div>';
+
+    // Detail Tiles Grids
+    // Row 1: Farm and Household Info Side-by-Side
+    $html .= '<div class="row g-4">';
+    
+    // Farm Info
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="card border-0 shadow-sm h-100">';
+    $html .= '<div class="card-header bg-transparent border-0 pt-4 pb-2"><h6 class="fw-bold mb-0 text-success"><i class="fas fa-seedling me-2"></i>Farm Profile</h6></div>';
+    $html .= '<div class="card-body pt-2">';
+    $html .= '<div class="d-flex flex-column gap-3">';
+    
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-leaf me-1 text-success"></i>Primary Commodity</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['commodity_name'] ?: 'Not specified') . '</div></div>';
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-ruler-combined me-1 text-primary"></i>Land Area</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['land_area_hectares'] ?: '0.00') . ' hectares</div></div>';
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-calendar-alt me-1 text-warning"></i>Experience</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['years_farming'] ?: '0') . ' years</div></div>';
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-wallet me-1 text-info"></i>Other Income</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['other_income_source'] ?: 'None') . '</div></div>';
+
+    $html .= '</div>';
+    $html .= '</div></div></div>';
+    
+    // Household Info
+    $html .= '<div class="col-md-6">';
+    $html .= '<div class="card border-0 shadow-sm h-100">';
+    $html .= '<div class="card-header bg-transparent border-0 pt-4 pb-2"><h6 class="fw-bold mb-0 text-info"><i class="fas fa-home me-2"></i>Household Status</h6></div>';
+    $html .= '<div class="card-body pt-2">';
+    $html .= '<div class="d-flex flex-column gap-3">';
+    
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-heart me-1 text-danger"></i>Civil Status</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['civil_status'] ?: 'Not specified') . '</div></div>';
+    if (!empty($farmer['spouse_name'])) {
+        $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-ring me-1 text-warning"></i>Spouse</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['spouse_name']) . '</div></div>';
+    }
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-users me-1 text-info"></i>Household Size</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['household_size'] ?: 'Not specified') . ' members</div></div>';
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-graduation-cap me-1 text-primary"></i>Education</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['education_level'] ?: 'Not specified') . '</div></div>';
+    $html .= '<div class="info-block hover-lift p-2 rounded"><label class="text-muted text-xs text-uppercase fw-bold"><i class="fas fa-briefcase me-1 text-secondary"></i>Occupation</label><div class="fw-bold text-dark">' . htmlspecialchars($farmer['occupation'] ?: 'Not specified') . '</div></div>';
+    
+    $html .= '</div>';
+    $html .= '</div></div></div>';
+    
+    $html .= '</div>'; // End Row 1
+    
+    // Row 2: Recent Activity
+    $html .= '<div class="row g-4 recent-records-row flex-grow-1">';
+    
     // Recent Yields Card
     $html .= '<div class="col-md-6">';
     $html .= '<div class="card border-0 shadow-sm h-100">';
-    $html .= '<div class="card-header bg-light border-0">';
-    $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-boxes-stacked me-2"></i>Recent Yields</h6>';
-    $html .= '</div>';
-    $html .= '<div class="card-body">';
+    $html .= '<div class="card-header bg-light border-0"><h6 class="card-title fw-bold mb-0 text-primary"><i class="fas fa-chart-line me-2"></i>Recent Yields</h6></div>';
+    $html .= '<div class="card-body p-0">';
     if (!empty($farmer['recent_yields'])) {
-        $html .= '<ul class="list-group list-group-flush">';
+        $html .= '<div class="list-group list-group-flush">';
         foreach ($farmer['recent_yields'] as $ry) {
             $commodity = htmlspecialchars($ry['commodity_name'] ?: 'Unspecified');
             $amount = htmlspecialchars($ry['yield_amount'] ?: '');
             $unit = htmlspecialchars($ry['unit'] ?: '');
             $season = htmlspecialchars($ry['season'] ?: '');
             $date = $ry['record_date'] ? date('M d, Y', strtotime($ry['record_date'])) : '-';
-            $html .= '<li class="list-group-item d-flex justify-content-between align-items-start">';
-            $html .= '<div class="ms-2 me-auto">';
-            $html .= '<div class="fw-semibold">' . $commodity . '</div>';
-            $html .= '<small class="text-muted">' . $season . ' &middot; ' . $date . '</small>';
+            $html .= '<div class="list-group-item px-4 py-3 bg-transparent hover-lift">';
+            $html .= '<div class="d-flex justify-content-between align-items-center">';
+            $html .= '<div><div class="fw-bold text-dark mb-1"><i class="fas fa-seedling text-success me-2 opacity-75"></i>' . $commodity . '</div>';
+            $html .= '<div class="text-xs text-muted"><i class="fas fa-sun me-1"></i>' . $season . '<span class="mx-2">•</span><i class="far fa-calendar-alt me-1"></i>' . $date . '</div></div>';
+            $html .= '<span class="badge bg-success-subtle text-success fs-sm px-3 py-2 border border-success-subtle rounded-pill shadow-sm">' . ($amount !== '' ? number_format($amount) . ' ' . $unit : '—') . '</span>';
             $html .= '</div>';
-            $html .= '<span class="badge bg-success rounded-pill">' . ($amount !== '' ? number_format($amount) . ' ' . $unit : '—') . '</span>';
-            $html .= '</li>';
+            $html .= '</div>';
         }
-        $html .= '</ul>';
+        $html .= '</div>';
     } else {
-        $html .= '<div class="text-muted">No recent yield records found.</div>';
+        $html .= '<div class="text-center text-muted py-5 px-4"><div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 56px; height: 56px;"><i class="fas fa-boxes-stacked text-secondary fs-4"></i></div><div class="fw-bold text-dark mb-1">No Yields Recorded</div><small>No recent yield records found for this farmer.</small></div>';
     }
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
+    $html .= '</div></div></div>';
 
     // Recent Inputs Card
     $html .= '<div class="col-md-6">';
     $html .= '<div class="card border-0 shadow-sm h-100">';
-    $html .= '<div class="card-header bg-light border-0">';
-    $html .= '<h6 class="card-title mb-0 text-primary"><i class="fas fa-truck-field me-2"></i>Recent Inputs Received</h6>';
-    $html .= '</div>';
-    $html .= '<div class="card-body">';
+    $html .= '<div class="card-header bg-light border-0"><h6 class="card-title fw-bold mb-0 text-primary"><i class="fas fa-truck-loading me-2"></i>Recent Inputs</h6></div>';
+    $html .= '<div class="card-body p-0">';
     if (!empty($farmer['recent_inputs'])) {
-        $html .= '<ul class="list-group list-group-flush">';
+        $html .= '<div class="list-group list-group-flush">';
         foreach ($farmer['recent_inputs'] as $ri) {
             $inputName = htmlspecialchars($ri['input_name'] ?: 'Unspecified');
             $qty = htmlspecialchars($ri['quantity_distributed'] ?: '');
             $unit = htmlspecialchars($ri['unit'] ?: '');
             $dateGiven = $ri['date_given'] ? date('M d, Y', strtotime($ri['date_given'])) : '-';
             $status = htmlspecialchars(ucfirst($ri['status'] ?: ''));
-            $html .= '<li class="list-group-item d-flex justify-content-between align-items-start">';
-            $html .= '<div class="ms-2 me-auto">';
-            $html .= '<div class="fw-semibold">' . $inputName . '</div>';
-            $html .= '<small class="text-muted">Given: ' . $dateGiven . '</small>';
+            $html .= '<div class="list-group-item px-4 py-3 bg-transparent hover-lift">';
+            $html .= '<div class="d-flex justify-content-between align-items-center">';
+            $html .= '<div><div class="fw-bold text-dark mb-1"><i class="fas fa-box text-primary me-2 opacity-75"></i>' . $inputName . '</div>';
+            $html .= '<div class="text-xs text-muted"><i class="far fa-calendar-alt me-1"></i>' . $dateGiven . '</div></div>';
+            $html .= '<div class="text-end"><div class="fw-bold text-dark fs-sm">' . ($qty !== '' ? number_format($qty) . ' ' . $unit : '—') . '</div><small class="badge bg-light text-secondary border mt-1 shadow-sm">' . $status . '</small></div>';
             $html .= '</div>';
-            $html .= '<div class="text-end">';
-            $html .= '<div class="fw-semibold">' . ($qty !== '' ? number_format($qty) . ' ' . $unit : '—') . '</div>';
-            $html .= '<small class="text-muted">' . $status . '</small>';
             $html .= '</div>';
-            $html .= '</li>';
         }
-        $html .= '</ul>';
+        $html .= '</div>';
     } else {
-        $html .= '<div class="text-muted">No recent input distributions found.</div>';
+        $html .= '<div class="text-center text-muted py-5 px-4"><div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 56px; height: 56px;"><i class="fas fa-truck-field text-secondary fs-4"></i></div><div class="fw-bold text-dark mb-1">No Inputs Received</div><small>No recent input distributions found.</small></div>';
     }
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
+    $html .= '</div></div></div>';
 
-    $html .= '</div>';
-    $html .= '</div>';
+    $html .= '</div>'; // End Row 2
+    
+    $html .= '</div>'; // end col-lg-8 wrap
+    $html .= '</div>'; // end col
+    $html .= '</div>'; // end main row
+    $html .= '</div>'; // end modern-farmer-profile shell
     
     return $html;
 }
@@ -1045,6 +875,265 @@ $barangays_result = $conn->query("SELECT * FROM barangays ORDER BY barangay_name
 
         /* Edit Modal Styles - Match Registration Modal */
         /* Leave modal sizing to global responsive CSS */
+
+        /* Farmer view modal layout */
+        #viewFarmerModal .modal-dialog {
+            max-width: 1180px;
+        }
+
+        #viewFarmerModal .modal-content {
+            border-radius: 1.25rem;
+            overflow: hidden;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        #viewFarmerModal .modal-header {
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08));
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        #viewFarmerModal .modal-body {
+            padding: 0;
+            background: #f8fafc;
+        }
+
+        #viewFarmerModal .farmer-view-shell {
+            padding: 1rem;
+            background:
+                radial-gradient(circle at top right, rgba(34, 197, 94, 0.08), transparent 32%),
+                radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.08), transparent 30%),
+                #f8fafc;
+        }
+
+        #viewFarmerModal .farmer-section {
+            margin-bottom: 1rem;
+        }
+
+        #viewFarmerModal .card {
+            border: 1px solid rgba(15, 23, 42, 0.06) !important;
+            border-radius: 1rem !important;
+            overflow: hidden;
+            box-shadow: 0 0.75rem 1.75rem rgba(15, 23, 42, 0.06) !important;
+            background: #fff;
+        }
+
+        #viewFarmerModal .card-header {
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.98)) !important;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.05) !important;
+            padding: 0.9rem 1rem !important;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #viewFarmerModal .card-header .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        #viewFarmerModal .card-body {
+            padding: 1rem;
+        }
+
+        #viewFarmerModal .detail-tile {
+            height: 100%;
+            padding: 1rem;
+            border-radius: 1rem;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid rgba(15, 23, 42, 0.07);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0.5rem 1.25rem rgba(15, 23, 42, 0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        #viewFarmerModal .detail-tile:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.08);
+            border-color: rgba(59, 130, 246, 0.18);
+        }
+
+        #viewFarmerModal .detail-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #6b7280;
+        }
+
+        #viewFarmerModal .detail-value {
+            margin-top: 0.45rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            word-break: break-word;
+        }
+
+        #viewFarmerModal .profile-sidebar {
+            border: 1px solid rgba(15, 23, 42, 0.06) !important;
+            border-radius: 1rem !important;
+            background: #fff;
+            overflow: hidden;
+            box-shadow: 0 0.75rem 1.75rem rgba(15, 23, 42, 0.06) !important;
+        }
+
+        #viewFarmerModal .profile-header {
+            position: relative;
+            padding: 2.5rem 1.5rem 1.5rem;
+            background: #fff;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+            z-index: 1;
+        }
+
+        #viewFarmerModal .profile-cover {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 120px;
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            z-index: -1;
+            opacity: 0.15;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+        }
+
+        #viewFarmerModal .profile-photo-wrapper {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            margin-top: -1rem;
+        }
+        
+        #viewFarmerModal .profile-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 5px solid #fff;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+            background: #fff;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        #viewFarmerModal .profile-photo:hover {
+            transform: scale(1.05);
+        }
+
+        #viewFarmerModal .profile-photo-placeholder {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+            border: 5px solid #fff;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+        }
+
+        #viewFarmerModal .photo-indicator {
+            position: absolute;
+            bottom: 4px;
+            right: 8px;
+            font-size: 1.4rem;
+            color: #10b981;
+            background: #fff;
+            border-radius: 50%;
+            line-height: 1;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #viewFarmerModal .stat-card {
+            background: #fff;
+            border-radius: 1rem;
+            padding: 1.25rem 1rem;
+            text-align: center;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            box-shadow: 0 0.5rem 1rem rgba(15, 23, 42, 0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #viewFarmerModal .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.06);
+        }
+
+        #viewFarmerModal .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+            margin-bottom: 0.25rem;
+        }
+
+        #viewFarmerModal .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #64748b;
+        }
+
+        #viewFarmerModal .hover-lift {
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        #viewFarmerModal .hover-lift:hover {
+            transform: translateX(4px);
+            background-color: rgba(248, 250, 252, 0.8) !important;
+        }
+
+        #viewFarmerModal .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        #viewFarmerModal .info-block {
+            border-left: 3px solid rgba(15, 23, 42, 0.06);
+            padding-left: 1rem;
+        }
+
+        #viewFarmerModal .text-xs { font-size: 0.75rem; }
+        #viewFarmerModal .fs-sm { font-size: 0.875rem; }
+
+        #viewFarmerModal .status-tile {
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #viewFarmerModal .recent-records-row {
+            align-items: stretch;
+        }
+
+        #viewFarmerModal .recent-records-row > [class*='col-'] {
+            display: flex;
+        }
+
+        #viewFarmerModal .recent-records-row .card {
+            width: 100%;
+        }
+
+        #viewFarmerModal .recent-records-row .card-body {
+            min-height: 88px;
+        }
+
+        #viewFarmerModal .list-group-item {
+            border-color: rgba(15, 23, 42, 0.06);
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #viewFarmerModal .badge {
+            border-radius: 999px;
+            padding: 0.4rem 0.7rem;
+            font-weight: 600;
+        }
 
         .card-header {
             font-weight: 600;
