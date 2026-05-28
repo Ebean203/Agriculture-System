@@ -398,94 +398,26 @@ include 'includes/layout_start.php';
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <!-- Total Visits -->
-        <a href="yield_monitoring.php" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="View all yield records">
-            <div class="flex items-center">
-                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                    <i class="fas fa-eye text-blue-600 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900"><?php echo $total_records; ?></h3>
-                    <p class="text-gray-600">Total Visits</p>
-                    <p class="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">View all records &rarr;</p>
-                </div>
-            </div>
-        </a>
-
-        <!-- Agronomic Crops -->
-        <a href="yield_monitoring.php?category_filter=1" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by Agronomic Crops">
-            <div class="flex items-center">
-                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                    <i class="fas fa-wheat-awn text-green-600 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        $agronomic_count = 0;
-                        foreach ($yield_records as $record) {
-                            if (isset($record['category_id']) && $record['category_id'] == 1) $agronomic_count++;
-                        }
-                        echo $agronomic_count;
-                    ?></h3>
-                    <p class="text-gray-600">Agronomic Crops</p>
-                    <p class="text-xs text-green-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
-                </div>
-            </div>
-        </a>
-
-        <!-- High Value Crops -->
-        <a href="yield_monitoring.php?category_filter=2" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by High Value Crops">
-            <div class="flex items-center">
-                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                    <i class="fas fa-apple-alt text-purple-600 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        $hvc_count = 0;
-                        foreach ($yield_records as $record) {
-                            if (isset($record['category_id']) && $record['category_id'] == 2) $hvc_count++;
-                        }
-                        echo $hvc_count;
-                    ?></h3>
-                    <p class="text-gray-600">High Value Crops</p>
-                    <p class="text-xs text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
-                </div>
-            </div>
-        </a>
-
-        <!-- Livestock & Poultry -->
-        <a href="yield_monitoring.php?category_filter=3" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by Livestock &amp; Poultry">
-            <div class="flex items-center">
-                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-200">
-                    <i class="fas fa-paw text-orange-600 text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900"><?php 
-                        $animal_count = 0;
-                        foreach ($yield_records as $record) {
-                            if (isset($record['category_id']) && ($record['category_id'] == 3 || $record['category_id'] == 4)) $animal_count++;
-                        }
-                        echo $animal_count;
-                    ?></h3>
-                    <p class="text-gray-600">Livestock &amp; Poultry</p>
-                    <p class="text-xs text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
-                </div>
-            </div>
-        </a>
-
-    </div>
+    <!-- Summary Cards removed to avoid duplication; keeping dynamic per-category cards below -->
 
     <!-- Yield Total Cards by Category -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <?php
-        // Calculate totals per category
-        $category_totals = [
-            1 => ['name' => 'Agronomic Crops', 'icon' => 'fa-wheat-awn', 'color' => 'green', 'yields' => []],
-            2 => ['name' => 'High Value Crops', 'icon' => 'fa-apple-alt', 'color' => 'purple', 'yields' => []],
-            3 => ['name' => 'Livestocks', 'icon' => 'fa-cow', 'color' => 'orange', 'yields' => []],
-            4 => ['name' => 'Poultry', 'icon' => 'fa-dove', 'color' => 'yellow', 'yields' => []]
-        ];
+        // Build category totals dynamically from DB categories so new categories (e.g., Fisheries) show up automatically
+        $category_totals = [];
+        foreach ($commodity_categories as $cat) {
+            $cid = (int)$cat['category_id'];
+            $cname = $cat['category_name'];
+            $lname = strtolower($cname);
+            $icon = 'fa-box'; $color = 'gray';
+            if (strpos($lname, 'agronom') !== false) { $icon = 'fa-wheat-awn'; $color = 'green'; }
+            elseif (strpos($lname, 'high') !== false || strpos($lname, 'value') !== false) { $icon = 'fa-apple-alt'; $color = 'purple'; }
+            elseif (strpos($lname, 'fish') !== false || strpos($lname, 'fisher') !== false) { $icon = 'fa-fish'; $color = 'teal'; }
+            elseif (strpos($lname, 'poultry') !== false || strpos($lname, 'egg') !== false) { $icon = 'fa-dove'; $color = 'yellow'; }
+            elseif (strpos($lname, 'livest') !== false || strpos($lname, 'livestock') !== false) { $icon = 'fa-cow'; $color = 'orange'; }
+
+            $category_totals[$cid] = ['name' => $cname, 'icon' => $icon, 'color' => $color, 'yields' => []];
+        }
 
         // Aggregate yields by category and unit
         foreach ($yield_records as $record) {
@@ -494,7 +426,7 @@ include 'includes/layout_start.php';
                 $amount = floatval($record['yield_amount'] ?? 0);
                 $unit = trim($record['unit'] ?? '');
                 if ($unit === '') $unit = 'units';
-                
+
                 if (!isset($category_totals[$cat_id]['yields'][$unit])) {
                     $category_totals[$cat_id]['yields'][$unit] = 0;
                 }
@@ -502,28 +434,84 @@ include 'includes/layout_start.php';
             }
         }
 
-        // Display a card for each category
-        foreach ($category_totals as $cat_id => $cat_data):
-            $total_yield_display = '0';
-            if (!empty($cat_data['yields'])) {
-                // Show aggregated totals per unit
-                $parts = [];
-                foreach ($cat_data['yields'] as $unit => $total) {
-                    $parts[] = number_format($total, 1) . ' ' . htmlspecialchars($unit);
-                }
-                $total_yield_display = implode('<br>', $parts);
+        // Prepare render order: Agronomic, High Value, Livestock & Poultry (combined), Fisheries, then any remaining categories
+        $render_cards = [];
+
+        // Helper to format yields
+        $formatYields = function($yields) {
+            if (empty($yields)) return '0';
+            $parts = [];
+            foreach ($yields as $unit => $total) {
+                $parts[] = number_format($total, 1) . ' ' . htmlspecialchars($unit);
             }
+            return implode('<br>', $parts);
+        };
+
+        // Find category ids by keywords
+        $catByKeyword = function($keyword) use ($category_totals) {
+            $matches = [];
+            foreach ($category_totals as $cid => $c) {
+                if (stripos($c['name'], $keyword) !== false) $matches[] = $cid;
+            }
+            return $matches;
+        };
+
+        $ag_ids = $catByKeyword('agronom');
+        $hvc_ids = $catByKeyword('high');
+        $fish_ids = array_merge($catByKeyword('fish'), $catByKeyword('fisher'));
+        $poultry_ids = $catByKeyword('poultry');
+        $livestock_ids = $catByKeyword('livest');
+
+        // Agronomic
+        foreach ($ag_ids as $id) $render_cards[] = ['ids'=>[$id],'name'=>$category_totals[$id]['name'],'icon'=>$category_totals[$id]['icon'],'color'=>$category_totals[$id]['color']];
+        // High Value
+        foreach ($hvc_ids as $id) $render_cards[] = ['ids'=>[$id],'name'=>$category_totals[$id]['name'],'icon'=>$category_totals[$id]['icon'],'color'=>$category_totals[$id]['color']];
+
+        // Livestock & Poultry combined (prefer combining livestock + poultry if present)
+        $combined_lp_ids = array_unique(array_merge($livestock_ids, $poultry_ids));
+        if (!empty($combined_lp_ids)) {
+            $render_cards[] = ['ids'=>$combined_lp_ids,'name'=>'Livestock & Poultry','icon'=>'fa-paw','color'=>'orange'];
+        }
+
+        // Fisheries (separate)
+        if (!empty($fish_ids)) {
+            // Use first fisheries name if available
+            $fish_name = 'Fisheries';
+            $render_cards[] = ['ids'=>$fish_ids,'name'=>$fish_name,'icon'=>'fa-fish','color'=>'teal'];
+        }
+
+        // Any remaining categories not covered above
+        $covered = [];
+        foreach ($render_cards as $rc) { foreach ($rc['ids'] as $i) $covered[$i]=true; }
+        foreach ($category_totals as $cid => $cdata) {
+            if (isset($covered[$cid])) continue;
+            $render_cards[] = ['ids'=>[$cid],'name'=>$cdata['name'],'icon'=>$cdata['icon'],'color'=>$cdata['color']];
+        }
+
+        // Render the cards
+        foreach ($render_cards as $card):
+            // Merge yields from all ids in this card
+            $mergedYields = [];
+            foreach ($card['ids'] as $cid) {
+                if (!isset($category_totals[$cid])) continue;
+                foreach ($category_totals[$cid]['yields'] as $unit => $amt) {
+                    if (!isset($mergedYields[$unit])) $mergedYields[$unit]=0;
+                    $mergedYields[$unit] += $amt;
+                }
+            }
+            $total_yield_display = $formatYields($mergedYields);
+            $color = $card['color'];
+            $icon = $card['icon'];
         ?>
-        <!-- <?php echo htmlspecialchars($cat_data['name']); ?> Total -->
-        <a href="yield_monitoring.php?category_filter=<?php echo $cat_id; ?>" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-<?php echo $cat_data['color']; ?>-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by <?php echo htmlspecialchars($cat_data['name']); ?>">
+        <a href="yield_monitoring.php?category_filter=<?php echo isset($card['ids'][0]) ? (int)$card['ids'][0] : ''; ?>" class="block bg-white rounded-lg shadow-md p-6 border-l-4 border-<?php echo $color; ?>-500 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="Filter by <?php echo htmlspecialchars($card['name']); ?>">
             <div class="flex items-start">
-                <div class="w-12 h-12 bg-<?php echo $cat_data['color']; ?>-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                    <i class="fas <?php echo $cat_data['icon']; ?> text-<?php echo $cat_data['color']; ?>-600 text-xl"></i>
+                <div class="w-12 h-12 bg-<?php echo $color; ?>-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                    <i class="fas <?php echo $icon; ?> text-<?php echo $color; ?>-600 text-xl"></i>
                 </div>
                 <div class="flex-1">
                     <h3 class="text-xl font-bold text-gray-900 leading-tight"><?php echo $total_yield_display; ?></h3>
-                    <p class="text-gray-600 text-sm mt-1"><?php echo htmlspecialchars($cat_data['name']); ?></p>
-                    <p class="text-xs text-<?php echo $cat_data['color']; ?>-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
+                    <p class="text-gray-600 text-sm mt-1"><?php echo htmlspecialchars($card['name']); ?></p>
+                    <p class="text-xs text-<?php echo $color; ?>-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-0.5">Filter records &rarr;</p>
                 </div>
             </div>
         </a>
@@ -613,16 +601,16 @@ include 'includes/layout_start.php';
                             </div>
                         </div>
 
-                        <!-- Livestock -->
+                        <!-- Fisheries -->
                         <div>
                             <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                                <input type="checkbox" class="filter-category-checkbox w-4 h-4 text-agri-green border-gray-300 rounded focus:ring-agri-green" data-filter="livestock" data-category-id="3">
+                                <input type="checkbox" class="filter-category-checkbox w-4 h-4 text-agri-green border-gray-300 rounded focus:ring-agri-green" data-filter="fisheries" data-category-id="3">
                                 <div class="flex items-center gap-2 flex-1">
-                                    <i class="fas fa-horse text-orange-600"></i>
-                                    <span class="text-sm text-gray-700">Livestock</span>
+                                    <i class="fas fa-fish text-teal-600"></i>
+                                    <span class="text-sm text-gray-700">Fisheries</span>
                                 </div>
                             </label>
-                            <!-- Commodities under Livestock -->
+                            <!-- Commodities under Fisheries -->
                             <div class="commodity-list hidden ml-11 mt-2 space-y-1" data-category-id="3">
                                 <?php foreach ($commodities as $commodity): ?>
                                     <?php if ($commodity['category_id'] == 3): ?>
@@ -1259,7 +1247,7 @@ function handleFilterChange(filterValue) {
     const categoryMap = {
         'agronomic': '1',
         'high-value': '2', 
-        'livestock': '3',
+        'fisheries': '3',
         'poultry': '4'
     };
     
@@ -1288,7 +1276,7 @@ function setActiveTab() {
     const filterMap = {
         '1': 'agronomic',
         '2': 'high-value',
-        '3': 'livestock',
+        '3': 'fisheries',
         '4': 'poultry'
     };
     
@@ -1365,8 +1353,8 @@ function filterDataTable(filterValue) {
             showRow = (categoryId === '1'); // Agronomic Crops
         } else if (filterValue === 'high-value') {
             showRow = (categoryId === '2'); // High Value Crops
-        } else if (filterValue === 'livestock') {
-            showRow = (categoryId === '3'); // Livestock
+        } else if (filterValue === 'fisheries') {
+            showRow = (categoryId === '3'); // Fisheries
         } else if (filterValue === 'poultry') {
             showRow = (categoryId === '4'); // Poultry
         } else {
@@ -1759,8 +1747,8 @@ function filterDataTable(filterValue) {
             showRow = (categoryId === '1'); // Agronomic Crops
         } else if (filterValue === 'high-value') {
             showRow = (categoryId === '2'); // High Value Crops
-        } else if (filterValue === 'livestock') {
-            showRow = (categoryId === '3'); // Livestock
+        } else if (filterValue === 'fisheries') {
+            showRow = (categoryId === '3'); // Fisheries
         } else if (filterValue === 'poultry') {
             showRow = (categoryId === '4'); // Poultry
         } else {

@@ -53,6 +53,8 @@ if ($offline_mode) {
     echo '<script src="assets/js/jquery.min.js"></script>';
     echo '<script src="assets/js/bootstrap.bundle.min.js"></script>';
     echo '<script src="' . $toastJsRel . '?v=' . $toastJsVer . '"></script>';
+    // Load local Font Awesome-like SVG renderer for offline SVG icons
+    echo '<script src="assets/js/all.min.js"></script>';
 } else {
     // CDN assets (for when you have internet)
     echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" onerror="this.onerror=null;this.href=\'assets/css/bootstrap.min.css\';">';
@@ -88,6 +90,9 @@ if ($offline_mode) {
     echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js" onerror="this.onerror=null;this.src=\'assets/js/jquery.min.js\';"></script>';
     echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" onerror="this.onerror=null;this.src=\'assets/js/bootstrap.bundle.min.js\';"></script>';
     echo '<script src="' . $toastJsRel . '?v=' . $toastJsVer . '"></script>';
+    // Load Font Awesome SVG with JS to render high-quality SVG icons from <i> tags
+    echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" onerror="this.onerror=null;this.src=\'assets/js/all.min.js\';"></script>';
+    echo '<script>try{ if(window.FontAwesome && FontAwesome.dom && FontAwesome.dom.watch) FontAwesome.dom.watch(); }catch(e){};</script>';
 }
 ?>
 

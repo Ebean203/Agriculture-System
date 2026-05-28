@@ -381,10 +381,11 @@ if ($stmt_inputs) {
             </div>
 
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
                 <?php
-                // Always show all commodity categories as cards, even if no yield data
-                $cat_sql = "SELECT category_id, category_name FROM commodity_categories ORDER BY category_id ASC LIMIT 4";
+                // Always show commodity categories as cards, even if no yield data
+                // Fetch all categories so new ones (e.g., Fisheries) appear automatically
+                $cat_sql = "SELECT category_id, category_name FROM commodity_categories ORDER BY category_id ASC";
                 $cat_result = mysqli_query($conn, $cat_sql);
                 $categories = [];
                 while ($cat_row = mysqli_fetch_assoc($cat_result)) {
@@ -423,20 +424,37 @@ if ($stmt_inputs) {
                         $yield_data[$cat_id][$unit] = $total;
                     }
                 }
-                $bgClasses = ['from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-purple-500 to-purple-600', 'from-orange-500 to-orange-600'];
-                $iconClasses = ['fas fa-wheat-awn','fas fa-seedling','fas fa-leaf','fas fa-apple-alt'];
+                // Palette and icons to cycle through for categories. Add specific mapping for Fisheries.
+                $bgClasses = ['from-blue-500 to-blue-600', 'from-green-500 to-green-600', 'from-purple-500 to-purple-600', 'from-orange-500 to-orange-600', 'from-cyan-500 to-cyan-600', 'from-rose-500 to-rose-600'];
+                $iconClasses = ['fas fa-wheat-awn','fas fa-seedling','fas fa-leaf','fas fa-apple-alt','fas fa-fish','fas fa-truck-field'];
+                // Specific styles for known category names
+                $category_styles = [
+                    'fisheries' => ['bg' => 'from-cyan-500 to-cyan-600', 'icon' => 'fas fa-fish'],
+                    'livestock' => ['bg' => 'from-orange-500 to-orange-600', 'icon' => 'fas fa-drumstick-bite'],
+                ];
                 require_once __DIR__ . '/includes/yield_helpers.php';
                 $i = 0;
                 foreach ($categories as $cat_id => $cat_name) {
-                    $bg = $bgClasses[$i] ?? 'from-gray-500 to-gray-600';
-                    $icon = $iconClasses[$i] ?? 'fas fa-box';
+                    $cat_lower_name = strtolower($cat_name);
+                    // Prefer explicit mapping for well-known categories
+                    if (isset($category_styles[$cat_lower_name])) {
+                        $bg = $category_styles[$cat_lower_name]['bg'];
+                        $icon = $category_styles[$cat_lower_name]['icon'];
+                    } elseif (strpos($cat_lower_name, 'fish') !== false || strpos($cat_lower_name, 'fisher') !== false) {
+                        $bg = $category_styles['fisheries']['bg'];
+                        $icon = $category_styles['fisheries']['icon'];
+                    } else {
+                        // Cycle through palettes for remaining categories
+                        $bg = $bgClasses[$i % count($bgClasses)];
+                        $icon = $iconClasses[$i % count($iconClasses)];
+                    }
                     $units = isset($yield_data[$cat_id]) ? $yield_data[$cat_id] : [];
                     $parts = [];
                     if (!empty($units)) {
                         foreach ($units as $unit => $amt) {
                             if ($amt > 0) {
                                 $labelUnit = normalize_unit_label($unit);
-                                $parts[] = '<span class="text-2xl font-bold">' . number_format($amt, 2) . '</span> <span class="text-base">' . htmlspecialchars($labelUnit) . '</span>';
+                                $parts[] = '<span class="text-xl font-bold">' . number_format($amt, 2) . '</span> <span class="text-sm">' . htmlspecialchars($labelUnit) . '</span>';
                             }
                         }
                     }
@@ -444,18 +462,18 @@ if ($stmt_inputs) {
                     if (empty($parts)) {
                         $cat_lower = strtolower($cat_name);
                         $default_unit = (strpos($cat_lower, 'livestock') !== false || strpos($cat_lower, 'poultry') !== false) ? 'heads' : 'kg';
-                        $display = '<span class="text-2xl font-bold">0</span> <span class="text-base">' . $default_unit . '</span>';
+                        $display = '<span class="text-xl font-bold">0</span> <span class="text-sm">' . $default_unit . '</span>';
                     } else {
                         $display = implode('<br>', $parts);
                     }
                 ?>
-                <a href="yield_monitoring.php?category_filter=<?php echo $cat_id; ?>" class="block bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-6 text-white animate-fade-in cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group" title="View <?php echo htmlspecialchars($cat_name); ?> yield records">
+                <a href="yield_monitoring.php?category_filter=<?php echo $cat_id; ?>" class="block bg-gradient-to-r <?php echo $bg; ?> rounded-lg shadow-md p-4 text-white animate-fade-in cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group" title="View <?php echo htmlspecialchars($cat_name); ?> yield records">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-blue-100 text-sm"><?php echo htmlspecialchars($cat_name); ?></p>
+                            <p class="text-blue-100 text-xs"><?php echo htmlspecialchars($cat_name); ?></p>
                             <div><?php echo $display; ?></div>
                         </div>
-                        <i class="<?php echo $icon; ?> text-3xl text-blue-200 group-hover:scale-110 transition-transform duration-200"></i>
+                        <i class="<?php echo $icon; ?> text-2xl text-blue-200 group-hover:scale-110 transition-transform duration-200"></i>
                     </div>
                     <div class="mt-2 text-xs text-white text-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity duration-200">Click to view records &rarr;</div>
                 </a>

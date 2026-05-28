@@ -245,18 +245,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             display: flex;
             align-items: center;
         }
-        
-        .input-wrapper i {
+
+        /* Icon inside inputs: support both <i> and inline <svg> */
+        .input-wrapper i,
+        .input-wrapper svg {
             position: absolute;
-            left: 1rem;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
             color: var(--agri-green);
-            font-size: 1.1rem;
+            font-size: 1.05rem;
+            width: 1.25rem;
+            height: 1.25rem;
+            line-height: 1;
             z-index: 1;
+            display: inline-block;
         }
-        
+
         .form-group input {
             width: 100%;
-            padding: 0.65rem 1rem 0.65rem 3rem;
+            padding: 0.65rem 1rem 0.65rem 3.5rem;
             border: 2px solid #cbd5e1;
             border-radius: 8px;
             font-size: 0.85rem;
@@ -370,13 +378,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             .form-group input {
-                padding: 0.6rem 0.8rem 0.6rem 2.5rem;
+                padding: 0.6rem 0.8rem 0.6rem 3rem;
                 font-size: 0.8rem;
             }
 
-            .input-wrapper i {
+            .input-wrapper i,
+            .input-wrapper svg {
                 left: 0.75rem;
                 font-size: 1rem;
+                width: 1.15rem;
+                height: 1.15rem;
+                transform: translateY(-50%);
             }
 
             .submit-btn {
@@ -439,13 +451,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             .form-group input {
-                padding: 0.55rem 0.7rem 0.55rem 2.3rem;
+                padding: 0.55rem 0.7rem 0.55rem 2.8rem;
                 font-size: 0.75rem;
             }
 
-            .input-wrapper i {
+            .input-wrapper i,
+            .input-wrapper svg {
                 left: 0.6rem;
                 font-size: 0.9rem;
+                width: 1.05rem;
+                height: 1.05rem;
+                transform: translateY(-50%);
             }
 
             .submit-btn {
