@@ -77,8 +77,8 @@
                                     </small>
                                 </div>
                                 <div class="col-md-4 mb-3 d-flex align-items-center">
-                                    <button type="button" class="btn btn-outline-success btn-lg w-100" onclick="document.getElementById('farmer_photo_geotag').click()">
-                                        <i class="fas fa-camera fa-2x d-block mb-2"></i>
+                                    <button type="button" class="btn btn-outline-success btn-lg w-100 d-flex flex-column align-items-center justify-content-center text-center" onclick="document.getElementById('farmer_photo_geotag').click()" style="min-height: 118px;">
+                                        <i class="fas fa-camera fa-2x d-block mb-2 mx-auto"></i>
                                         Take Photo
                                     </button>
                                 </div>

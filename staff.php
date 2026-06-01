@@ -547,7 +547,22 @@ if ($stmt) {
             document.getElementById('change_password_staff_name').textContent = `${currentViewedStaff.first_name || ''} ${currentViewedStaff.last_name || ''}`.trim();
             document.getElementById('new_password').value = '';
             document.getElementById('confirm_password').value = '';
-            new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+
+            const viewModalEl = document.getElementById('viewStaffModal');
+            const changePasswordModalEl = document.getElementById('changePasswordModal');
+            const viewModal = bootstrap.Modal.getInstance(viewModalEl);
+
+            const showChangePasswordModal = function() {
+                new bootstrap.Modal(changePasswordModalEl).show();
+            };
+
+            if (viewModal) {
+                viewModalEl.addEventListener('hidden.bs.modal', showChangePasswordModal, { once: true });
+                viewModal.hide();
+                return;
+            }
+
+            showChangePasswordModal();
         }
 
         function closeChangePasswordModal() {
