@@ -22,6 +22,10 @@ require_once __DIR__ . '/../check_session.php';
         .sidebar__logo-img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
         .sidebar__title { font-weight: 700; font-size: 16px; letter-spacing: .3px; white-space: nowrap; }
         .sidebar__collapse-btn { width: 100%; background: rgba(255,255,255,0.12); border: none; color: #fff; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: 600; letter-spacing: .2px; transition: background 0.2s; }
+        .sidebar__collapse-btn .collapse-label { display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1; }
+        .sidebar__collapse-btn .collapse-label .sidebar-icon,
+        .sidebar__collapse-btn .collapse-icon .sidebar-icon { display: block; flex-shrink: 0; }
+        .sidebar__collapse-btn .collapse-icon { display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
         .sidebar__collapse-btn:hover { background: rgba(255,255,255,0.22); }
         .sidebar-collapsed .sidebar__collapse-btn { width: 42px; height: 42px; margin: 0 auto; border-radius: 50%; font-size: 16px; }
     .sidebar__nav { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-x: hidden; }
